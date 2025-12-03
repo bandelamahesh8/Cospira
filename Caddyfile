@@ -1,0 +1,30 @@
+{
+    # auto_https off # Commented out to allow auto-HTTPS in production if domain is provided
+}
+
+{$DOMAIN_NAME} {
+    # Proxy API requests to backend
+    handle /api/* {
+        reverse_proxy server:3001
+    }
+
+    # Proxy socket.io requests to backend
+    handle /socket.io/* {
+        reverse_proxy server:3001
+    }
+
+    # Proxy uploads to backend
+    handle /uploads/* {
+        reverse_proxy server:3001
+    }
+
+    # Proxy metrics to backend (protected?)
+    handle /metrics {
+        reverse_proxy server:3001
+    }
+
+    # Proxy everything else to frontend
+    handle /* {
+        reverse_proxy frontend:8080
+    }
+}

@@ -1,0 +1,97 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_WS_URL=http://localhost/
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+    networks:
+      - shareus-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - ./server/uploads:/app/uploads
+    environment:
+      - PORT=3001
+      - CLIENT_URL=http://localhost
+      - REDIS_URL=redis://redis:6379
+      - USE_REDIS=true
+      - JWT_SECRET=${JWT_SECRET}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    ports:
+      - "3001:3001"
+      - "40000-40100:40000-40100/udp"
+      - "40000-40100:40000-40100/tcp"
+    depends_on:
+      - redis
+    networks:
+      - shareus-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - shareus-network
+
+  caddy:
+    image: caddy:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN_NAME=http://localhost:80
+    depends_on:
+      - frontend
+      - server
+    networks:
+      - shareus-network
+
+  coturn:
+    image: coturn/coturn:latest
+    restart: always
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "5349:5349/tcp"
+      - "5349:5349/udp"
+      - "50000-50050:50000-50050/udp"
+    environment:
+      - TURN_REALM=shareus.local
+      - TURN_SECRET=shareus-secret-key-change-me
+    command:
+      - -n
+      - --log-file=stdout
+      - --min-port=50000
+      - --max-port=50050
+      - --realm=shareus.local
+      - --static-auth-secret=shareus-secret-key-change-me
+      - --user-quota=12
+      - --total-quota=1200
+    networks:
+      - shareus-network
+
+networks:
+  shareus-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  caddy_data:
+  caddy_config:
