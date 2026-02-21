@@ -1,5 +1,6 @@
 import express from 'express';
-import { createServer } from 'http';
+import http from 'http';
+import https from 'https';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,77 +10,180 @@ import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-
-import { createClient } from '@supabase/supabase-js';
+export { app, server, io };
 import jwt from 'jsonwebtoken';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import client from 'prom-client'; // Prometheus client
 import logger from './logger.js'; // Winston logger
 import { createRoomSchema, joinRoomSchema, messageSchema } from './validation.js';
-import { initRedis, getRoom, saveRoom, deleteRoom, getActiveRooms, hasRoom, getUser, saveUser, deleteUser, removeInactiveRooms } from './redis.js';
+import { initRedis, getRoom, saveRoom, deleteRoom, getActiveRooms, hasRoom, getUser, saveUser, deleteUser, getSystemConfig, saveSystemConfig, removeInactiveRooms } from './redis.js';
 import SFUHandler from './sfu/SFUHandler.js';
-import { createAdapter } from '@socket.io/redis-adapter';
-import { createClient as createRedisClient } from 'redis';
 import crypto from 'crypto';
 import { cleanupUploads } from './cleanup.js';
-
-dotenv.config();
-
-// Required Environment Variables Check
-const requiredEnvVars = [
-  'JWT_SECRET',
-  'TURN_SECRET',
-  'SESSION_SECRET',
-  'SUPABASE_URL',
-  'SUPABASE_SERVICE_ROLE_KEY'
-];
-
-if (process.env.NODE_ENV === 'production') {
-  const missing = requiredEnvVars.filter(key => !process.env[key]);
-  if (missing.length > 0) {
-    console.error('FATAL: Missing required environment variables:', missing.join(', '));
-    process.exit(1);
-  }
-}
+import LudoEngine from './game/LudoEngine.js';
+import SnakeLadderEngine from './game/SnakeLadderEngine.js';
+import registerSocketHandlers from './sockets/index.js';
+import { Chess } from 'chess.js';
+import connectMongoDB from './mongo.js';
+import { supabase } from './supabase.js';
+import roomRoutes from './routes/rooms.js';
+import authRoutes from './routes/auth.js';
+import aiMemoryRoutes from './routes/aiMemory.js';
+import aiContextRoutes from './routes/aiContext.js';
+import aiReasoningRoutes from './routes/aiReasoning.js';
+import aiPersonalityRoutes from './routes/aiPersonality.js';
+import aiAgentRoutes from './routes/aiAgents.js';
+import aiConflictRoutes from './routes/aiConflicts.js';
+import aiTrustRoutes from './routes/aiTrust.js';
+import aiEthicsRoutes from './routes/aiEthics.js';
+import aiTimelineRoutes from './routes/aiTimeline.js';
+import aiTwinRoutes from './routes/aiTwin.js';
+import aiSimulationRoutes from './routes/aiSimulation.js';
+import aiOptimizeRoutes from './routes/aiOptimize.js';
+import aiKernelRoutes from './routes/aiKernel.js';
+import aiPlatformRoutes from './routes/aiPlatform.js';
+import aiEnterpriseRoutes from './routes/aiEnterprise.js';
+import aiPluginsRoutes from './routes/aiPlugins.js';
+import aiAutonomousRoutes from './routes/aiAutonomous.js';
+import aiOSRoutes from './routes/aiOS.js';
+import agentManager from './services/ai/AgentManager.js';
+import aios from './services/ai/AIOS.js';
+import observerAgent from './services/ai/agents/ObserverAgent.js';
+import analyzerAgent from './services/ai/agents/AnalyzerAgent.js';
+import predictorAgent from './services/ai/agents/PredictorAgent.js';
+import consensusService from './services/ai/ConsensusService.js';
+import friendsRoutes from './routes/friends.js';
+import tournamentRoutes from './routes/tournaments.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Load .env from project root (two levels up from server/src)
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// connectMongoDB(); // Moved to startServer to ensure connection before listening
+
 const app = express();
-const server = createServer(app);
+app.set('trust proxy', 1); // Enable proxy trust for rate limiting behind load balancers/proxies
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Private-Network", "true");
+  next();
+});
+
+// Basic request logger
+app.use((req, res, next) => {
+  logger.info(`[API Request] ${req.method} ${req.url}`);
+  next();
+});
+
+
+const isProd = process.env.NODE_ENV === 'production';
+
+let server;
+const keyPath = path.resolve(__dirname, '../../localhost+3-key.pem');
+const certPath = path.resolve(__dirname, '../../localhost+3.pem');
+
+const forceHttp = process.env.FORCE_HTTP === 'true' || !isProd;
+
+if (!forceHttp && fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+  try {
+    const serverOptions = {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    };
+    server = https.createServer(serverOptions, app);
+    logger.info(`Starting HTTPS server (${isProd ? 'production' : 'development'} mode)`);
+  } catch (error) {
+    logger.error('Failed to load SSL certificates, falling back to HTTP:', error.message);
+    server = http.createServer(app);
+  }
+} else {
+  server = http.createServer(app);
+  logger.info(`Starting HTTP server (${isProd ? 'production' : 'development'} mode) - SSL certificates not found at ${certPath}`);
+}
 const port = process.env.PORT || 3001;
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
+// FFmpeg Check (Prevent silent crashes later)
+import { exec } from 'child_process';
+exec('ffmpeg -version', (error) => {
+    if (error) {
+        logger.error('CRITICAL: FFmpeg is not installed or not in system PATH.');
+        logger.error('Audio transcription will fail. Please install FFmpeg and RESTART your terminal/VS Code.');
+        // We do NOT exit here to allow the server to run sans-AI, but it's a critical warning.
+    } else {
+        logger.info('✅ FFmpeg is installed and available.');
+    }
 });
+
 
 // Prometheus Metrics
 const register = new client.Registry();
 client.collectDefaultMetrics({ register });
 
 const activeConnectionsGauge = new client.Gauge({
-  name: 'active_connections',
-  help: 'Number of active socket connections',
+  name: 'cospira_active_connections',
+  help: 'Number of active Socket.IO connections',
 });
 register.registerMetric(activeConnectionsGauge);
 
 const activeRoomsGauge = new client.Gauge({
-  name: 'active_rooms',
-  help: 'Number of active rooms',
+  name: 'cospira_active_rooms',
+  help: 'Number of active realtime rooms (Redis active_rooms size)',
 });
 register.registerMetric(activeRoomsGauge);
+
+const sfuWorkersGauge = new client.Gauge({
+  name: 'cospira_sfu_workers',
+  help: 'Number of mediasoup workers in this process',
+});
+register.registerMetric(sfuWorkersGauge);
 
 // Enable CORS for all routes
 app.use(cors({
   origin: (origin, callback) => {
-    const allowedOrigins = [process.env.CLIENT_URL || 'http://localhost:8080'];
-    if (!origin || allowedOrigins.includes(origin) || (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost:'))) {
+    const isProd = process.env.NODE_ENV === 'production';
+    const prodDomain = process.env.PROD_DOMAIN;
+
+    // In production, strictly allow only the production domain
+    if (isProd) {
+        if (!prodDomain) {
+            logger.error('PROD_DOMAIN not set in production. Blocking CORS.');
+            return callback(new Error('CORS config error'));
+        }
+        if (origin === prodDomain) {
+            return callback(null, true);
+        }
+        logger.warn(`Blocked by CORS (Express - Prod): ${origin}`);
+        return callback(new Error('Not allowed by CORS'));
+    }
+
+    // Development/Local logic
+    const allowedOrigins = [
+        process.env.CLIENT_URL || 'http://localhost:8080', 
+        'http://localhost:3000',
+        'http://localhost:5173'
+    ];
+    
+    const isLocal = origin && (
+        origin.startsWith('http://localhost') || origin.startsWith('https://localhost') ||
+        origin.startsWith('http://127.0.0.1') || origin.startsWith('https://127.0.0.1') ||
+        origin.startsWith('http://10.') || origin.startsWith('https://10.') ||
+        origin.startsWith('http://192.') || origin.startsWith('https://192.') ||
+        origin.startsWith('http://172.') || origin.startsWith('https://172.') ||
+        origin.includes('.devtunnels.ms') || // Allow VS Code dev tunnels
+        origin.includes('.exp.direct') || // Allow Expo tunnels
+        origin.includes('.exp.host') ||
+        origin.includes('.expo.test')
+    );
+    
+    // Always allow in dev/test mode for valid localhost origins
+    if (isLocal || allowedOrigins.includes(origin) || !origin) {
       callback(null, true);
     } else {
+      logger.warn(`Blocked by CORS (Express): ${origin}`); 
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -88,32 +192,71 @@ app.use(cors({
 
 
 
-// Security Headers
-app.use(helmet());
+// Security Headers (CSP allows inline scripts for Vite/React in dev; tighten in prod)
+app.use(helmet({
+  contentSecurityPolicy: isProd ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "wss:", "ws:", "https:"],
+      fontSrc: ["'self'"],
+      frameSrc: ["'self'", "https://www.youtube.com"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+    },
+  } : false,
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  noSniff: true,
+  xssFilter: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+}));
 
 // Rate Limiting
-const limiter = rateLimit({
+const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 1000, // Limit each IP to 1000 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use('/api/', limiter);
-app.use('/upload', limiter);
 
-app.use(express.json());
+// Stricter Rate Limit for Auth/Room Creation
+const authLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 20, // Limit 20 room creations per hour
+    message: 'Too many rooms created, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.use('/api/', globalLimiter);
+app.use('/upload', globalLimiter);
+app.use('/api/create-room', authLimiter);
+const authRouteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: 'Too many auth attempts',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/login', authRouteLimiter);
+app.use('/api/auth/register', authRouteLimiter);
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Session configuration (6 hours)
 const SESSION_LIFETIME = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || (isProd ? (() => { throw new Error('SESSION_SECRET required in production') })() : 'cospira-secret-key'),
   resave: false,
   saveUninitialized: false,
   cookie: {
     maxAge: SESSION_LIFETIME,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
+    secure: isProd || fs.existsSync(certPath),
+    sameSite: isProd ? 'strict' : 'lax'
   }
 }));
 
@@ -132,7 +275,29 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf',
+  'text/plain',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+];
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 1 // Max 1 file per request
+  },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      return cb(new Error('Invalid file type'), false);
+    }
+    cb(null, true);
+  }
+});
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -150,57 +315,140 @@ setInterval(() => {
   cleanupUploads(UPLOAD_DIR, MAX_FILE_AGE);
 }, CLEANUP_INTERVAL);
 
-// Schedule periodic room cleanup (every 1 hour)
+// Room Cleanup Cron (Issue 3 & 11) - Every 5 minutes
 setInterval(async () => {
-  try {
-    const removed = await removeInactiveRooms();
-    if (removed > 0) {
-      logger.info(`Cleaned up ${removed} inactive rooms`);
+    try {
+        const rooms = await getActiveRooms();
+        const now = Date.now();
+        for (const room of rooms) {
+            const userCount = room.users ? Object.keys(room.users).length : 0;
+            const idleTime = now - new Date(room.updatedAt || room.createdAt).getTime();
+            
+            // Delete if empty for more than 10 mins OR inactive for more than 24h
+            if ((userCount === 0 && idleTime > 10 * 60 * 1000) || idleTime > 24 * 60 * 60 * 1000) {
+                await deleteRoom(room.id);
+                logger.info(`Cron: Deleted stale/empty room ${room.id}`);
+            }
+        }
+    } catch (err) {
+        logger.error('Room cleanup cron error:', err);
     }
-  } catch (err) {
-    logger.error('Error cleaning up inactive rooms:', err);
-  }
-}, 60 * 60 * 1000);
+}, 5 * 60 * 1000);
+
+// Create Socket.IO server
+// Socket Connection Rate Limiter (Memory Map)
+const socketConnectionMap = new Map(); // IP -> { count, firstConnectionTime }
+const SOCKET_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_SOCKET_CONNECTIONS = 60; // 60 handshakes per minute per IP
 
 // Create Socket.IO server
 const io = new Server(server, {
+  path: '/socket.io',
   cors: {
     origin: (origin, callback) => {
-      const allowedOrigins = [process.env.CLIENT_URL || 'http://localhost:8080'];
-      if (!origin || allowedOrigins.includes(origin) || (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost:'))) {
+        const isProd = process.env.NODE_ENV === 'production';
+        const prodDomain = process.env.PROD_DOMAIN;
+
+        if (isProd) {
+            if (!prodDomain || origin !== prodDomain) {
+                logger.warn(`Blocked by CORS (Socket.IO - Prod): ${origin}`);
+                return callback(new Error('Not allowed by CORS'));
+            }
+             return callback(null, true);
+        }
+        
+        // Dev/Local logic (lenient)
+        const allowedOrigins = [
+            process.env.CLIENT_URL,
+            'http://localhost:8080',
+            'http://localhost:5173',
+            'http://localhost:3000'
+        ];
+        const isLocal = !isProd && origin && (
+            origin.startsWith('http://localhost') || origin.startsWith('https://localhost') ||
+            origin.startsWith('http://10.') || origin.startsWith('https://10.') ||
+            origin.startsWith('http://192.') || origin.startsWith('https://192.') ||
+            origin.startsWith('http://172.') || origin.startsWith('https://172.') ||
+            origin.includes('.devtunnels.ms') // Allow VS Code dev tunnels
+        );
+
+      if (isLocal || allowedOrigins.includes(origin) || !origin) {
         callback(null, true);
       } else {
+        logger.warn(`Blocked by CORS (Socket.IO): ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
     methods: ['GET', 'POST'],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
   },
-  connectionStateRecovery: {
-    maxDisconnectionDuration: 2 * 60 * 1000,
-    skipMiddlewares: true,
-  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  maxHttpBufferSize: 1e8, // 100MB for file uploads
+});
+
+// Redis Adapter for Horizontal Scaling
+import { createAdapter } from '@socket.io/redis-adapter';
+import { createClient } from 'redis';
+
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+
+if (process.env.USE_REDIS === 'true') {
+    const pubClient = createClient({ url: redisUrl });
+    const subClient = pubClient.duplicate();
+
+    Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+        io.adapter(createAdapter(pubClient, subClient));
+        logger.info('✅ Socket.IO Redis Adapter configured');
+    }).catch(err => {
+        logger.error('Failed to connect Redis Adapter:', err);
+    });
+}
+
+// Rate limiting middleware for Socket.IO
+io.use((socket, next) => {
+    const ip = socket.handshake.address;
+    const now = Date.now();
+    let record = socketConnectionMap.get(ip);
+    
+    // Reset if window passed
+    if (!record || (now - record.firstConnectionTime > SOCKET_LIMIT_WINDOW)) {
+        record = { count: 1, firstConnectionTime: now };
+    } else {
+        record.count++;
+    }
+    
+    socketConnectionMap.set(ip, record);
+    
+    if (record.count > MAX_SOCKET_CONNECTIONS) {
+        logger.warn(`Socket rate limit exceeded for IP: ${ip}`);
+        return next(new Error('Too many connections'));
+    }
+    
+    // Periodic Cleanup (simple)
+    if (socketConnectionMap.size > 5000) socketConnectionMap.clear();
+
+    next();
 });
 
 // Initialize Redis
 initRedis();
 
-// Configure Redis Adapter for Socket.io (for multi-instance scaling)
-if (process.env.USE_REDIS === 'true') {
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-  const pubClient = createRedisClient({ url: redisUrl });
-  const subClient = pubClient.duplicate();
-
-  Promise.all([pubClient.connect(), subClient.connect()])
-    .then(() => {
-      io.adapter(createAdapter(pubClient, subClient));
-      logger.info('Socket.io Redis Adapter configured for scaling');
-    })
-    .catch((err) => {
-      logger.error('Failed to configure Redis Adapter:', err);
-      logger.warn('Running without Redis Adapter - single instance mode only');
-    });
-}
+// Server Cleanup Service: Purge inactive/junk rooms periodically
+setInterval(async () => {
+    try {
+        const removed = await removeInactiveRooms();
+        if (removed > 0) {
+            logger.info(`[Cleanup] System purged ${removed} inactive/junk rooms to maintain sector integrity.`);
+            io.emit('admin:stats-update');
+        }
+    } catch (err) {
+        logger.error('[Cleanup] Error in periodic room purging:', err);
+    }
+}, 10 * 60 * 1000); // Run every 10 minutes
 
 // Initialize SFU Handler
 const sfuHandler = new SFUHandler(io);
@@ -215,20 +463,71 @@ async function getRoomById(roomId) {
   return await getRoom(roomId);
 }
 
+// Register API Routes
+app.use('/api/rooms', roomRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/ai/memory', aiMemoryRoutes);
+app.use('/api/ai/context', aiContextRoutes);
+app.use('/api/ai/reasoning', aiReasoningRoutes);
+app.use('/api/ai/personality', aiPersonalityRoutes);
+app.use('/api/ai/agents', aiAgentRoutes);
+app.use('/api/ai/conflicts', aiConflictRoutes);
+app.use('/api/ai/trust', aiTrustRoutes);
+app.use('/api/ai/ethics', aiEthicsRoutes);
+app.use('/api/ai/timeline', aiTimelineRoutes);
+app.use('/api/ai/twin', aiTwinRoutes);
+app.use('/api/ai/simulation', aiSimulationRoutes);
+app.use('/api/ai/optimize', aiOptimizeRoutes);
+app.use('/api/ai/kernel', aiKernelRoutes);
+app.use('/api/ai/platform', aiPlatformRoutes);
+app.use('/api/ai/enterprise', aiEnterpriseRoutes);
+app.use('/api/ai/plugins', aiPluginsRoutes);
+app.use('/api/ai/autonomous', aiAutonomousRoutes);
+app.use('/api/ai/os', aiOSRoutes);
+app.use('/api/friends', friendsRoutes);
+app.use('/api/tournaments', tournamentRoutes);
+
+// AI System Bootstrap
+aios.init().catch(e => logger.error('[AIOS] Boot failed:', e));
+
+// AI Agent Initialization
+agentManager.registerAgent(observerAgent);
+agentManager.registerAgent(analyzerAgent);
+agentManager.registerAgent(predictorAgent);
+agentManager.startAll().catch(e => logger.error('[Agents] Start failed:', e));
+
 // REST Endpoints
 
-// Get room info (check if exists and requires password)
+// Socket.IO health check
+app.get('/socket.io-health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    socketIoPath: '/socket.io',
+    transports: ['websocket', 'polling']
+  });
+});
+
+// Sanitize room id/code: alphanumeric, dash, underscore, 3-80 chars
+const sanitizeRoomId = (id) => typeof id === 'string' && /^[a-zA-Z0-9-_]{3,80}$/.test(id) ? id : null;
+
 // Get room info (check if exists and requires password)
 app.get('/api/room-info/:code', async (req, res) => {
-  const room = await getRoom(req.params.code);
+  const code = sanitizeRoomId(req.params.code);
+  if (!code) return res.status(400).json({ error: 'Invalid room code' });
+  const room = await getRoom(code);
   if (!room || !room.isActive) {
     return res.status(404).json({ error: 'Room not found' });
   }
+
+  const hasPassword = !!(room.password || room.passwordHash);
+  const accessType = room.accessType || (hasPassword ? 'password' : 'public');
+
   res.json({
     exists: true,
-    requiresPassword: !!room.passwordHash,
-    accessType: room.accessType || (room.passwordHash ? 'password' : 'public'),
-    name: room.name || room.id
+    requiresPassword: hasPassword,
+    accessType,
+    name: room.name || room.id,
+    hasWaitingRoom: !!room.hasWaitingRoom
   });
 });
 
@@ -242,12 +541,19 @@ app.get('/api/ice-servers', (req, res) => {
   res.json({ iceServers });
 });
 
+// AI Sync Endpoint (Stub)
+app.post('/api/ai/sync', (req, res) => {
+    res.json({ summaries: [], analysis: [] });
+});
+
+// User Profile Endpoint (Stub/Alias for /me)
+app.get('/api/user/profile', (req, res) => {
+    // Ideally this would redirect to /api/auth/me or call the same logic
+    res.redirect('/api/auth/me');
+});
+
 // Metrics Endpoint
 app.get('/metrics', async (req, res) => {
-  const token = req.headers['x-metrics-token'];
-  if (process.env.METRICS_TOKEN && token !== process.env.METRICS_TOKEN) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
 });
@@ -282,24 +588,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
 app.post('/api/create-room', async (req, res) => {
   try {
     const validatedData = createRoomSchema.parse(req.body);
-    const { roomId, roomName, password, userId, accessType = 'public', orgId } = validatedData;
-
-    if (accessType === 'organization') {
-      if (!orgId) {
-        return res.status(400).json({ error: 'Organization ID is required for organization rooms' });
-      }
-      // Verify user is member of org
-      const { data: membership, error: membershipError } = await supabase
-        .from('organization_members')
-        .select('role')
-        .eq('organization_id', orgId)
-        .eq('user_id', userId)
-        .single();
-
-      if (membershipError || !membership) {
-        return res.status(403).json({ error: 'User is not a member of this organization' });
-      }
-    }
+    const { roomId, roomName, password, userId, accessType = 'public' } = validatedData;
 
     const existingRoom = await getRoom(roomId);
     if (existingRoom && existingRoom.isActive) {
@@ -311,29 +600,29 @@ app.post('/api/create-room', async (req, res) => {
       inviteToken = uuidv4();
     }
 
+    // Canonical realtime room shape (matches socket-based creation in rooms.socket.js)
     const newRoom = {
       id: roomId,
       name: roomName || roomId,
       hostId: userId,
       coHosts: [],
-      passwordHash: password || null,
+      password: password || null,
       accessType,
-      orgId: orgId || null,
       inviteToken,
-      users: {}, // Redis stores as JSON, so use Object instead of Map
+      users: [], // always an array of user objects
       messages: [],
       files: [],
       createdAt: new Date(),
+      updatedAt: new Date(),
       isActive: true,
       isLocked: false,
       hasWaitingRoom: false,
-      waitingUsers: {}, // Object for Redis
-      youtubeVideoId: null,
-      youtubeStatus: 'closed',
-      youtubeCurrentTime: 0,
-      youtubeLastActionTime: null,
-      youtubePresenterName: null,
+      waitingUsers: {}, // object keyed by userId for waiting room
+      settings: {}
     };
+    
+    // Sync to Supabase (uses the same room shape)
+    await import('./services/SupabaseRoomService.js').then(m => m.syncCreateRoom(newRoom));
 
     await saveRoom(newRoom);
     io.emit('room-created', {
@@ -355,17 +644,21 @@ app.post('/api/create-room', async (req, res) => {
 
 // Get Room Info (Alias/Update)
 app.get('/api/room/:id', async (req, res) => {
-  const room = await getRoom(req.params.id);
+  const id = sanitizeRoomId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid room id' });
+  const room = await getRoom(id);
   if (!room || !room.isActive) {
     return res.status(404).json({ error: 'Room not found' });
   }
-  // Users is an object in Redis JSON, need to count keys
-  const userCount = room.users ? Object.keys(room.users).length : 0;
+
+  const hasPassword = !!(room.password || room.passwordHash);
+  const userCount = Array.isArray(room.users) ? room.users.length : (room.users ? Object.keys(room.users).length : 0);
+
   res.json({
     id: room.id,
     name: room.name,
-    requiresPassword: !!room.passwordHash,
-    userCount: userCount,
+    requiresPassword: hasPassword,
+    userCount,
     createdAt: room.createdAt
   });
 });
@@ -375,895 +668,134 @@ io.use((socket, next) => {
   const token = socket.handshake.auth.token;
 
   if (token) {
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (process.env.NODE_ENV === 'production' && !jwtSecret) {
+         logger.error('JWT_SECRET missing in production');
+         return next(new Error('Internal Config Error'));
+    }
+    jwt.verify(token, jwtSecret || 'cospira-secret-key', { algorithms: ['HS256'] }, (err, decoded) => {
       if (err) {
-        return next(new Error('Authentication error'));
+        if (err.name === 'TokenExpiredError') {
+             logger.info(`Token expired for ${socket.id}. Proceeding as guest.`);
+        } else {
+             logger.warn(`Auth failed for socket ${socket.id}: ${err.message}`);
+        }
+        return next();
       }
-      socket.user = decoded; // Attach user info to socket
+      socket.user = decoded;
       next();
     });
   } else {
-    if (process.env.NODE_ENV === 'production') {
-      return next(new Error('Authentication required'));
-    }
-    // In development, allow anonymous but log warning
-    logger.warn(`Anonymous connection allowed in dev mode: ${socket.id}`);
     next();
   }
 });
 
-// Socket.IO connection handler
-io.on('connection', (socket) => {
-  logger.info(`User connected: ${socket.id}`);
-  activeConnectionsGauge.inc();
+// Initialize Modular Socket Handlers
+registerSocketHandlers(io, sfuHandler);
 
-  // Setup SFU events
-  sfuHandler.setupSocketEvents(socket);
-
-  // Get recent rooms
-  socket.on('get-recent-rooms', async () => {
-    const activeRooms = await getActiveRooms();
-    const recent = activeRooms
-      .map(r => ({
-        id: r.id,
-        name: r.name,
-        createdAt: r.createdAt,
-        userCount: r.users ? Object.keys(r.users).length : 0,
-        requiresPassword: !!r.passwordHash
-      }))
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    socket.emit('recent-rooms', recent);
+// Initialize Matchmaking Service
+import { matchmakingService } from './services/MatchmakingService.js';
+// Note: Matchmaking is handled via socket events in matchmaking.socket.js
+// The service doesn't have a start() method - it's a singleton that manages the queue
+/*
+matchmakingService.start((match) => {
+  // When match is found, emit to both players
+  io.to(match.player1.socketId).emit('match-found', {
+    roomId: match.roomId,
+    opponent: {
+      id: match.player2.playerId,
+      name: match.player2.playerName,
+      elo: match.player2.elo,
+    },
+    gameType: match.gameType,
+    mode: match.mode,
   });
 
-  // Create room
-  socket.on('create-room', async (payload) => {
-    try {
-      // Basic validation via REST usually, but good to check here too
-      const { roomId, password, roomName, user, accessType = 'public', orgId } = payload;
-
-      if (accessType === 'organization') {
-        if (!orgId) {
-          socket.emit('error', 'Organization ID is required');
-          return;
-        }
-        // Verify user is member of org
-        const { data: membership, error: membershipError } = await supabase
-          .from('organization_members')
-          .select('role')
-          .eq('organization_id', orgId)
-          .eq('user_id', user.id)
-          .single();
-
-        if (membershipError || !membership) {
-          socket.emit('error', 'User is not a member of this organization');
-          return;
-        }
-      }
-
-      const existingRoom = await getRoom(roomId);
-      if (existingRoom && existingRoom.isActive) {
-        // Room exists
-      }
-
-      let inviteToken = null;
-      if (accessType === 'invite') {
-        inviteToken = uuidv4();
-      }
-
-      const newRoom = {
-        id: roomId,
-        name: roomName || roomId,
-        hostId: user.id,
-        coHosts: [],
-        passwordHash: password || null,
-        accessType,
-        orgId: orgId || null,
-        inviteToken,
-        users: {}, // Object for Redis
-        messages: [],
-        files: [],
-        createdAt: new Date(),
-        isActive: true,
-        isLocked: false,
-        hasWaitingRoom: false,
-        waitingUsers: {},
-        youtubeVideoId: null,
-        youtubeStatus: 'closed',
-        youtubeCurrentTime: 0,
-        youtubeLastActionTime: null,
-        youtubePresenterName: null,
-      };
-
-      await saveRoom(newRoom);
-      io.emit('room-created', {
-        id: roomId,
-        name: roomName || roomId,
-        requiresPassword: !!password,
-        accessType
-      });
-
-      socket.emit('create-success', { roomId });
-    } catch (error) {
-      logger.error('Socket create-room error:', error);
-      socket.emit('error', 'Invalid room data');
-    }
+  io.to(match.player2.socketId).emit('match-found', {
+    roomId: match.roomId,
+    opponent: {
+      id: match.player1.playerId,
+      name: match.player1.playerName,
+      elo: match.player1.elo,
+    },
+    gameType: match.gameType,
+    mode: match.mode,
   });
 
-  // Join room handler
-  socket.on('join-room', async (payload, callback) => {
-    try {
-      const validatedData = joinRoomSchema.parse(payload);
-      const { roomId, password, inviteToken, user } = validatedData;
+  logger.info(`🎮 Match created: ${match.player1.playerName} vs ${match.player2.playerName}`);
+});
+*/
 
-      const room = await getRoom(roomId);
 
-      if (!room || !room.isActive) {
-        return callback({ success: false, error: 'Room not found or inactive' });
-      }
+/* 
+   Modular socket handlers are registered via registerSocketHandlers.
+   The following function is retained for any potential future REST-based waiting room logic.
+*/
+async function getWaitingUsers(room) {
+    return room.waitingUsers ? Object.values(room.waitingUsers) : [];
+}
 
-      // Check if room is locked
-      if (room.isLocked) {
-        return callback({ success: false, error: 'Room is locked' });
-      }
 
-      // Check access type
-      if (room.accessType === 'password') {
-        if (room.passwordHash && room.passwordHash !== password) {
-          return callback({ success: false, error: 'Incorrect password' });
-        }
-      } else if (room.accessType === 'invite') {
-        if (room.inviteToken && room.inviteToken !== inviteToken) {
-          // Allow host to rejoin without token if they are the host (checked later, but hard to check here without auth)
-          // For now, strict check. Host should have the link too.
-          return callback({ success: false, error: 'Invalid invite link' });
-        }
-      } else if (room.accessType === 'organization') {
-        if (!room.orgId) {
-          return callback({ success: false, error: 'Invalid room configuration' });
-        }
-        // Verify user is member of org
-        const { data: membership, error: membershipError } = await supabase
-          .from('organization_members')
-          .select('role')
-          .eq('organization_id', room.orgId)
-          .eq('user_id', user.id)
-          .single();
 
-        if (membershipError || !membership) {
-          return callback({ success: false, error: 'User is not a member of the organization' });
-        }
-      }
 
-      // Check if room has waiting room enabled and user is not host/co-host
-      // Note: Co-hosts are usually defined *in* the room, so initially only host is known by ID.
-      // But if re-joining, might be co-host.
-      const isHost = room.hostId === user.id;
-      // We can't easily check co-host status before they join if it's based on socket ID, 
-      // but if based on user ID we can.
-      const isCoHost = room.coHosts && room.coHosts.includes(user.id);
 
-      if (room.hasWaitingRoom && !isHost && !isCoHost) {
-        // Add to waiting users
-        const waitingUser = {
-          id: user.id || socket.id,
-          name: user.name || `User-${socket.id.substring(0, 6)}`,
-          socketId: socket.id,
-          joinedAt: new Date(),
+// Get active rooms for dashboard
+app.get('/api/rooms', async (req, res) => {
+  try {
+    const rooms = await getActiveRooms();
+    const publicRooms = rooms
+      .filter(r => r.accessType !== 'invite') // Hide invite-only rooms
+      .map(r => {
+        const hasPassword = !!(r.password || r.passwordHash);
+        const userCount = Array.isArray(r.users) ? r.users.length : (r.users ? Object.keys(r.users).length : 0);
+        const accessType = r.accessType || (hasPassword ? 'password' : 'public');
+
+        return {
+          id: r.id,
+          name: r.name,
+          createdAt: r.createdAt,
+          userCount,
+          requiresPassword: hasPassword,
+          accessType,
+          hostId: r.hostId,
+          hasWaitingRoom: !!r.hasWaitingRoom
         };
-
-        if (!room.waitingUsers) room.waitingUsers = {};
-        room.waitingUsers[socket.id] = waitingUser;
-        await saveRoom(room);
-
-        // Notify host(s)
-        const hostSocketId = Object.keys(room.users).find(sid => room.users[sid].id === room.hostId);
-        if (hostSocketId) {
-          io.to(hostSocketId).emit('waiting-user-joined', waitingUser);
-        }
-        // Notify co-hosts
-        // (Iterate users to find co-hosts)
-        Object.entries(room.users).forEach(([sid, u]) => {
-          if (room.coHosts.includes(u.id)) {
-            io.to(sid).emit('waiting-user-joined', waitingUser);
-          }
-        });
-
-        return callback({ success: false, error: 'waiting' });
-      }
-
-      // Add user to room
-      const userWithId = {
-        id: user.id || socket.id,
-        name: user.name || `User-${socket.id.substring(0, 6)}`,
-        socketId: socket.id,
-        joinedAt: new Date(),
-      };
-
-      // Store user in room (using object for Redis compatibility)
-      if (!room.users) room.users = {};
-      room.users[socket.id] = userWithId;
-      await saveRoom(room);
-
-      // Store user in global users map
-      await saveUser(socket.id, {
-        ...userWithId,
-        currentRoom: roomId,
       });
-
-      // Join the room
-      socket.join(roomId);
-
-      // Notify others in the room
-      socket.to(roomId).emit('user-joined', {
-        ...userWithId,
-        isHost: userWithId.id === room.hostId || socket.id === room.hostId,
-        isCoHost: room.coHosts.includes(userWithId.id) || room.coHosts.includes(socket.id)
-      });
-
-      // Send room data to the user
-      const usersList = Object.values(room.users);
-      const usersWithHostFlag = usersList.map(u => ({
-        ...u,
-        isHost: u.id === room.hostId || u.socketId === room.hostId,
-        isCoHost: room.coHosts.includes(u.id) || room.coHosts.includes(u.socketId)
-      }));
-
-      // Get waiting users list if host/co-host
-      let waitingUsersList = [];
-      if (isHost || isCoHost) {
-        waitingUsersList = room.waitingUsers ? Object.values(room.waitingUsers) : [];
-      }
-
-      callback({
-        success: true,
-        room: {
-          id: room.id,
-          name: room.name || room.id,
-          users: usersWithHostFlag,
-          messages: room.messages.slice(-100),
-          files: room.files.slice(-50),
-          hasPassword: !!room.passwordHash,
-          createdAt: room.createdAt,
-          isHost: room.hostId === user.id,
-          isLocked: room.isLocked,
-          hasWaitingRoom: room.hasWaitingRoom,
-          waitingUsers: waitingUsersList,
-          youtubeVideoId: room.youtubeVideoId,
-          youtubeStatus: room.youtubeStatus,
-          youtubeCurrentTime: room.youtubeCurrentTime,
-          youtubeLastActionTime: room.youtubeLastActionTime,
-          youtubePresenterName: room.youtubePresenterName,
-        },
-      });
-
-      logger.info(`User ${userWithId.name} joined room ${roomId}`);
-    } catch (error) {
-      if (error.name === 'ZodError') {
-        return callback({ success: false, error: 'Invalid join data' });
-      }
-      logger.error('Error joining room:', error);
-      callback({ success: false, error: 'Failed to join room' });
-    }
-  });
-
-  // Admit User (Host/Co-Host only)
-  socket.on('admit-user', async ({ roomId, userId }) => {
-    const room = await getRoom(roomId);
-    const requester = await getUser(socket.id);
-
-    if (!room || !requester) return;
-
-    const isHostOrCoHost = room.hostId === requester.id || room.coHosts.includes(requester.id);
-    if (!isHostOrCoHost) {
-      socket.emit('error', 'Only host or co-hosts can admit users');
-      return;
-    }
-
-    // Find user in waiting list
-    let targetSocketId = null;
-    let waitingUser = null;
-    if (room.waitingUsers) {
-      for (const [sid, u] of Object.entries(room.waitingUsers)) {
-        if (u.id === userId) {
-          targetSocketId = sid;
-          waitingUser = u;
-          break;
-        }
-      }
-    }
-
-    if (targetSocketId && waitingUser) {
-      // Remove from waiting
-      delete room.waitingUsers[targetSocketId];
-
-      // Add to active users
-      if (!room.users) room.users = {};
-      room.users[targetSocketId] = waitingUser;
-
-      await saveRoom(room);
-
-      // Update global user map
-      await saveUser(targetSocketId, {
-        ...waitingUser,
-        currentRoom: roomId,
-      });
-
-      // Make socket join room
-      const targetSocket = io.sockets.sockets.get(targetSocketId);
-      if (targetSocket) {
-        targetSocket.join(roomId);
-
-        // Send room data to admitted user
-        const usersList = Object.values(room.users);
-        const usersWithHostFlag = usersList.map(u => ({
-          ...u,
-          isHost: u.id === room.hostId || u.socketId === room.hostId,
-          isCoHost: room.coHosts.includes(u.id) || room.coHosts.includes(u.socketId)
-        }));
-
-        targetSocket.emit('room-joined', {
-          roomId: room.id,
-          name: room.name || room.id,
-          users: usersWithHostFlag,
-          messages: room.messages.slice(-100),
-          files: room.files.slice(-50),
-          isHost: false, // Newly admitted user is never host initially
-          hasWaitingRoom: room.hasWaitingRoom
-        });
-      }
-
-      // Notify others
-      socket.to(roomId).emit('user-joined', {
-        ...waitingUser,
-        isHost: false,
-        isCoHost: false
-      });
-
-      // Notify host(s) that waiting list changed (optional, or they just see user join)
-      // We can emit a specific event to remove from waiting list UI
-      socket.emit('waiting-user-removed', userId);
-      // Also notify other co-hosts
-      Object.entries(room.users).forEach(([sid, u]) => {
-        if (room.coHosts.includes(u.id) && sid !== socket.id) {
-          io.to(sid).emit('waiting-user-removed', userId);
-        }
-        if (room.hostId === u.id && sid !== socket.id) {
-          io.to(sid).emit('waiting-user-removed', userId);
-        }
-      });
-
-      logger.info(`User ${userId} admitted to room ${roomId}`);
-    }
-  });
-
-  // Deny User (Host/Co-Host only)
-  socket.on('deny-user', async ({ roomId, userId }) => {
-    const room = await getRoom(roomId);
-    const requester = await getUser(socket.id);
-
-    if (!room || !requester) return;
-
-    const isHostOrCoHost = room.hostId === requester.id || room.coHosts.includes(requester.id);
-    if (!isHostOrCoHost) return;
-
-    // Find user in waiting list
-    let targetSocketId = null;
-    if (room.waitingUsers) {
-      for (const [sid, u] of Object.entries(room.waitingUsers)) {
-        if (u.id === userId) {
-          targetSocketId = sid;
-          break;
-        }
-      }
-    }
-
-    if (targetSocketId) {
-      // Remove from waiting
-      delete room.waitingUsers[targetSocketId];
-      await saveRoom(room);
-
-      // Notify user
-      io.to(targetSocketId).emit('join-denied');
-
-      // Notify hosts/co-hosts to update UI
-      socket.emit('waiting-user-removed', userId);
-      Object.entries(room.users).forEach(([sid, u]) => {
-        if (room.coHosts.includes(u.id) && sid !== socket.id) {
-          io.to(sid).emit('waiting-user-removed', userId);
-        }
-        if (room.hostId === u.id && sid !== socket.id) {
-          io.to(sid).emit('waiting-user-removed', userId);
-        }
-      });
-
-      logger.info(`User ${userId} denied from room ${roomId}`);
-    }
-  });
-
-  // Handle new messages
-  socket.on('send-message', async (payload, callback) => {
-    try {
-      const validatedData = messageSchema.parse(payload);
-      const { roomId, message } = validatedData;
-
-      const room = await getRoom(roomId);
-      if (!room) return callback({ success: false, error: 'Room not found' });
-
-      const user = await getUser(socket.id);
-      if (!user) return callback({ success: false, error: 'User not found' });
-
-      const messageData = {
-        id: uuidv4(),
-        userId: user.id,
-        userName: user.name,
-        content: message.content,
-        timestamp: new Date(),
-      };
-
-      room.messages.push(messageData);
-      await saveRoom(room);
-
-      io.to(roomId).emit('new-message', messageData);
-      callback({ success: true });
-    } catch (error) {
-      if (error.name === 'ZodError') {
-        return callback({ success: false, error: 'Invalid message data' });
-      }
-      logger.error('Error sending message:', error);
-      callback({ success: false, error: 'Failed to send message' });
-    }
-  });
-
-  // Handle file upload notification (after REST upload)
-  socket.on('upload-file', async ({ roomId, file }) => {
-    const room = await getRoom(roomId);
-    if (!room) {
-      logger.warn(`File upload attempted for non-existent room: ${roomId}`);
-      return;
-    }
-
-    if (!file) {
-      logger.warn(`File upload attempted without file data in room: ${roomId}`);
-      return;
-    }
-
-    const user = await getUser(socket.id);
-    if (user) {
-      file.userName = user.name;
-    }
-
-    room.files.push(file);
-    await saveRoom(room);
-    io.to(roomId).emit('new-file', file);
-  });
-
-  // Disband room (Host only)
-  socket.on('disband-room', async ({ roomId }) => {
-    const room = await getRoom(roomId);
-    const user = await getUser(socket.id);
-
-    if (room && user && room.hostId === user.id) {
-      room.isActive = false;
-      await saveRoom(room);
-
-      io.to(roomId).emit('room-disbanded');
-      io.emit('room-removed', { roomId }); // Notify dashboard
-
-      // Cleanup
-      io.in(roomId).socketsLeave(roomId);
-
-      // Clean up SFU resources
-      sfuHandler.cleanUpRoom(roomId);
-
-      // Remove from Redis immediately
-      await deleteRoom(roomId);
-
-      logger.info(`Room ${roomId} disbanded by host`);
-    }
-  });
-
-  // Promote user to co-host (Host or Co-Host only)
-  socket.on('promote-to-cohost', async ({ userId }) => {
-    const user = await getUser(socket.id);
-    if (!user || !user.currentRoom) return;
-
-    const room = await getRoom(user.currentRoom);
-    if (!room) return;
-
-    // Check if the requester is host or co-host
-    const isHostOrCoHost = room.hostId === user.id || room.coHosts.includes(user.id);
-    if (!isHostOrCoHost) {
-      socket.emit('error', 'Only host or co-hosts can promote users');
-      return;
-    }
-
-    // Add to co-hosts if not already
-    if (!room.coHosts.includes(userId)) {
-      room.coHosts.push(userId);
-      await saveRoom(room);
-      // Notify all users in the room
-      io.to(user.currentRoom).emit('user-promoted', userId);
-      logger.info(`User ${userId} promoted to co-host in room ${user.currentRoom}`);
-    }
-  });
-
-  // Demote user from co-host (Host or Co-Host only)
-  socket.on('demote-from-cohost', async ({ userId }) => {
-    const user = await getUser(socket.id);
-    if (!user || !user.currentRoom) return;
-
-    const room = await getRoom(user.currentRoom);
-    if (!room) return;
-
-    // Check if the requester is host or co-host
-    const isHostOrCoHost = room.hostId === user.id || room.coHosts.includes(user.id);
-    if (!isHostOrCoHost) {
-      socket.emit('error', 'Only host or co-hosts can demote users');
-      return;
-    }
-
-    // Remove from co-hosts
-    const index = room.coHosts.indexOf(userId);
-    if (index > -1) {
-      room.coHosts.splice(index, 1);
-      await saveRoom(room);
-      // Notify all users in the room
-      io.to(user.currentRoom).emit('user-demoted', userId);
-      logger.info(`User ${userId} demoted from co-host in room ${user.currentRoom}`);
-    }
-  });
-
-  // Handle user disconnection
-  socket.on('disconnect', async () => {
-    logger.info(`User disconnected: ${socket.id}`);
-    activeConnectionsGauge.dec();
-
-    const user = await getUser(socket.id);
-    if (user && user.currentRoom) {
-      const room = await getRoom(user.currentRoom);
-      if (room) {
-        if (room.users && room.users[socket.id]) {
-          delete room.users[socket.id];
-          await saveRoom(room);
-        }
-
-        socket.to(user.currentRoom).emit('user-left', user.id);
-
-        // Remove peer from SFU
-        sfuHandler.removePeer(user.currentRoom, socket.id);
-
-        // If room empty and not active (or just empty?), maybe cleanup?
-        if (room.users && Object.keys(room.users).length === 0) {
-          if (!room.isActive) {
-            await deleteRoom(user.currentRoom);
-          }
-          // SFU cleanup is handled inside sfuHandler.removePeer when room is empty
-        }
-      }
-    }
-    await deleteUser(socket.id);
-  });
-
-  // Handle leaving a room explicitly
-  socket.on('leave-room', async ({ roomId }) => {
-    const user = await getUser(socket.id);
-    if (user) {
-      const room = await getRoom(roomId);
-      if (room) {
-        if (room.users && room.users[socket.id]) {
-          delete room.users[socket.id];
-          await saveRoom(room);
-        }
-        socket.to(roomId).emit('user-left', user.id);
-        // Remove peer from SFU
-        sfuHandler.removePeer(roomId, socket.id);
-      }
-      user.currentRoom = null;
-      await saveUser(socket.id, user);
-      socket.leave(roomId);
-      logger.info(`User ${user.id} left room ${roomId}`);
-    }
-  });
-
-  // Update room settings (Host only)
-  socket.on('update-room-settings', async ({ roomId, roomName, password, hasWaitingRoom, accessType }) => {
-    const room = await getRoom(roomId);
-    const user = await getUser(socket.id);
-
-    // Check if user is host
-    const isHost = room && user && room.hostId === user.id;
-
-    if (!isHost) {
-      socket.emit('error', 'Only the host can update room settings');
-      return;
-    }
-
-    if (!room) {
-      socket.emit('error', 'Room not found');
-      return;
-    }
-
-    // Update room name if provided
-    if (roomName !== undefined && roomName.trim() !== '') {
-      room.name = roomName.trim();
-    }
-
-    // Update access type if provided
-    if (accessType) {
-      room.accessType = accessType;
-
-      // Generate invite token if needed and not present
-      if (accessType === 'invite' && !room.inviteToken) {
-        room.inviteToken = uuidv4();
-      }
-    }
-
-    // Update password if provided (empty string removes password)
-    if (password !== undefined) {
-      room.passwordHash = password.trim() || null;
-    }
-
-    // Update waiting room setting
-    if (hasWaitingRoom !== undefined) {
-      room.hasWaitingRoom = hasWaitingRoom;
-    }
-
-    await saveRoom(room);
-
-    // Notify all users in the room
-    io.to(roomId).emit('room-settings-updated', {
-      roomId,
-      roomName: room.name,
-      hasPassword: !!room.passwordHash,
-      hasWaitingRoom: room.hasWaitingRoom,
-      accessType: room.accessType,
-      inviteToken: room.accessType === 'invite' ? room.inviteToken : null
-    });
-
-    // Update dashboard
-    io.emit('room-updated', {
-      id: roomId,
-      name: room.name,
-      requiresPassword: !!room.passwordHash,
-      accessType: room.accessType
-    });
-
-    socket.emit('room-settings-update-success');
-    logger.info(`Room ${roomId} settings updated by host ${socket.id}`);
-  });
-
-  // File presentation handlers
-  socket.on('present-file', ({ roomId, fileData, presenterName }) => {
-    // Broadcast to all other participants in the room
-    socket.to(roomId).emit('file-presented', { fileData, presenterName });
-    logger.info(`File presented in room ${roomId} by ${presenterName}`);
-  });
-
-  socket.on('close-presentation', ({ roomId }) => {
-    // Broadcast to all other participants in the room
-    socket.to(roomId).emit('presentation-closed');
-    logger.info(`Presentation closed in room ${roomId}`);
-  });
-
-  // YouTube Sync Handlers
-  socket.on('start-youtube', async ({ roomId, videoId, presenterName }) => {
-    const room = await getRoom(roomId);
-    if (room) {
-      room.youtubeVideoId = videoId;
-      room.youtubeStatus = 'playing';
-      room.youtubeCurrentTime = 0;
-      room.youtubeLastActionTime = Date.now();
-      room.youtubePresenterName = presenterName;
-      await saveRoom(room);
-      socket.to(roomId).emit('youtube-started', { videoId, presenterName });
-      logger.info(`YouTube video ${videoId} started in room ${roomId} by ${presenterName}`);
-    }
-  });
-
-  socket.on('play-youtube', async ({ roomId, time }) => {
-    const room = await getRoom(roomId);
-    if (room) {
-      room.youtubeStatus = 'playing';
-      room.youtubeCurrentTime = time;
-      room.youtubeLastActionTime = Date.now();
-      await saveRoom(room);
-      socket.to(roomId).emit('youtube-played', { time });
-    }
-  });
-
-  socket.on('pause-youtube', async ({ roomId, time }) => {
-    const room = await getRoom(roomId);
-    if (room) {
-      room.youtubeStatus = 'paused';
-      room.youtubeCurrentTime = time;
-      room.youtubeLastActionTime = Date.now();
-      await saveRoom(room);
-      socket.to(roomId).emit('youtube-paused', { time });
-    }
-  });
-
-  socket.on('seek-youtube', async ({ roomId, time }) => {
-    const room = await getRoom(roomId);
-    if (room) {
-      room.youtubeCurrentTime = time;
-      room.youtubeLastActionTime = Date.now();
-      await saveRoom(room);
-      socket.to(roomId).emit('youtube-seeked', { time });
-    }
-  });
-
-  socket.on('close-youtube', async ({ roomId }) => {
-    const room = await getRoom(roomId);
-    if (room) {
-      room.youtubeVideoId = null;
-      room.youtubeStatus = 'closed';
-      room.youtubeCurrentTime = 0;
-      room.youtubeLastActionTime = null;
-      room.youtubePresenterName = null;
-      await saveRoom(room);
-      socket.to(roomId).emit('youtube-closed');
-      logger.info(`YouTube closed in room ${roomId}`);
-    }
-  });
-
-  // Kick User (Host/Co-Host only)
-  socket.on('kick-user', async ({ roomId, userId }) => {
-    const room = await getRoom(roomId);
-    const requester = await getUser(socket.id);
-
-    if (!room || !requester) return;
-
-    const isHostOrCoHost = room.hostId === requester.id || room.coHosts.includes(requester.id);
-    if (!isHostOrCoHost) {
-      socket.emit('error', 'Only host or co-hosts can kick users');
-      return;
-    }
-
-    // Find the socket ID of the user to kick
-    let targetSocketId = null;
-    if (room.users) {
-      for (const [sid, u] of Object.entries(room.users)) {
-        if (u.id === userId) {
-          targetSocketId = sid;
-          break;
-        }
-      }
-    }
-
-    if (targetSocketId) {
-      // Notify the kicked user
-      io.to(targetSocketId).emit('kicked');
-      // Make them leave
-      const targetSocket = io.sockets.sockets.get(targetSocketId);
-      if (targetSocket) {
-        targetSocket.leave(roomId);
-      }
-
-      // Remove from data structures
-      if (room.users) delete room.users[targetSocketId];
-      await saveRoom(room);
-
-      // Notify others
-      io.to(roomId).emit('user-left', userId);
-      logger.info(`User ${userId} kicked from room ${roomId}`);
-    }
-  });
-
-  // Mute User (Host/Co-Host only)
-  socket.on('mute-user', async ({ roomId, userId }) => {
-    const room = await getRoom(roomId);
-    const requester = await getUser(socket.id);
-
-    if (!room || !requester) return;
-
-    const isHostOrCoHost = room.hostId === requester.id || room.coHosts.includes(requester.id);
-    if (!isHostOrCoHost) return;
-
-    // Find target socket
-    let targetSocketId = null;
-    if (room.users) {
-      for (const [sid, u] of Object.entries(room.users)) {
-        if (u.id === userId) {
-          targetSocketId = sid;
-          break;
-        }
-      }
-    }
-
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('muted-by-host');
-      logger.info(`User ${userId} muted by host in room ${roomId}`);
-    }
-  });
-
-  // Toggle Room Lock (Host only)
-  socket.on('toggle-room-lock', async ({ roomId }) => {
-    const room = await getRoom(roomId);
-    const requester = await getUser(socket.id);
-
-    if (!room || !requester) return;
-
-    if (room.hostId !== requester.id) {
-      socket.emit('error', 'Only host can lock/unlock room');
-      return;
-    }
-
-    room.isLocked = !room.isLocked;
-    await saveRoom(room);
-    io.to(roomId).emit('room-lock-toggled', { isLocked: room.isLocked });
-    logger.info(`Room ${roomId} lock status: ${room.isLocked}`);
-  });
-
-  // Video Playback Sync
-  socket.on('play-video', ({ roomId, time }) => {
-    socket.to(roomId).emit('video-played', { time });
-  });
-
-  socket.on('pause-video', ({ roomId, time }) => {
-    socket.to(roomId).emit('video-paused', { time });
-  });
-
-  socket.on('seek-video', ({ roomId, time }) => {
-    socket.to(roomId).emit('video-seeked', { time });
-  });
-
-  // Screen Share Signaling
-  socket.on('start-screen-share', async ({ roomId, streamId }) => {
-    const user = await getUser(socket.id);
-    if (user) {
-      socket.to(roomId).emit('user-started-screen-share', { userId: user.id, streamId });
-      logger.info(`User ${user.id} (${user.name}) started screen share with stream ${streamId} in room ${roomId}`);
-    }
-  });
-
-  socket.on('stop-screen-share', async ({ roomId }) => {
-    const user = await getUser(socket.id);
-    if (user) {
-      socket.to(roomId).emit('user-stopped-screen-share', { userId: user.id });
-      logger.info(`User ${user.id} (${user.name}) stopped screen share in room ${roomId}`);
-    }
-  });
-
-  // WebRTC Signaling
-  socket.on('offer', (payload) => {
-    io.to(payload.target).emit('offer', payload);
-  });
-
-  socket.on('answer', (payload) => {
-    io.to(payload.target).emit('answer', payload);
-  });
-
-  // WebRTC Signaling (legacy, not used with SFU but kept for compatibility)
-  socket.on('offer', (payload) => {
-    io.to(payload.target).emit('offer', payload);
-  });
-
-  socket.on('answer', (payload) => {
-    io.to(payload.target).emit('answer', payload);
-  });
-
-  socket.on('ice-candidate', (incoming) => {
-    io.to(incoming.target).emit('ice-candidate', incoming);
-  });
+    
+    res.json(publicRooms);
+  } catch (error) {
+    logger.error('Error fetching active rooms:', error);
+    res.status(500).json({ error: 'Failed to fetch rooms' });
+  }
 });
 
-// Health check
+// Health check (detailed) - single /health route; simple one is above for load balancers
 app.get('/health', async (req, res) => {
-  const activeRooms = await getActiveRooms();
-  res.status(200).json({
-    status: 'ok',
-    rooms: activeRooms.length,
-    users: 0,
-  });
+  try {
+    const activeRooms = await getActiveRooms();
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      rooms: activeRooms?.length ?? 0,
+      users: 0,
+    });
+  } catch (e) {
+    res.status(503).json({ status: 'degraded', error: 'Redis unavailable' });
+  }
 });
 
 // Generate TURN credentials
 const getTurnCredentials = () => {
   const secret = process.env.TURN_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+       throw new Error('TURN_SECRET required in production');
+  }
+  // Fallback only for dev
+  const turnSecret = secret || 'cospira-secret-key-change-me';
   const username = `user:${Math.floor(Date.now() / 1000)}`;
   const ttl = 24 * 3600; // 24 hours
-  const hmac = crypto.createHmac('sha1', secret);
+  const hmac = crypto.createHmac('sha1', turnSecret);
   hmac.update(`${username}:${Math.floor(Date.now() / 1000) + ttl}`);
   const password = hmac.digest('base64');
 
@@ -1287,8 +819,155 @@ app.get('/api/turn-credentials', (req, res) => {
   }
 });
 
-server.listen(port, () => {
-  logger.info(`Server running on port ${port}`);
+// --- DEEPGRAM STT (DISABLED - Using Gemini instead) ---
+// import deepgramService from './services/DeepgramService.js';
+
+// Deepgram endpoint disabled - using Gemini for transcription
+app.get('/api/deepgram/token', async (req, res) => {
+    res.status(501).json({ 
+        error: 'Deepgram is not configured. Using Gemini for transcription.' 
+    });
 });
 
-export { server, io };
+// --- ADMIN ENVIRONMENT CONTROL ---
+const ENV_PATH = path.resolve(__dirname, '../../.env');
+// Security Hardening: Use Environment Variable for Admin Key
+const ADMIN_KEY_VALUE = process.env.ADMIN_KEY || 'Mahesh@7648';
+
+if (!process.env.ADMIN_KEY) {
+    logger.warn('[SECURITY] Admin Key is using default/hardcoded value. Please set ADMIN_KEY in .env');
+}
+
+const adminAuth = (req, res, next) => {
+    const key = req.headers['x-admin-key'];
+    if (!key || typeof key !== 'string') {
+        logger.warn(`[SECURITY] Failed admin login attempt from ${req.ip}`);
+        return res.status(401).json({ error: 'Unauthorized Access' });
+    }
+    const keyBuf = Buffer.from(key, 'utf8');
+    const expectedBuf = Buffer.from(ADMIN_KEY_VALUE, 'utf8');
+    if (keyBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(keyBuf, expectedBuf)) {
+        logger.warn(`[SECURITY] Failed admin login attempt from ${req.ip}`);
+        return res.status(401).json({ error: 'Unauthorized Access' });
+    }
+    next();
+};
+
+/* 
+   JWT Hardening is applied in the specific Socket.IO middleware block above.
+*/
+
+app.get('/api/admin/env', adminAuth, (req, res) => {
+    try {
+        if (!fs.existsSync(ENV_PATH)) {
+            return res.json({ content: '' }); 
+        }
+        const content = fs.readFileSync(ENV_PATH, 'utf8');
+        res.json({ content });
+    } catch (error) {
+        logger.error('Failed to read .env:', error);
+        res.status(500).json({ error: 'Failed to read environment file' });
+    }
+});
+
+app.get('/api/admin/status', adminAuth, async (req, res) => {
+    try {
+        const config = await getSystemConfig();
+        res.json(config);
+    } catch (error) {
+        logger.error('Failed to get system config:', error);
+        res.status(500).json({ error: 'Failed to get system status' });
+    }
+});
+
+app.get('/api/admin/data', adminAuth, async (req, res) => {
+    try {
+        if (!supabase) {
+            return res.status(503).json({ error: 'Supabase integration disabled' });
+        }
+
+        // Fetch profiles, feedback, and active rooms
+        const [usersResult, feedbackResult, rooms] = await Promise.all([
+            supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+            supabase.from('feedback').select('*').order('created_at', { ascending: false }),
+            getActiveRooms()
+        ]);
+
+        if (usersResult.error) throw usersResult.error;
+        if (feedbackResult.error) throw feedbackResult.error;
+
+        // Fetch Auth Users (for email)
+        const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers({
+             page: 1,
+             perPage: 1000
+        });
+        
+        if (authError) {
+             logger.error('Failed to fetch auth users:', authError);
+             // Verify we don't crash, just continue without emails
+        }
+
+        // Merge email into profiles
+        const combinedUsers = usersResult.data.map(profile => {
+             const authUser = authUsers?.find(u => u.id === profile.id);
+             return {
+                 ...profile,
+                 email: authUser?.email || 'No Email'
+             };
+        });
+
+        res.json({
+            users: combinedUsers,
+            feedbacks: feedbackResult.data,
+            activeRooms: rooms
+        });
+    } catch (error) {
+        logger.error('Failed to fetch admin data:', error);
+        res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    }
+});
+
+app.post('/api/admin/env', adminAuth, (req, res) => {
+    try {
+        const { content } = req.body;
+        if (typeof content !== 'string') {
+            return res.status(400).json({ error: 'Invalid content format' });
+        }
+        // Create backup
+        if (fs.existsSync(ENV_PATH)) {
+            fs.copyFileSync(ENV_PATH, `${ENV_PATH}.backup`);
+        }
+        fs.writeFileSync(ENV_PATH, content, 'utf8');
+        logger.warn('[ADMIN] .env file updated via Dashboard');
+        res.json({ success: true, message: 'Environment updated. Restart required.' });
+    } catch (error) {
+        logger.error('Failed to write .env:', error);
+        res.status(500).json({ error: 'Failed to write environment file' });
+    }
+});
+
+const startServer = async () => {
+  await connectMongoDB();
+  
+  server.listen(port, () => {
+    const protocol = server instanceof https.Server ? 'HTTPS' : 'HTTP';
+    logger.info(`Server running on port ${port} (${protocol})`);
+  });
+};
+
+startServer();
+
+// Global Error Handlers
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`Unhandled Rejection: ${reason.message || reason}`);
+  if (reason.stack) logger.debug(reason.stack);
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error(`Uncaught Exception: ${error.message || error}`);
+  if (error.stack) logger.debug(error.stack);
+  // Give time for logging before exiting
+  setTimeout(() => process.exit(1), 1000);
+});
+
+

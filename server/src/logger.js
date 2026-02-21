@@ -1,12 +1,12 @@
 import winston from 'winston';
 
 const logger = winston.createLogger({
-    level: process.env.LOG_LEVEL || 'info',
+    level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'warn' : 'info'),
     format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json()
     ),
-    defaultMeta: { service: 'shareus-server' },
+    defaultMeta: { service: 'cospira-server' },
     transports: [
         //
         // - Write all logs with importance level of `error` or less to `error.log`

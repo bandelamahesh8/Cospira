@@ -1,0 +1,21 @@
+{
+  "parser": "@babel/eslint-parser",
+  "parserOptions": {
+    "requireConfigFile": false,
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "babelOptions": {
+      "presets": ["@babel/preset-react", "module:@react-native/babel-preset"]
+    }
+  },
+  "extends": "universe/native",
+  "root": true,
+  "rules": {
+    "no-unused-vars": "warn",
+    "react/prop-types": "off",
+    "prettier/prettier": "off"
+  }
+}

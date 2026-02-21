@@ -1,10 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { toast } from 'sonner';
 
+import { decodeRoomId, encodeRoomId } from '@/utils/roomCode';
+
 export const useRoom = () => {
-    const { roomId } = useParams<{ roomId: string }>();
+    const { roomId: paramId } = useParams<{ roomId: string }>();
+    const roomId = useMemo(() => {
+        return decodeRoomId(paramId || '');
+    }, [paramId]);
+
     const [searchParams] = useSearchParams();
     const inviteToken = searchParams.get('token');
     const navigate = useNavigate();
@@ -22,13 +28,13 @@ export const useRoom = () => {
         leaveRoom: contextLeaveRoom,
         toggleScreenShare,
         isScreenSharing,
-        enableMedia,
+
     } = useWebSocket();
 
     const [newMessage, setNewMessage] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [hasJoined, setHasJoined] = useState(false);
-    const [showChat, setShowChat] = useState(true);
+    const [showChat, setShowChat] = useState(false);
     const [activeTab, setActiveTab] = useState<'chat' | 'participants'>('chat');
     const [isParticipantsMinimized, setIsParticipantsMinimized] = useState(false);
     const [showOTTModal, setShowOTTModal] = useState(false);
@@ -94,6 +100,20 @@ export const useRoom = () => {
         prevFilesLengthRef.current = files.length;
     }, [files]);
 
+    // Force URL Hashing: If we are on a Raw ID, redirect to Hash
+    useEffect(() => {
+        if (paramId && roomId && paramId === roomId) {
+            const encoded = encodeRoomId(roomId);
+            // Only redirect if encoding actually changes it (prevents infinite loop if encoding fails or returns same)
+            if (encoded !== roomId) {
+                // Wrap in timeout to avoid "Should have a queue" React error (clashing with Suspense/Mount)
+                setTimeout(() => {
+                    navigate(`/room/${encoded}`, { replace: true });
+                }, 0);
+            }
+        }
+    }, [paramId, roomId, navigate]);
+
     // Join room on mount / when roomId changes
     useEffect(() => {
         if (socket && isConnected && roomId && !hasJoined) {
@@ -103,7 +123,7 @@ export const useRoom = () => {
                 inviteToken || undefined,
                 () => {
                     setHasJoined(true);
-                    enableMedia();
+                    // Camera and mic are off by default - users can enable manually
                 },
                 (error) => {
                     if (error === 'Incorrect password') {
@@ -115,7 +135,7 @@ export const useRoom = () => {
                 }
             );
         }
-    }, [socket, isConnected, roomId, hasJoined, joinRoom, navigate, inviteToken, enableMedia]);
+    }, [socket, isConnected, roomId, hasJoined, joinRoom, navigate, inviteToken]);
 
     const handleJoinWithPassword = useCallback(() => {
         if (!roomId) return;
@@ -127,13 +147,13 @@ export const useRoom = () => {
             () => {
                 setHasJoined(true);
                 setShowPasswordModal(false);
-                enableMedia();
+                // Camera and mic are off by default - users can enable manually
             },
             (error) => {
                 toast.error(error);
             }
         );
-    }, [roomId, passwordInput, inviteToken, joinRoom, enableMedia]);
+    }, [roomId, passwordInput, inviteToken, joinRoom]);
 
     const handleSendMessage = useCallback((e: React.FormEvent) => {
         e.preventDefault();
@@ -155,16 +175,20 @@ export const useRoom = () => {
 
     const copyRoomLink = useCallback(() => {
         if (roomId) {
-            navigator.clipboard.writeText(roomId);
-            toast.success('Room Key copied to clipboard!');
+            // Copy the HASHED URL or the HASHED ID
+            const encoded = encodeRoomId(roomId);
+            navigator.clipboard.writeText(encoded);
+            toast.success('Secure Room Code copied to clipboard!');
         }
     }, [roomId]);
 
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
     const handleLeaveRoom = useCallback(() => {
         contextLeaveRoom();
-        navigate('/');
-        toast.info('You left the room.');
-    }, [contextLeaveRoom, navigate]);
+        setIsFeedbackOpen(true);
+        toast.info('Disconnecting session...');
+    }, [contextLeaveRoom]);
 
     const handleToggleScreenShare = useCallback(() => {
         if (isScreenSharing) {
@@ -207,6 +231,8 @@ export const useRoom = () => {
         activityNotification,
         messagesEndRef,
         fileInputRef,
+        isFeedbackOpen,
+        setIsFeedbackOpen,
         handleJoinWithPassword,
         handleSendMessage,
         handleFileUpload,

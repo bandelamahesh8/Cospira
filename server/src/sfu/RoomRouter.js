@@ -1,4 +1,5 @@
 import config from '../config.js';
+import logger from '../logger.js';
 
 class RoomRouter {
     constructor(roomId, worker) {
@@ -12,115 +13,409 @@ class RoomRouter {
     }
 
     async init() {
-        this.router = await this.worker.createRouter({ mediaCodecs: config.mediasoup.router.mediaCodecs });
+        try {
+            this.router = await this.worker.createRouter({ 
+                mediaCodecs: config.mediasoup.router.mediaCodecs 
+            });
+            logger.info(`[RoomRouter] Router initialized for room: ${this.roomId}`);
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to initialize router for ${this.roomId}:`, error);
+            throw error;
+        }
     }
 
-    async createWebRtcTransport(socketId) {
-        const transport = await this.router.createWebRtcTransport(config.mediasoup.webRtcTransport);
-
-        transport.on('dtlsstatechange', dtlsState => {
-            if (dtlsState === 'closed') {
-                transport.close();
+    async createWebRtcTransport(socketId, options = {}) {
+        try {
+            logger.info(`[RoomRouter] Creating WebRTC transport for ${socketId} in room ${this.roomId}`);
+            
+            if (!this.router) {
+                throw new Error('Router not initialized');
             }
-        });
+            
+            const transportConfig = {
+                ...config.mediasoup.webRtcTransport,
+                enableUdp: !options.forceTcp,
+                enableTcp: true,
+                preferUdp: !options.forceTcp,
+            };
 
-        transport.on('close', () => {
-            console.log('Transport closed', transport.id);
-        });
+            // Dynamic announcedIp override
+            if (options.announcedIp) {
+                transportConfig.listenIps[0].announcedIp = options.announcedIp;
+            }
 
-        this.transports.set(transport.id, transport);
-        this.addPeerResource(socketId, 'transports', transport.id);
+            const transport = await this.router.createWebRtcTransport(transportConfig);
+            
+            logger.info(`[RoomRouter] Transport created: ${transport.id}`);
 
-        return {
-            id: transport.id,
-            iceParameters: transport.iceParameters,
-            iceCandidates: transport.iceCandidates,
-            dtlsParameters: transport.dtlsParameters,
-        };
+            // Event handlers
+            transport.on('dtlsstatechange', dtlsState => {
+                logger.info(`[RoomRouter] Transport ${transport.id} DTLS state: ${dtlsState}`);
+                if (dtlsState === 'closed' || dtlsState === 'failed') {
+                    this.closeTransport(transport.id);
+                }
+            });
+
+            transport.on('close', () => {
+                logger.info(`[RoomRouter] Transport closed: ${transport.id}`);
+                this.transports.delete(transport.id);
+            });
+
+            // Store transport
+            this.transports.set(transport.id, transport);
+            this.addPeerResource(socketId, 'transports', transport.id);
+            
+            return {
+                id: transport.id,
+                iceParameters: transport.iceParameters,
+                iceCandidates: transport.iceCandidates,
+                dtlsParameters: transport.dtlsParameters,
+            };
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to create WebRTC transport for ${socketId}:`, error);
+            throw error;
+        }
+    }
+
+    async createPlainTransport() {
+        try {
+            if (!this.router) {
+                throw new Error('Router not initialized');
+            }
+
+            const transport = await this.router.createPlainTransport({
+                listenIp: config.mediasoup.plainTransport.listenIp,
+                rtcpMux: false,
+                comedia: true
+            });
+
+            logger.info(`[RoomRouter] PlainTransport created: ${transport.id}`);
+            this.transports.set(transport.id, transport);
+            
+            return transport;
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to create PlainTransport:`, error);
+            throw error;
+        }
+    }
+
+    async pipeToPlainTransport(producerId, options = {}) {
+        try {
+            const producer = this.producers.get(producerId);
+            if (!producer) {
+                throw new Error(`Producer ${producerId} not found`);
+            }
+
+            // 1. Create PlainTransport
+            const transport = await this.createPlainTransport();
+
+            // 2. Connect it to the destination (where FFmpeg is listening)
+            await transport.connect({
+                ip: options.ip || '127.0.0.1',
+                port: options.port
+            });
+
+            // 3. Consume the producer on this transport
+            // We use the router's RTP capabilities to ensure compatibility
+            const consumer = await transport.consume({
+                producerId: producerId,
+                rtpCapabilities: this.router.rtpCapabilities,
+                paused: false
+            });
+
+            logger.info(`[RoomRouter] Piped producer ${producerId} to PlainTransport ${transport.id}`);
+
+            return { transport, consumer };
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to pipe producer to PlainTransport:`, error);
+            throw error;
+        }
     }
 
     async connectWebRtcTransport(transportId, dtlsParameters) {
-        const transport = this.transports.get(transportId);
-        if (transport) {
+        try {
+            const transport = this.transports.get(transportId);
+            if (!transport) {
+                throw new Error(`Transport ${transportId} not found`);
+            }
+
             await transport.connect({ dtlsParameters });
+            logger.info(`[RoomRouter] Transport connected: ${transportId}`);
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to connect transport ${transportId}:`, error);
+            throw error;
         }
     }
 
-    async produce(socketId, transportId, kind, rtpParameters) {
-        const transport = this.transports.get(transportId);
-        if (!transport) throw new Error(`Transport with id "${transportId}" not found`);
+    async produce(socketId, transportId, kind, rtpParameters, appData = {}) {
+        try {
+            const transport = this.transports.get(transportId);
+            if (!transport) {
+                throw new Error(`Transport ${transportId} not found`);
+            }
 
-        const producer = await transport.produce({ kind, rtpParameters });
+            const producer = await transport.produce({ kind, rtpParameters, appData });
+            logger.info(`[RoomRouter] Producer created: ${producer.id} (${kind}) for ${socketId}`);
 
-        this.producers.set(producer.id, producer);
-        this.addPeerResource(socketId, 'producers', producer.id);
+            // Store producer
+            this.producers.set(producer.id, producer);
+            this.addPeerResource(socketId, 'producers', producer.id);
 
-        producer.on('transportclose', () => {
-            producer.close();
-            this.producers.delete(producer.id);
-        });
+            // Event handlers
+            producer.on('transportclose', () => {
+                logger.info(`[RoomRouter] Producer ${producer.id} transport closed`);
+                this.closeProducer(producer.id);
+            });
 
-        return { id: producer.id };
+            producer.on('score', (score) => {
+                logger.debug(`[RoomRouter] Producer ${producer.id} score:`, score);
+            });
+
+            return { id: producer.id };
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to create producer for ${socketId}:`, error);
+            throw error;
+        }
     }
 
     async consume(socketId, transportId, producerId, rtpCapabilities) {
-        if (!this.router.canConsume({ producerId, rtpCapabilities })) {
-            console.warn('Cannot consume', { producerId, rtpCapabilities });
-            return;
+        try {
+            if (!this.router.canConsume({ producerId, rtpCapabilities })) {
+                throw new Error(`Cannot consume producer ${producerId} - incompatible RTP capabilities`);
+            }
+
+            const transport = this.transports.get(transportId);
+            if (!transport) {
+                throw new Error(`Transport ${transportId} not found`);
+            }
+
+            const producer = this.producers.get(producerId);
+            if (!producer) {
+                throw new Error(`Producer ${producerId} not found`);
+            }
+
+            const consumer = await transport.consume({
+                producerId,
+                rtpCapabilities,
+                paused: true, // Start paused
+                appData: producer.appData,
+            });
+
+            logger.info(`[RoomRouter] Consumer created: ${consumer.id} for producer ${producerId}`);
+
+            // Store consumer
+            this.consumers.set(consumer.id, consumer);
+            this.addPeerResource(socketId, 'consumers', consumer.id);
+
+            // Event handlers
+            consumer.on('transportclose', () => {
+                logger.info(`[RoomRouter] Consumer ${consumer.id} transport closed`);
+                this.closeConsumer(consumer.id);
+            });
+
+            consumer.on('producerclose', () => {
+                logger.info(`[RoomRouter] Consumer ${consumer.id} producer closed`);
+                this.closeConsumer(consumer.id);
+            });
+
+            consumer.on('producerpause', () => {
+                logger.debug(`[RoomRouter] Consumer ${consumer.id} producer paused`);
+            });
+
+            consumer.on('producerresume', () => {
+                logger.debug(`[RoomRouter] Consumer ${consumer.id} producer resumed`);
+            });
+
+            consumer.on('score', (score) => {
+                logger.debug(`[RoomRouter] Consumer ${consumer.id} score:`, score);
+            });
+
+            return {
+                id: consumer.id,
+                producerId,
+                kind: consumer.kind,
+                rtpParameters: consumer.rtpParameters,
+                appData: consumer.appData,
+            };
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to create consumer for ${socketId}:`, error);
+            throw error;
         }
-
-        const transport = this.transports.get(transportId);
-        if (!transport) throw new Error(`Transport with id "${transportId}" not found`);
-
-        const consumer = await transport.consume({
-            producerId,
-            rtpCapabilities,
-            paused: true, // Start paused
-        });
-
-        this.consumers.set(consumer.id, consumer);
-        this.addPeerResource(socketId, 'consumers', consumer.id);
-
-        consumer.on('transportclose', () => {
-            consumer.close();
-            this.consumers.delete(consumer.id);
-        });
-
-        consumer.on('producerclose', () => {
-            consumer.close();
-            this.consumers.delete(consumer.id);
-        });
-
-        return {
-            id: consumer.id,
-            producerId,
-            kind: consumer.kind,
-            rtpParameters: consumer.rtpParameters,
-        };
     }
 
     async resumeConsumer(consumerId) {
-        const consumer = this.consumers.get(consumerId);
-        if (consumer) {
-            await consumer.resume();
+        try {
+            const consumer = this.consumers.get(consumerId);
+            if (!consumer) {
+                throw new Error(`Consumer ${consumerId} not found`);
+            }
+
+            if (consumer.paused) {
+                await consumer.resume();
+                logger.info(`[RoomRouter] Consumer resumed: ${consumerId}`);
+            }
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to resume consumer ${consumerId}:`, error);
+            throw error;
         }
     }
 
+    async pauseProducer(producerId) {
+        try {
+            const producer = this.producers.get(producerId);
+            if (!producer) {
+                logger.warn(`[RoomRouter] Producer ${producerId} not found for pause`);
+                return;
+            }
+
+            if (!producer.paused) {
+                await producer.pause();
+                logger.info(`[RoomRouter] Producer paused: ${producerId}`);
+            }
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to pause producer ${producerId}:`, error);
+            throw error;
+        }
+    }
+
+    async resumeProducer(producerId) {
+        try {
+            const producer = this.producers.get(producerId);
+            if (!producer) {
+                logger.warn(`[RoomRouter] Producer ${producerId} not found for resume`);
+                return;
+            }
+
+            if (producer.paused) {
+                await producer.resume();
+                logger.info(`[RoomRouter] Producer resumed: ${producerId}`);
+            }
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to resume producer ${producerId}:`, error);
+            throw error;
+        }
+    }
+
+    async requestKeyFrame(consumerId) {
+        try {
+            const consumer = this.consumers.get(consumerId);
+            if (!consumer) {
+                logger.warn(`[RoomRouter] Consumer ${consumerId} not found for key frame request`);
+                return;
+            }
+
+            if (consumer.kind === 'video') {
+                await consumer.requestKeyFrame();
+                logger.info(`[RoomRouter] Key frame requested for consumer: ${consumerId}`);
+            }
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to request key frame for ${consumerId}:`, error);
+            // Don't throw - this is a best-effort operation
+        }
+    }
+
+    async restartIce(transportId) {
+        try {
+            const transport = this.transports.get(transportId);
+            if (!transport) {
+                throw new Error(`Transport ${transportId} not found`);
+            }
+
+            const iceParameters = await transport.restartIce();
+            logger.info(`[RoomRouter] ICE restarted for transport: ${transportId}`);
+            
+            return iceParameters;
+        } catch (error) {
+            logger.error(`[RoomRouter] Failed to restart ICE for ${transportId}:`, error);
+            throw error;
+        }
+    }
+
+    // ============================================
+    // RESOURCE MANAGEMENT
+    // ============================================
     addPeerResource(socketId, type, id) {
         if (!this.peers.has(socketId)) {
-            this.peers.set(socketId, { transports: [], producers: [], consumers: [] });
+            this.peers.set(socketId, { 
+                transports: [], 
+                producers: [], 
+                consumers: [] 
+            });
         }
-        this.peers.get(socketId)[type].push(id);
+        
+        const peer = this.peers.get(socketId);
+        if (!peer[type].includes(id)) {
+            peer[type].push(id);
+        }
     }
 
     removePeer(socketId) {
         const peer = this.peers.get(socketId);
-        if (peer) {
-            peer.transports.forEach(id => this.transports.get(id)?.close());
-            peer.producers.forEach(id => this.producers.get(id)?.close());
-            peer.consumers.forEach(id => this.consumers.get(id)?.close());
-            this.peers.delete(socketId);
+        if (!peer) {
+            logger.warn(`[RoomRouter] No peer data found for ${socketId}`);
+            return;
         }
+
+        logger.info(`[RoomRouter] Removing peer: ${socketId}`);
+
+        // Close all transports (this will cascade to producers/consumers)
+        peer.transports.forEach(id => this.closeTransport(id));
+        
+        // Close any orphaned producers
+        peer.producers.forEach(id => this.closeProducer(id));
+        
+        // Close any orphaned consumers
+        peer.consumers.forEach(id => this.closeConsumer(id));
+
+        this.peers.delete(socketId);
+        logger.info(`[RoomRouter] Peer removed: ${socketId}`);
+    }
+
+    closeTransport(transportId) {
+        const transport = this.transports.get(transportId);
+        if (transport && !transport.closed) {
+            transport.close();
+            logger.info(`[RoomRouter] Transport closed: ${transportId}`);
+        }
+        this.transports.delete(transportId);
+    }
+
+    closeProducer(producerId) {
+        const producer = this.producers.get(producerId);
+        if (producer && !producer.closed) {
+            producer.close();
+            logger.info(`[RoomRouter] Producer closed: ${producerId}`);
+        }
+        this.producers.delete(producerId);
+    }
+
+    closeConsumer(consumerId) {
+        const consumer = this.consumers.get(consumerId);
+        if (consumer && !consumer.closed) {
+            consumer.close();
+            logger.info(`[RoomRouter] Consumer closed: ${consumerId}`);
+        }
+        this.consumers.delete(consumerId);
+    }
+
+    getExistingProducers() {
+        const producers = [];
+        
+        for (const [socketId, peer] of this.peers.entries()) {
+            for (const producerId of peer.producers) {
+                const producer = this.producers.get(producerId);
+                if (producer && !producer.closed) {
+                    producers.push({
+                        producerId,
+                        socketId,
+                        kind: producer.kind,
+                        appData: producer.appData
+                    });
+                }
+            }
+        }
+        
+        return producers;
     }
 }
 

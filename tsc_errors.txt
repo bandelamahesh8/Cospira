@@ -1,0 +1,13 @@
+src/contexts/WebSocket/useMediaStream.ts(2,33): error TS2307: Cannot find module '@/services/SFUManager' or its corresponding type declarations.
+src/contexts/WebSocket/useMediaStream.ts(3,24): error TS2307: Cannot find module '@/utils/logger' or its corresponding type declarations.
+src/contexts/WebSocket/useMediaStream.ts(4,28): error TS2307: Cannot find module '@/services/audio/NoiseProcessor' or its corresponding type declarations.
+src/contexts/WebSocket/useMediaStream.ts(5,28): error TS2307: Cannot find module '@/services/video/VideoProcessor' or its corresponding type declarations.
+src/contexts/WebSocket/useMediaStream.ts(6,34): error TS2307: Cannot find module '@/services/SignalingService' or its corresponding type declarations.
+src/contexts/WebSocket/useMediaStream.ts(7,32): error TS2307: Cannot find module '@/contexts/WebSocketContext' or its corresponding type declarations.
+src/services/SFUManager.ts(1,24): error TS2307: Cannot find module '@/utils/logger' or its corresponding type declarations.
+src/services/SFUManager.ts(589,28): error TS2802: Type 'MapIterator<Consumer>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/SFUManager.ts(667,38): error TS2802: Type 'MapIterator<[string, Producer]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/SFUManager.ts(676,34): error TS2802: Type 'Map<string, Consumer>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/SignalingService.ts(2,90): error TS2307: Cannot find module '@/types/websocket' or its corresponding type declarations.
+src/services/SignalingService.ts(3,24): error TS2307: Cannot find module '@/utils/logger' or its corresponding type declarations.
+src/services/SignalingService.ts(4,32): error TS2307: Cannot find module '@/services/RoomIntelligence' or its corresponding type declarations.

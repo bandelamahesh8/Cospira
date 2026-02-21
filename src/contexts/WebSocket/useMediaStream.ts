@@ -1,244 +1,393 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { toast } from '@/hooks/use-toast';
-import { SFUManager } from '@/lib/SFUManager';
+import { useCallback, useRef, useEffect } from 'react';
+import type { SFUManager } from '@/services/SFUManager';
+import { logger } from '@/utils/logger';
+import NoiseProcessor from '@/services/audio/NoiseProcessor';
+import VideoProcessor from '@/services/video/VideoProcessor'; 
+import { SignalingService } from '@/services/SignalingService';
+import { WebSocketState } from '@/contexts/WebSocketContext';
 
-interface UseMediaStreamProps {
-    sfuManagerRef: React.MutableRefObject<SFUManager | null>;
-    setLocalStream: (stream: MediaStream | null) => void;
-    setLocalScreenStream: (stream: MediaStream | null) => void;
-    setIsAudioEnabled: (enabled: boolean) => void;
-    setIsVideoEnabled: (enabled: boolean) => void;
-    setIsScreenSharing: (sharing: boolean) => void;
-    setIsMediaLoading: (loading: boolean) => void;
+interface UseMediaStreamParams {
+  sfuManagerRef: React.MutableRefObject<SFUManager | null>;
+  setLocalStream: (stream: MediaStream | null) => void;
+  setLocalScreenStream: (stream: MediaStream | null) => void;
+  setIsAudioEnabled: (enabled: boolean) => void;
+  setIsVideoEnabled: (enabled: boolean) => void;
+  setIsScreenSharing: (sharing: boolean) => void;
+  setIsMediaLoading: (loading: boolean) => void;
+  setIsNoiseSuppressionEnabled: (enabled: boolean) => void;
+  setIsAutoFramingEnabled: (enabled: boolean) => void;
+  selectedVideoDeviceId?: string | null;
+  selectedAudioDeviceId?: string | null;
+  signalingRef: React.MutableRefObject<SignalingService | null>;
+  stateRef: React.MutableRefObject<WebSocketState>;
 }
 
-export const useMediaStream = ({
-    sfuManagerRef,
-    setLocalStream,
-    setLocalScreenStream,
-    setIsAudioEnabled,
-    setIsVideoEnabled,
-    setIsScreenSharing,
-    setIsMediaLoading,
-}: UseMediaStreamProps) => {
-    const localStreamRef = useRef<MediaStream | null>(null);
-    const localScreenStreamRef = useRef<MediaStream | null>(null);
-    const isAudioEnabledRef = useRef(false);
-    const isVideoEnabledRef = useRef(false);
+const VIDEO_SOURCE = 'webcam';
+const AUDIO_SOURCE = 'mic';
+const SCREEN_SOURCE = 'screen';
 
-    const getLocalStream = useCallback(() => {
-        if (!localStreamRef.current) {
-            const stream = new MediaStream();
-            localStreamRef.current = stream;
-            setLocalStream(stream);
+export function useMediaStream({
+  sfuManagerRef,
+  setLocalStream,
+  setLocalScreenStream,
+  setIsAudioEnabled,
+  setIsVideoEnabled,
+  setIsScreenSharing,
+  setIsMediaLoading,
+  setIsNoiseSuppressionEnabled,
+  setIsAutoFramingEnabled,
+  selectedVideoDeviceId,
+  selectedAudioDeviceId,
+  signalingRef,
+  stateRef,
+}: UseMediaStreamParams) {
+  const audioTrackRef = useRef<MediaStreamTrack | null>(null);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  
+  // Refs to track current state without triggering re-renders in internal logic
+  const isAudioEnabledRef = useRef(false);
+  const isVideoEnabledRef = useRef(false);
+  const isScreenSharingRef = useRef(false);
+  const isNoiseSuppressionEnabledRef = useRef(false);
+  const isAutoFramingEnabledRef = useRef(false);
+
+  // --- Helper: Update Local Stream Preview ---
+  const updateLocalStream = useCallback(() => {
+    const tracks: MediaStreamTrack[] = [];
+    if (audioTrackRef.current) tracks.push(audioTrackRef.current);
+    if (videoTrackRef.current) tracks.push(videoTrackRef.current);
+    
+    if (tracks.length > 0) {
+      setLocalStream(new MediaStream(tracks));
+    } else {
+      setLocalStream(null);
+    }
+  }, [setLocalStream]);
+
+  // --- Helper: Stop Track ---
+  const stopTrack = (kind: 'audio' | 'video') => {
+    if (kind === 'audio' && audioTrackRef.current) {
+      audioTrackRef.current.stop();
+      audioTrackRef.current = null;
+    } else if (kind === 'video' && videoTrackRef.current) {
+      videoTrackRef.current.stop();
+      videoTrackRef.current = null;
+    }
+  };
+
+  // --- API: Enable Audio ---
+  const enableAudio = useCallback(async () => {
+    if (isAudioEnabledRef.current) return; // Already enabled
+    logger.info('[useMediaStream] Enabling Audio...');
+    setIsMediaLoading(true);
+
+    try {
+      // 1. Get User Media
+      const constraints = {
+        audio: selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true,
+        video: false
+      };
+      
+      let stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      // 2. Process Audio (NS)
+      if (isNoiseSuppressionEnabledRef.current) {
+        stream = await NoiseProcessor.init(stream);
+      }
+
+      const track = stream.getAudioTracks()[0];
+      if (!track) throw new Error('No audio track obtained');
+
+      audioTrackRef.current = track;
+      isAudioEnabledRef.current = true;
+      setIsAudioEnabled(true);
+
+      // 3. Update Preview
+      updateLocalStream();
+
+      // 4. Update SFU
+      const sfu = sfuManagerRef.current;
+      if (sfu) {
+        // If producer exists, replace track and resume. If not, produce.
+        await sfu.replaceTrack(track, AUDIO_SOURCE);
+        await sfu.resumeProducer(AUDIO_SOURCE);
+      }
+      
+      // 5. Sync State
+      if (signalingRef.current && stateRef.current.roomId) {
+        signalingRef.current.emit('user:media-state', {
+            roomId: stateRef.current.roomId,
+            audio: true,
+            video: isVideoEnabledRef.current
+        });
+      }
+
+    } catch (err) {
+      logger.error('[useMediaStream] Failed to enable audio', err);
+      stopTrack('audio');
+      isAudioEnabledRef.current = false;
+      setIsAudioEnabled(false);
+    } finally {
+      setIsMediaLoading(false);
+    }
+  }, [selectedAudioDeviceId, setIsAudioEnabled, setIsMediaLoading, updateLocalStream, sfuManagerRef, signalingRef, stateRef]);
+
+  // --- API: Disable Audio ---
+  const disableAudio = useCallback(async () => {
+    if (!isAudioEnabledRef.current) return;
+    logger.info('[useMediaStream] Disabling Audio...');
+
+    // 1. Stop Hardware
+    stopTrack('audio');
+    isAudioEnabledRef.current = false;
+    setIsAudioEnabled(false);
+
+    // 2. Update Preview
+    updateLocalStream();
+
+    // 3. Close producer so remote peers get producerclose and re-enable creates a fresh producer
+    const sfu = sfuManagerRef.current;
+    if (sfu) {
+      sfu.closeProducer(AUDIO_SOURCE);
+    }
+
+    // 4. Sync State
+    if (signalingRef.current && stateRef.current.roomId) {
+        signalingRef.current.emit('user:media-state', {
+            roomId: stateRef.current.roomId,
+            audio: false,
+            video: isVideoEnabledRef.current
+        });
+    }
+  }, [setIsAudioEnabled, updateLocalStream, sfuManagerRef, signalingRef, stateRef]);
+
+  // --- API: Toggle Audio ---
+  const toggleAudio = useCallback(() => {
+    if (isAudioEnabledRef.current) {
+      disableAudio();
+    } else {
+      enableAudio();
+    }
+  }, [disableAudio, enableAudio]);
+
+  // --- API: Enable Video ---
+  const enableVideo = useCallback(async () => {
+    if (isVideoEnabledRef.current) return;
+    logger.info('[useMediaStream] Enabling Video...');
+    setIsMediaLoading(true);
+
+    try {
+      // 1. Get User Media
+      const constraints = {
+        audio: false,
+        video: {
+            deviceId: selectedVideoDeviceId ? { exact: selectedVideoDeviceId } : undefined,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 },
         }
-        return localStreamRef.current;
-    }, [setLocalStream]);
+      };
+      
+      let stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-    const startAudio = useCallback(async () => {
-        let stream: MediaStream | null = null;
-        try {
-            const audioDeviceId = localStorage.getItem('preferredAudioDeviceId');
-            const constraints = {
-                audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
-            };
+      // 2. Process Video (AutoFraming)
+      if (isAutoFramingEnabledRef.current) {
+        stream = await VideoProcessor.init(stream);
+      }
 
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-            const audioTrack = stream.getAudioTracks()[0];
+      const track = stream.getVideoTracks()[0];
+      if (!track) throw new Error('No video track obtained');
 
-            const localStream = getLocalStream();
-            localStream.addTrack(audioTrack);
+      videoTrackRef.current = track;
+      isVideoEnabledRef.current = true;
+      setIsVideoEnabled(true);
 
-            setIsAudioEnabled(true);
-            isAudioEnabledRef.current = true;
+      // 3. Update Preview
+      updateLocalStream();
 
-            if (sfuManagerRef.current) {
-                if (!sfuManagerRef.current.isTransportReady()) {
-                    console.log('startAudio: Transport not ready, waiting...');
-                    const ready = await sfuManagerRef.current.waitForTransportReady(10000);
-                    if (!ready) {
-                        console.error('startAudio: Transport wait timed out');
-                        throw new Error('Connection to media server failed (Debug: Audio Transport Timeout). Please refresh.');
-                    }
-                }
-                console.log('startAudio: Producing...');
-                await sfuManagerRef.current.produce(audioTrack, 'mic');
-                console.log('startAudio: Produced');
-            }
-        } catch (err) {
-            console.error('Failed to start audio:', err);
-            const errorMessage = err instanceof Error ? err.message : 'Failed to access microphone';
-            toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
+      // 4. Update SFU
+      const sfu = sfuManagerRef.current;
+      if (sfu) {
+        await sfu.replaceTrack(track, VIDEO_SOURCE);
+        await sfu.resumeProducer(VIDEO_SOURCE);
+      }
 
-            // Cleanup
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-            }
-            if (localStreamRef.current) {
-                const audioTracks = localStreamRef.current.getAudioTracks();
-                audioTracks.forEach(t => {
-                    t.stop();
-                    localStreamRef.current?.removeTrack(t);
-                });
-            }
-            setIsAudioEnabled(false);
-            isAudioEnabledRef.current = false;
-        }
-    }, [getLocalStream, setIsAudioEnabled, sfuManagerRef]);
+      // 5. Sync State
+      if (signalingRef.current && stateRef.current.roomId) {
+        signalingRef.current.emit('user:media-state', {
+            roomId: stateRef.current.roomId,
+            audio: isAudioEnabledRef.current,
+            video: true
+        });
+      }
 
-    const stopAudio = useCallback(() => {
-        const stream = localStreamRef.current;
-        if (stream) {
-            const audioTrack = stream.getAudioTracks()[0];
-            if (audioTrack) {
-                audioTrack.stop();
-                stream.removeTrack(audioTrack);
-                setIsAudioEnabled(false);
-                isAudioEnabledRef.current = false;
-                sfuManagerRef.current?.closeProducer('mic');
-            }
-        }
-    }, [setIsAudioEnabled, sfuManagerRef]);
+    } catch (err) {
+      logger.error('[useMediaStream] Failed to enable video', err);
+      stopTrack('video');
+      isVideoEnabledRef.current = false;
+      setIsVideoEnabled(false);
+    } finally {
+      setIsMediaLoading(false);
+    }
+  }, [selectedVideoDeviceId, setIsVideoEnabled, setIsMediaLoading, updateLocalStream, sfuManagerRef, signalingRef, stateRef]);
 
-    const startVideo = useCallback(async () => {
-        let stream: MediaStream | null = null;
-        try {
-            setIsMediaLoading(true);
-            const videoDeviceId = localStorage.getItem('preferredVideoDeviceId');
-            const constraints = {
-                video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : true,
-            };
+  // --- API: Disable Video ---
+  const disableVideo = useCallback(async () => {
+    if (!isVideoEnabledRef.current) return;
+    logger.info('[useMediaStream] Disabling Video...');
 
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-            const videoTrack = stream.getVideoTracks()[0];
+    // 1. Stop Hardware
+    stopTrack('video');
+    isVideoEnabledRef.current = false;
+    setIsVideoEnabled(false);
 
-            const localStream = getLocalStream();
-            localStream.addTrack(videoTrack);
+    // 2. Update Preview
+    updateLocalStream();
 
-            setIsVideoEnabled(true);
-            isVideoEnabledRef.current = true;
+    // 3. Close producer so remote peers get producerclose and re-enable creates a fresh producer
+    const sfu = sfuManagerRef.current;
+    if (sfu) {
+      sfu.closeProducer(VIDEO_SOURCE);
+    }
 
-            if (sfuManagerRef.current) {
-                if (!sfuManagerRef.current.isTransportReady()) {
-                    console.log('startVideo: Transport not ready, waiting...');
-                    const ready = await sfuManagerRef.current.waitForTransportReady(15000);
-                    if (!ready) {
-                        console.error('startVideo: Transport wait timed out');
-                        throw new Error('Connection to media server failed (Debug: Video Transport Timeout). Please refresh.');
-                    }
-                }
-                console.log('startVideo: Producing...');
-                await sfuManagerRef.current.produce(videoTrack, 'webcam');
-                console.log('startVideo: Produced');
-            }
-        } catch (err) {
-            console.error('Failed to start video:', err);
-            const errorMessage = err instanceof Error ? err.message : 'Failed to access camera';
-            toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
+    // 4. Sync State
+    if (signalingRef.current && stateRef.current.roomId) {
+      signalingRef.current.emit('user:media-state', {
+          roomId: stateRef.current.roomId,
+          audio: isAudioEnabledRef.current,
+          video: false
+      });
+    }
+  }, [setIsVideoEnabled, updateLocalStream, sfuManagerRef, signalingRef, stateRef]);
 
-            // Cleanup
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-            }
-            if (localStreamRef.current) {
-                const videoTracks = localStreamRef.current.getVideoTracks();
-                videoTracks.forEach(t => {
-                    t.stop();
-                    localStreamRef.current?.removeTrack(t);
-                });
-            }
-            setIsVideoEnabled(false);
-            isVideoEnabledRef.current = false;
-        } finally {
-            setIsMediaLoading(false);
-        }
-    }, [getLocalStream, setIsMediaLoading, setIsVideoEnabled, sfuManagerRef]);
+  // --- API: Toggle Video ---
+  const toggleVideo = useCallback(() => {
+    if (isVideoEnabledRef.current) {
+      disableVideo();
+    } else {
+      enableVideo();
+    }
+  }, [disableVideo, enableVideo]);
 
-    const stopVideo = useCallback(() => {
-        const stream = localStreamRef.current;
-        if (stream) {
-            const videoTrack = stream.getVideoTracks()[0];
-            if (videoTrack) {
-                videoTrack.stop();
-                stream.removeTrack(videoTrack);
-                setIsVideoEnabled(false);
-                isVideoEnabledRef.current = false;
-                sfuManagerRef.current?.closeProducer('webcam');
-            }
-        }
-    }, [setIsVideoEnabled, sfuManagerRef]);
 
-    const enableMedia = useCallback(async () => {
-        // Initialize empty stream on join
-        getLocalStream();
-        setIsMediaLoading(false);
+  // --- API: Initial Enable (Consolidated) ---
+  // Mostly used for "Join with Mic/Cam on" preferences
+  const enableMedia = useCallback(async (startAudio = false, startVideo = false) => {
+      logger.info(`[useMediaStream] Initializing media: Audio=${startAudio}, Video=${startVideo}`);
+      
+      const promises = [];
+      if (startAudio) promises.push(enableAudio());
+      if (startVideo) promises.push(enableVideo());
+      
+      await Promise.all(promises);
+  }, [enableAudio, enableVideo]);
 
-        // Ensure state matches refs (default OFF)
-        setIsAudioEnabled(false);
-        setIsVideoEnabled(false);
-        isAudioEnabledRef.current = false;
-        isVideoEnabledRef.current = false;
-    }, [getLocalStream, setIsAudioEnabled, setIsVideoEnabled, setIsMediaLoading]);
 
-    const toggleAudio = useCallback(() => {
-        if (isAudioEnabledRef.current) {
-            stopAudio();
-        } else {
-            startAudio();
-        }
-    }, [startAudio, stopAudio]);
+  // --- API: Disable All (Cleanup) ---
+  const disableMedia = useCallback(() => {
+      logger.info('[useMediaStream] Disabling ALL media');
+      disableAudio();
+      disableVideo();
+      // Also stop screen share
+      stopScreenShare();
+  }, [disableAudio, disableVideo]); // stopScreenShare below needs to be circular-dep safe, likely hoisted or used from ref
 
-    const toggleVideo = useCallback(() => {
-        if (isVideoEnabledRef.current) {
-            stopVideo();
-        } else {
-            startVideo();
-        }
-    }, [startVideo, stopVideo]);
+  // --- Features: Noise Suppression ---
+  const toggleNoiseSuppression = useCallback(async () => {
+    const newState = !isNoiseSuppressionEnabledRef.current;
+    isNoiseSuppressionEnabledRef.current = newState;
+    setIsNoiseSuppressionEnabled(newState);
 
-    const stopScreenShare = useCallback(() => {
-        if (localScreenStreamRef.current) {
-            localScreenStreamRef.current.getTracks().forEach((track) => track.stop());
-            setLocalScreenStream(null);
-            localScreenStreamRef.current = null;
-            setIsScreenSharing(false);
-            // SFU cleanup for screen share producers should be handled by SFUManager or by closing the producer
-            // Ideally SFUManager should have a method to stop producing specific sources
-        }
-    }, [setLocalScreenStream, setIsScreenSharing]);
+    if (isAudioEnabledRef.current) {
+        // Restart audio to apply processor
+        await disableAudio();
+        await enableAudio();
+    }
+  }, [setIsNoiseSuppressionEnabled, disableAudio, enableAudio]);
 
-    const startScreenShare = useCallback(async () => {
-        try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-            setLocalScreenStream(stream);
-            localScreenStreamRef.current = stream;
-            setIsScreenSharing(true);
+  // --- Features: Auto Framing ---
+  const toggleAutoFraming = useCallback(async () => {
+    const newState = !isAutoFramingEnabledRef.current;
+    isAutoFramingEnabledRef.current = newState;
+    setIsAutoFramingEnabled(newState);
 
-            stream.getVideoTracks()[0].onended = () => {
-                stopScreenShare();
-            };
+    if (isVideoEnabledRef.current) {
+        // Restart video to apply processor
+        await disableVideo();
+        await enableVideo();
+    }
+  }, [setIsAutoFramingEnabled, disableVideo, enableVideo]);
 
-            if (sfuManagerRef.current) {
-                for (const track of stream.getTracks()) {
-                    const source = track.kind === 'video' ? 'screen' : 'screen-audio';
-                    await sfuManagerRef.current.produce(track, source);
-                }
-            }
-        } catch (err) {
-            console.error('Screen share error:', err);
-            toast({
-                title: 'Screen Share Error',
-                description: 'Failed to start screen share.',
-                variant: 'destructive',
-            });
-        }
-    }, [sfuManagerRef, setLocalScreenStream, setIsScreenSharing, stopScreenShare]);
 
-    return {
-        enableMedia,
-        toggleAudio,
-        toggleVideo,
-        startScreenShare,
-        stopScreenShare,
+  // --- Screen Share ---
+  const stopScreenShare = useCallback(() => {
+    logger.debug('[useMediaStream] Stopping Screen Share');
+    const sfu = sfuManagerRef.current;
+
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+    }
+    
+    setLocalScreenStream(null);
+    setIsScreenSharing(false);
+    isScreenSharingRef.current = false;
+    
+    if (sfu) {
+        sfu.closeProducer(SCREEN_SOURCE);
+    }
+
+    if (signalingRef.current && stateRef.current.roomId) {
+        signalingRef.current.emit('stop-screen-share', { roomId: stateRef.current.roomId });
+    }
+  }, [sfuManagerRef, setLocalScreenStream, setIsScreenSharing, signalingRef, stateRef]);
+
+  const startScreenShare = useCallback(async () => {
+    if (isScreenSharingRef.current) return;
+    const sfu = sfuManagerRef.current;
+    if (!sfu) return;
+
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      screenStreamRef.current = displayStream;
+      setLocalScreenStream(displayStream);
+      setIsScreenSharing(true);
+      isScreenSharingRef.current = true;
+
+      const videoTrack = displayStream.getVideoTracks()[0];
+      if (videoTrack) {
+        await sfu.replaceTrack(videoTrack, SCREEN_SOURCE);
+      }
+      
+      videoTrack.onended = () => { stopScreenShare(); };
+
+    } catch (err) {
+      logger.error('[useMediaStream] Failed to start screen share', err);
+      stopScreenShare(); // Cleanup
+    }
+  }, [sfuManagerRef, setLocalScreenStream, setIsScreenSharing, stopScreenShare]);
+
+  // --- Cleanup Effect ---
+  useEffect(() => {
+    return () => {
+      logger.info('[useMediaStream] Unmounting - Cleaning up tracks');
+      stopTrack('audio');
+      stopTrack('video');
+      if (screenStreamRef.current) {
+         screenStreamRef.current.getTracks().forEach(t => t.stop());
+      }
     };
-};
+  }, []);
+
+  return {
+    enableMedia,
+    disableMedia,
+    toggleAudio,
+    toggleVideo,
+    startScreenShare,
+    stopScreenShare,
+    toggleNoiseSuppression,
+    toggleAutoFraming,
+  };
+}

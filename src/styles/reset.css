@@ -1,0 +1,46 @@
+/* Universal Constraints - Phase 3 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    /* Font size base is effectively set by --fs-base used in body, 
+       but we can set a percentage here if we want rems to scale. 
+       However, the plan says "body { font-size: var(--fs-base) }" */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-size: var(--fs-base);
+  overflow-x: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #0b0f14; /* Fallback */
+  color: white; /* Default text color */
+}
+
+/* Phase 8: Mobile Cleanup Defaults */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+@media (max-width: 480px) {
+  .decorative,
+  .background-only {
+    display: none !important;
+  }
+
+  /* Kill Jank */
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

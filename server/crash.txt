@@ -1,0 +1,31 @@
+[32minfo[39m: Γ£à Supabase client initialized successfully {"service":"cospira-server","timestamp":"2026-02-02T12:14:46.546Z"}
+[32minfo[39m: [MailService] SMTP Configured. Emails will be sent via smtp.gmail.com {"service":"cospira-server","timestamp":"2026-02-02T12:14:46.984Z"}
+[32minfo[39m: [LLMService] Initialized with Gemini API Key {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.268Z"}
+[32minfo[39m: Starting HTTP server (development mode) - SSL certificates not found at C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\localhost+3.pem {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.291Z"}
+Redis disabled (USE_REDIS!=true), using in-memory storage
+MediasoupWorker: run() called with 1 workers
+MediasoupWorker: Creating worker 1/1...
+[32minfo[39m: [AIOS] Initializing COSPIRA AI OS v5.0.0-PROD... {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.322Z"}
+[32minfo[39m: [AIOS] Booting AI Kernel... {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.322Z"}
+[32minfo[39m: [AIKernel] Initializing Cospira AI OS Kernel v1.0.0-kernel... {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.322Z"}
+[32minfo[39m: [AIKernel] Kernel fully operational. {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.322Z"}
+[32minfo[39m: [AIOS] Initializing Platform Manager... {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [AIOS] Igniting Agent Swarm... {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [AIOS] Calibrating Feedback Loops... {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [AIOS] Mounting Neural Marketplace... {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [AIOS] Engaging Autonomous Directives... {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [AIOS] System Stable. Uptime: 0s {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [AgentManager] Registered: Neural Observer {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [AgentManager] Registered: Deep Analyzer {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [AgentManager] Registered: Risk Predictor {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [Agent:Neural Observer] Initialized {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.323Z"}
+[32minfo[39m: [Agent:Deep Analyzer] Initialized {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.325Z"}
+[32minfo[39m: [Agent:Risk Predictor] Initialized {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.325Z"}
+[32minfo[39m: [AgentManager] All agents online {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.325Z"}
+[31merror[39m: Uncaught Exception: listen EADDRINUSE: address already in use :::3001 {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.327Z"}
+[32minfo[39m: Γ£à FFmpeg is installed and available. {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.353Z"}
+mediasoup worker created [pid:34096]
+MediasoupWorker: run() finished. Total workers: 1
+[32minfo[39m: [AIService] Initialized {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.392Z"}
+[32minfo[39m: SFU Handler initialized {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.392Z"}
+[32minfo[39m: Connected to MongoDB {"service":"cospira-server","timestamp":"2026-02-02T12:14:47.780Z"}

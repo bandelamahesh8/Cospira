@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { Button } from './ui/button';
-import { Maximize, Minimize, Volume2, VolumeX } from 'lucide-react';
+
 
 interface SynchronizedVideoPlayerProps {
   url: string;
   isHost: boolean;
   socket: Socket | null;
   roomId: string | null;
-  fileName: string;
+  _fileName: string;
   onClose: () => void;
 }
 
@@ -17,14 +17,11 @@ const SynchronizedVideoPlayer = ({
   isHost,
   socket,
   roomId,
-  fileName,
+  _fileName,
   onClose,
 }: SynchronizedVideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+
 
   // Socket event listeners
   useEffect(() => {
@@ -36,8 +33,8 @@ const SynchronizedVideoPlayer = ({
         if (diff > 0.5) {
           videoRef.current.currentTime = time;
         }
-        videoRef.current.play().catch((e) => console.error('Auto-play failed:', e));
-        setIsPlaying(true);
+        // eslint-disable-next-line no-console
+        videoRef.current.play().catch(() => {});
       }
     };
 
@@ -45,14 +42,14 @@ const SynchronizedVideoPlayer = ({
       if (videoRef.current) {
         videoRef.current.pause();
         videoRef.current.currentTime = time;
-        setIsPlaying(false);
+
       }
     };
 
     const onSeek = ({ time }: { time: number }) => {
       if (videoRef.current) {
         videoRef.current.currentTime = time;
-        setCurrentTime(time);
+
       }
     };
 
@@ -80,10 +77,7 @@ const SynchronizedVideoPlayer = ({
     }
   };
 
-  const handleSeek = (e: React.SyntheticEvent<HTMLVideoElement>) => {
-    // Only emit seek if it was a user interaction (hard to distinguish, but we can try)
-    // For now, we'll rely on the 'seeked' event which fires after the seek operation completes
-  };
+
 
   const onSeeked = () => {
     if (socket && roomId && videoRef.current) {
@@ -101,8 +95,8 @@ const SynchronizedVideoPlayer = ({
         onPlay={handlePlay}
         onPause={handlePause}
         onSeeked={onSeeked}
-        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onTimeUpdate={() => {}} // Placeholder or remove if not needed
+        onLoadedMetadata={() => {}} // Placeholder or remove if not needed
       />
 
       {/* Close button - Host only */}

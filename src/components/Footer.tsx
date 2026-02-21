@@ -1,140 +1,52 @@
-import { Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
-    <footer className='border-t border-border/50 py-12 mt-24'>
-      <div className='container mx-auto px-4'>
-        <div className='grid md:grid-cols-4 gap-8 mb-8'>
-          <div>
-            <div className='flex items-center gap-2 mb-4'>
-              <div className='w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center'>
-                <Shield className='w-5 h-5 text-background' />
-              </div>
-              <span className='text-xl font-bold text-foreground'>ShareUs</span>
+    <footer className='border-t border-white/[0.03] py-12 bg-transparent overflow-hidden'>
+      <div className='container mx-auto px-6'>
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 items-center md:items-start text-center md:text-left'>
+          
+          {/* LEFT — BRAND ANCHOR */}
+          <div className='space-y-4 order-1'>
+            <div>
+              <h3 className='text-lg font-black tracking-tighter text-white/40 uppercase'>Cospira</h3>
+              <p className='text-[10px] font-bold uppercase tracking-widest text-white/20 mt-1'>Connect Beyond Meetings</p>
             </div>
-            <p className='text-muted-foreground text-sm'>
-              Enterprise-grade virtual collaboration platform with zero-trust security.
+            <p className='text-[9px] font-medium text-white/10 uppercase tracking-widest'>© 2026 Cospira</p>
+          </div>
+
+          {/* CENTER — SYSTEM TRUST */}
+          <div className='space-y-3 order-2 md:text-center flex flex-col items-center'>
+            <div className='flex flex-wrap justify-center gap-x-4 gap-y-2'>
+              <span className='text-[10px] font-black uppercase tracking-[0.2em] text-white/30'>Built on WebRTC</span>
+              <span className='hidden md:inline text-white/5'>•</span>
+              <span className='text-[10px] font-black uppercase tracking-[0.2em] text-white/30'>End-to-End Encrypted</span>
+            </div>
+            <p className='text-[10px] font-bold uppercase tracking-[0.15em] text-white/10 italic'>
+              No Recording • Designed for Privacy
             </p>
           </div>
 
-          <div>
-            <h4 className='font-semibold text-foreground mb-4'>Product</h4>
-            <ul className='space-y-2 text-sm'>
-              <li>
-                <Link
-                  to='#features'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Features
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to='#pricing'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Roadmap
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Security
-                </Link>
-              </li>
-            </ul>
+          {/* RIGHT — CONTROL & POLICY */}
+          <div className='flex flex-col md:items-end gap-3 order-3'>
+            <div className='flex flex-wrap justify-center md:justify-end gap-x-6 gap-y-2'>
+              <Link to='/about#privacy' className='text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white hover:underline underline-offset-4 transition-all'>
+                Privacy Policy
+              </Link>
+              <Link to='/about#legal-section' className='text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white hover:underline underline-offset-4 transition-all'>
+                Terms of Service
+              </Link>
+            </div>
+            <div className='flex flex-wrap justify-center md:justify-end gap-x-6 gap-y-2'>
+              <Link to='/about#contact-section' className='text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white hover:underline underline-offset-4 transition-all'>
+                Contact
+              </Link>
+              <Link to='/feedback' className='text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white hover:underline underline-offset-4 transition-all'>
+                Feedback
+              </Link>
+            </div>
           </div>
 
-          <div>
-            <h4 className='font-semibold text-foreground mb-4'>Resources</h4>
-            <ul className='space-y-2 text-sm'>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Documentation
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  API Reference
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Support
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Status
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className='font-semibold text-foreground mb-4'>Company</h4>
-            <ul className='space-y-2 text-sm'>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to='#'
-                  className='text-muted-foreground hover:text-foreground transition-colors'
-                >
-                  Contact
-                </Link>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div className='border-t border-border/50 pt-8 text-center text-sm text-muted-foreground'>
-          <p>© 2024 ShareUs. All rights reserved. Zero-Trust • Quantum-Safe • Enterprise Ready</p>
         </div>
       </div>
     </footer>

@@ -1,0 +1,38 @@
+/* Global Layout Engine - Phase 4 & 5 */
+
+/* One Container To Rule Them All */
+.container {
+  width: min(100% - 2rem, 1280px);
+  margin-inline: auto;
+}
+
+/* Enforced Grid Logic */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Mobile default: stacked */
+  gap: var(--sp-2);
+}
+
+@media (min-width: 768px) {
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Spacer Utility */
+.spacer {
+    height: var(--sp-3);
+}
+
+.section {
+    padding-block: var(--sp-3);
+}

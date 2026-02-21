@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  cospira-redis:
+    image: redis:alpine
+    container_name: cospira-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  cospira-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - USE_REDIS=true
+      - REDIS_URL=redis://cospira-redis:6379
+      - JWT_SECRET=cospira-secret-key-prod
+      - ADMIN_KEY=Mahesh@Admin2024
+    depends_on:
+      - cospira-redis
+    deploy:
+      replicas: 2
+    restart: always
+
+  cospira-nginx:
+    image: nginx:alpine
+    container_name: cospira-lb
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - cospira-server
+    restart: always

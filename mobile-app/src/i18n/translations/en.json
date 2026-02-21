@@ -1,0 +1,17 @@
+{
+  "common": {
+    "welcome": "Welcome Commander",
+    "loading": "Initializing System...",
+    "error": "System Error"
+  },
+  "command": {
+    "title": "Command Hub",
+    "status": "System Status",
+    "protocols": "Command Protocols"
+  },
+  "auth": {
+    "login": "Initiate Uplink",
+    "id_placeholder": "Operative ID",
+    "pass_placeholder": "Access Code"
+  }
+}

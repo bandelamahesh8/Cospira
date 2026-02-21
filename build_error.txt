@@ -1,0 +1,48 @@
+﻿
+> vite_react_shadcn_ts@0.0.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+node.exe : 
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\mahes\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[1m[33mwarn[39m[22m - The class `duration-[10s]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `duration-&lsqb;10s&rsqb;` to silence 
+this warning.
+
+/grid.svg referenced in /grid.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+[32mΓ£ô[39m 2034 modules transformed.
+[31mΓ£ù[39m Build failed in 4.68s
+[31merror during build:
+[31m[vite:esbuild] Transform failed with 1 error:
+C:/Users/mahes/Downloads/PROJECTS/COSPIRA_PROJECT/COSPIRA_MAIN/src/services/RoomIntelligence.ts:32:0: ERROR: 
+Unexpected "}"[31m
+file: [36mC:/Users/mahes/Downloads/PROJECTS/COSPIRA_PROJECT/COSPIRA_MAIN/src/services/RoomIntelligence.ts:32:0[31m
+[33m
+[33mUnexpected "}"[33m
+30 |    };
+31 |    };
+32 |  }
+   |  ^
+33 |  
+34 |  export interface RoomSuggestion {
+[31m
+    at failureErrorWithLog 
+(C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\node_modules\esbuild\lib\main.js:1467:15)
+    at C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\node_modules\esbuild\lib\main.js:736:50
+    at responseCallbacks.<computed> 
+(C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\node_modules\esbuild\lib\main.js:603:9)
+    at handleIncomingPacket 
+(C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\node_modules\esbuild\lib\main.js:658:12)
+    at Socket.readFromStdout 
+(C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\node_modules\esbuild\lib\main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)[39m

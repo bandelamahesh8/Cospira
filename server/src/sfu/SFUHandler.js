@@ -1,201 +1,518 @@
 import mediasoupWorker from './MediasoupWorker.js';
 import RoomRouter from './RoomRouter.js';
-import BrowserService from './BrowserService.js';
+import { getUser } from '../redis.js';
+import AIService from '../services/ai/AIService.js';
+import moderationService from '../services/ModerationService.js';
+import logger from '../logger.js';
 
 class SFUHandler {
     constructor(io) {
         this.io = io;
         this.roomRouters = new Map(); // roomId -> RoomRouter
-        this.browserServices = new Map(); // roomId -> BrowserService
+        this.peerStates = new Map(); // socketId -> { roomId, producerIds: Set, consumerIds: Set, transports: Set }
     }
 
     async init() {
-        await mediasoupWorker.run();
+        try {
+            await mediasoupWorker.run();
+            AIService.init(this.io);
+            moderationService.init(this.io);
+            logger.info('[SFU] Initialized successfully');
+        } catch (error) {
+            logger.error('[SFU] Initialization failed:', error);
+            throw error;
+        }
     }
 
     async getOrCreateRoomRouter(roomId) {
         let roomRouter = this.roomRouters.get(roomId);
+        
         if (!roomRouter) {
-            console.log('SFU: Creating new RoomRouter for', roomId);
             try {
                 const worker = mediasoupWorker.getWorker();
-                if (!worker) throw new Error('No Mediasoup worker available');
+                if (!worker) {
+                    throw new Error('No Mediasoup worker available');
+                }
+                
                 roomRouter = new RoomRouter(roomId, worker);
                 await roomRouter.init();
                 this.roomRouters.set(roomId, roomRouter);
-                console.log('SFU: RoomRouter initialized');
+                
+                logger.info(`[SFU] Created RoomRouter for room: ${roomId}`);
             } catch (err) {
-                console.error('SFU: Failed to create RoomRouter', err);
+                logger.error(`[SFU] Failed to create RoomRouter for ${roomId}:`, err);
                 throw err;
             }
         }
+        
         return roomRouter;
     }
 
     setupSocketEvents(socket) {
-        console.log('SFU: Setting up socket events for', socket.id);
+        logger.info(`[SFU] Setting up socket events for: ${socket.id}`);
 
+        // Initialize peer state
+        this.peerStates.set(socket.id, {
+            roomId: null,
+            producerIds: new Set(),
+            consumerIds: new Set(),
+            transports: new Set()
+        });
+
+        // ============================================
+        // GET ROUTER RTP CAPABILITIES
+        // ============================================
         socket.on('sfu:getRouterRtpCapabilities', async ({ roomId }, callback) => {
-            console.log('SFU: Received getRouterRtpCapabilities for room', roomId);
             try {
+                logger.info(`[SFU] getRouterRtpCapabilities: ${socket.id} -> room ${roomId}`);
+                
                 const roomRouter = await this.getOrCreateRoomRouter(roomId);
-                console.log('SFU: Sending RTP capabilities');
-                callback(roomRouter.router.rtpCapabilities);
+                const capabilities = roomRouter.router.rtpCapabilities;
+                
+                // Update peer state
+                const peerState = this.peerStates.get(socket.id);
+                if (peerState) {
+                    peerState.roomId = roomId;
+                }
+                
+                callback(capabilities);
+                logger.info(`[SFU] RTP capabilities sent to ${socket.id}`);
             } catch (error) {
-                console.error('sfu:getRouterRtpCapabilities error', error);
+                logger.error(`[SFU] getRouterRtpCapabilities error for ${socket.id}:`, error);
                 callback({ error: error.message });
             }
         });
 
-        socket.on('sfu:createWebRtcTransport', async ({ roomId }, callback) => {
-            console.log('SFU: Received createWebRtcTransport request for room', roomId);
+        // ============================================
+        // CREATE WEBRTC TRANSPORT
+        // ============================================
+        socket.on('sfu:createWebRtcTransport', async ({ roomId, forceTcp }, callback) => {
             try {
+                logger.info(`[SFU] createWebRtcTransport: ${socket.id} -> room ${roomId}, forceTcp: ${forceTcp}`);
+                
                 const roomRouter = await this.getOrCreateRoomRouter(roomId);
-                console.log('SFU: Got room router for room', roomId);
-                const transportParams = await roomRouter.createWebRtcTransport(socket.id);
-                console.log('SFU: Created transport for socket', socket.id);
+                
+                // Determine announcedIp from request
+                const host = socket.handshake.headers.host;
+                let suggestedAnnouncedIp = null;
+                
+                if (host && !host.includes('localhost') && !host.includes('127.0.0.1') && !host.includes('10.0.2.2')) {
+                    suggestedAnnouncedIp = host.split(':')[0];
+                    logger.info(`[SFU] Using announcedIp from Host header: ${suggestedAnnouncedIp}`);
+                }
+
+                const transportParams = await roomRouter.createWebRtcTransport(socket.id, { 
+                    forceTcp: true, // Force TCP for maximum reliability
+                    announcedIp: suggestedAnnouncedIp
+                });
+
+                // Track transport in peer state
+                const peerState = this.peerStates.get(socket.id);
+                if (peerState) {
+                    peerState.transports.add(transportParams.id);
+                }
+
                 callback(transportParams);
+                logger.info(`[SFU] Transport created: ${transportParams.id} for ${socket.id}`);
             } catch (error) {
-                console.error('sfu:createWebRtcTransport error', error);
+                logger.error(`[SFU] createWebRtcTransport error for ${socket.id}:`, error);
                 callback({ error: error.message });
             }
         });
 
+        // ============================================
+        // CONNECT WEBRTC TRANSPORT
+        // ============================================
         socket.on('sfu:connectWebRtcTransport', async ({ roomId, transportId, dtlsParameters }, callback) => {
             try {
+                logger.info(`[SFU] connectWebRtcTransport: ${socket.id} -> transport ${transportId}`);
+                
                 const roomRouter = await this.getOrCreateRoomRouter(roomId);
                 await roomRouter.connectWebRtcTransport(transportId, dtlsParameters);
+                
                 callback({ success: true });
+                logger.info(`[SFU] Transport connected: ${transportId} for ${socket.id}`);
             } catch (error) {
-                console.error('sfu:connectWebRtcTransport error', error);
+                logger.error(`[SFU] connectWebRtcTransport error for ${socket.id}:`, error);
                 callback({ error: error.message });
             }
         });
 
-        socket.on('sfu:produce', async ({ roomId, transportId, kind, rtpParameters }, callback) => {
+        // ============================================
+        // PRODUCE (SEND MEDIA)
+        // ============================================
+        socket.on('sfu:produce', async ({ roomId, transportId, kind, rtpParameters, appData }, callback) => {
             try {
+                logger.info(`[SFU] produce: ${socket.id} -> ${kind} on transport ${transportId}`);
+                
                 const roomRouter = await this.getOrCreateRoomRouter(roomId);
-                const { id } = await roomRouter.produce(socket.id, transportId, kind, rtpParameters);
+                const { id: producerId } = await roomRouter.produce(socket.id, transportId, kind, rtpParameters, appData);
 
-                // Notify other peers in the room about the new producer
+                // Track producer in peer state
+                const peerState = this.peerStates.get(socket.id);
+                if (peerState) {
+                    peerState.producerIds.add(producerId);
+                }
+
+                // Get user info
+                let userId = appData?.userId;
+                if (!userId) {
+                    const user = await getUser(socket.id);
+                    userId = user ? user.id : socket.id;
+                }
+
+                // Start AI transcription for audio
+                if (kind === 'audio') {
+                    try {
+                        AIService.startTranscription(roomId, userId, producerId, roomRouter)
+                            .catch(err => {
+                                logger.error(`[SFU] AI transcription startup failed for ${userId}:`, err);
+                            });
+                    } catch (e) {
+                        logger.error('[SFU] Failed to trigger AI Service:', e);
+                    }
+                }
+
+                // Notify other peers about new producer
                 socket.to(roomId).emit('sfu:newProducer', {
-                    producerId: id,
+                    producerId,
                     socketId: socket.id,
-                    kind: kind
+                    userId,
+                    kind,
+                    appData
                 });
 
-                callback({ id });
+                callback({ id: producerId });
+                logger.info(`[SFU] Producer created: ${producerId} (${kind}) for ${socket.id}`);
             } catch (error) {
-                console.error('sfu:produce error', error);
+                logger.error(`[SFU] produce error for ${socket.id}:`, error);
                 callback({ error: error.message });
             }
         });
 
+        // ============================================
+        // GET EXISTING PRODUCERS
+        // ============================================
+        socket.on('sfu:getProducers', async ({ roomId }, callback) => {
+            try {
+                logger.info(`[SFU] getProducers: ${socket.id} -> room ${roomId}`);
+                
+                const producers = await this.getExistingProducers(roomId);
+                callback(producers);
+                
+                logger.info(`[SFU] Sent ${producers.length} producers to ${socket.id}`);
+            } catch (error) {
+                logger.error(`[SFU] getProducers error:`, error);
+                callback({ error: error.message });
+            }
+        });
+
+        // ============================================
+        // CONSUME (RECEIVE MEDIA)
+        // ============================================
         socket.on('sfu:consume', async ({ roomId, transportId, producerId, rtpCapabilities }, callback) => {
             try {
+                logger.info(`[SFU] consume: ${socket.id} -> producer ${producerId}`);
+                
                 const roomRouter = await this.getOrCreateRoomRouter(roomId);
                 const params = await roomRouter.consume(socket.id, transportId, producerId, rtpCapabilities);
+
+                // Track consumer in peer state
+                const peerState = this.peerStates.get(socket.id);
+                if (peerState) {
+                    peerState.consumerIds.add(params.id);
+                }
+
                 callback(params);
+                logger.info(`[SFU] Consumer created: ${params.id} for ${socket.id}`);
             } catch (error) {
-                console.error('sfu:consume error', error);
+                logger.error(`[SFU] consume error for ${socket.id}:`, error);
                 callback({ error: error.message });
             }
         });
 
+        // ============================================
+        // RESUME CONSUMER
+        // ============================================
         socket.on('sfu:resumeConsumer', async ({ roomId, consumerId }, callback) => {
             try {
+                logger.info(`[SFU] resumeConsumer: ${socket.id} -> ${consumerId}`);
+                
                 const roomRouter = await this.getOrCreateRoomRouter(roomId);
                 await roomRouter.resumeConsumer(consumerId);
+                
                 callback({ success: true });
+                logger.info(`[SFU] Consumer resumed: ${consumerId}`);
             } catch (error) {
-                console.error('sfu:resumeConsumer error', error);
+                logger.error(`[SFU] resumeConsumer error:`, error);
                 callback({ error: error.message });
             }
         });
 
-        socket.on('disconnect', () => {
-            // Clean up peers from all room routers they might be in
-            // Since we don't easily know which room they are in without tracking, 
-            // we might rely on the room logic in index.js calling a cleanup method, 
-            // or iterate all routers (inefficient).
-            // Ideally, index.js calls a cleanup method on leave/disconnect.
+        // ============================================
+        // REQUEST KEY FRAME (PLI)
+        // ============================================
+        socket.on('sfu:requestKeyFrame', async ({ roomId, consumerId }, callback) => {
+            try {
+                logger.info(`[SFU] requestKeyFrame: ${socket.id} -> ${consumerId}`);
+                
+                const roomRouter = await this.getOrCreateRoomRouter(roomId);
+                await roomRouter.requestKeyFrame(consumerId);
+                
+                callback({ success: true });
+                logger.info(`[SFU] Key frame requested for: ${consumerId}`);
+            } catch (error) {
+                logger.error(`[SFU] requestKeyFrame error:`, error);
+                callback({ error: error.message });
+            }
         });
 
-        socket.on('sfu:startBrowser', async ({ roomId }, callback) => {
-            console.log('SFU: startBrowser for room', roomId);
+        // ============================================
+        // PAUSE PRODUCER
+        // ============================================
+        socket.on('sfu:pauseProducer', async ({ roomId, producerId }, callback) => {
             try {
-                let service = this.browserServices.get(roomId);
-                if (!service) {
-                    const roomRouter = await this.getOrCreateRoomRouter(roomId);
-                    service = new BrowserService(roomId, roomRouter.router);
-                    this.browserServices.set(roomId, service);
+                logger.info(`[SFU] pauseProducer: ${socket.id} -> ${producerId}`);
+                
+                const roomRouter = await this.getOrCreateRoomRouter(roomId);
+                await roomRouter.pauseProducer(producerId);
+                
+                callback({ success: true });
+                logger.info(`[SFU] Producer paused: ${producerId}`);
+            } catch (error) {
+                logger.error(`[SFU] pauseProducer error:`, error);
+                callback({ error: error.message });
+            }
+        });
 
-                    service.on('close', () => {
-                        this.browserServices.delete(roomId);
-                        // Notify room?
-                    });
+        // ============================================
+        // RESUME PRODUCER
+        // ============================================
+        socket.on('sfu:resumeProducer', async ({ roomId, producerId }, callback) => {
+            try {
+                logger.info(`[SFU] resumeProducer: ${socket.id} -> ${producerId}`);
+                
+                const roomRouter = await this.getOrCreateRoomRouter(roomId);
+                await roomRouter.resumeProducer(producerId);
+                
+                callback({ success: true });
+                logger.info(`[SFU] Producer resumed: ${producerId}`);
+            } catch (error) {
+                logger.error(`[SFU] resumeProducer error:`, error);
+                callback({ error: error.message });
+            }
+        });
+
+        // ============================================
+        // RESTART ICE
+        // ============================================
+        socket.on('sfu:restartIce', async ({ roomId, transportId }, callback) => {
+            try {
+                logger.info(`[SFU] restartIce: ${socket.id} -> transport ${transportId}`);
+                
+                const roomRouter = await this.getOrCreateRoomRouter(roomId);
+                const iceParameters = await roomRouter.restartIce(transportId);
+                
+                callback({ iceParameters });
+                logger.info(`[SFU] ICE restarted for transport: ${transportId}`);
+            } catch (error) {
+                logger.error(`[SFU] restartIce error:`, error);
+                callback({ error: error.message });
+            }
+        });
+
+        // ============================================
+        // CLOSE PRODUCER (EXPLICIT CLIENT REQUEST)
+        // ============================================
+        socket.on('sfu:closeProducer', async ({ roomId, producerId }, callback = () => {}) => {
+            try {
+                logger.info(`[SFU] closeProducer: ${socket.id} -> ${producerId}`);
+
+                const roomRouter = await this.getOrCreateRoomRouter(roomId);
+                roomRouter.closeProducer(producerId);
+
+                // Update peer state bookkeeping
+                const peerState = this.peerStates.get(socket.id);
+                if (peerState) {
+                    peerState.producerIds.delete(producerId);
                 }
 
-                const { producerId } = await service.start();
-
-                // Notify ALL users (including the host who started it) about the new producer
-                this.io.in(roomId).emit('sfu:newProducer', {
-                    producerId: producerId,
-                    socketId: 'browser-bot', // Special ID for browser
-                    kind: 'video',
-                    appData: { source: 'browser' } // Tag it
-                });
-
-                callback({ producerId });
-            } catch (error) {
-                console.error('sfu:startBrowser error', error);
-                callback({ error: error.message });
-            }
-        });
-
-        socket.on('sfu:stopBrowser', async ({ roomId }, callback) => {
-            try {
-                const service = this.browserServices.get(roomId);
-                if (service) {
-                    await service.stop();
-                }
                 callback({ success: true });
+                logger.info(`[SFU] Producer closed: ${producerId}`);
             } catch (error) {
+                logger.error(`[SFU] closeProducer error for ${socket.id}:`, error);
                 callback({ error: error.message });
             }
         });
 
-        socket.on('sfu:browserInput', async ({ roomId, input }) => {
-            const service = this.browserServices.get(roomId);
-            if (service) {
-                await service.handleInput(input);
+        // ============================================
+        // CLOSE CONSUMER (CLEANUP ON CLIENT FAILURE)
+        // ============================================
+        socket.on('sfu:closeConsumer', async ({ roomId, consumerId }, callback = () => {}) => {
+            try {
+                logger.info(`[SFU] closeConsumer: ${socket.id} -> ${consumerId}`);
+
+                const roomRouter = await this.getOrCreateRoomRouter(roomId);
+                roomRouter.closeConsumer(consumerId);
+
+                // Update peer state bookkeeping
+                const peerState = this.peerStates.get(socket.id);
+                if (peerState) {
+                    peerState.consumerIds.delete(consumerId);
+                }
+
+                callback({ success: true });
+                logger.info(`[SFU] Consumer closed: ${consumerId}`);
+            } catch (error) {
+                logger.error(`[SFU] closeConsumer error for ${socket.id}:`, error);
+                callback({ error: error.message });
             }
         });
+
+        // ============================================
+        // DISCONNECT HANDLER
+        // ============================================
+        socket.on('disconnect', async () => {
+            logger.info(`[SFU] Socket disconnected: ${socket.id}`);
+            
+            try {
+                const peerState = this.peerStates.get(socket.id);
+                if (peerState && peerState.roomId) {
+                    await this.cleanupPeer(socket.id, peerState.roomId);
+                }
+            } catch (error) {
+                logger.error(`[SFU] Error during disconnect cleanup for ${socket.id}:`, error);
+            } finally {
+                this.peerStates.delete(socket.id);
+            }
+        });
+    }
+
+    // ============================================
+    // CLEANUP METHODS
+    // ============================================
+    async cleanupPeer(socketId, roomId) {
+        try {
+            logger.info(`[SFU] Cleaning up peer: ${socketId} from room ${roomId}`);
+            
+            const roomRouter = this.roomRouters.get(roomId);
+            if (!roomRouter) {
+                logger.warn(`[SFU] No RoomRouter found for ${roomId} during cleanup`);
+                return;
+            }
+
+            // Remove peer (closes all transports, producers, consumers)
+            roomRouter.removePeer(socketId);
+
+            // Check if room is empty
+            if (roomRouter.peers.size === 0) {
+                await this.cleanUpRoom(roomId);
+            }
+
+            logger.info(`[SFU] Peer cleanup complete: ${socketId}`);
+        } catch (error) {
+            logger.error(`[SFU] Error cleaning up peer ${socketId}:`, error);
+        }
     }
 
     removePeer(roomId, socketId) {
-        const roomRouter = this.roomRouters.get(roomId);
-        if (roomRouter) {
-            roomRouter.removePeer(socketId);
-            // If room is empty, close the router.
-            if (roomRouter.peers.size === 0) {
-                this.cleanUpRoom(roomId);
+        // Delegate to cleanupPeer for proper async handling
+        this.cleanupPeer(socketId, roomId).catch(err => {
+            logger.error(`[SFU] Error in removePeer for ${socketId}:`, err);
+        });
+    }
+
+    async cleanUpRoom(roomId) {
+        try {
+            const roomRouter = this.roomRouters.get(roomId);
+            if (!roomRouter) return;
+
+            logger.info(`[SFU] Cleaning up room: ${roomId}`);
+            
+            // Close all transports/producers/consumers for extra safety
+            for (const transportId of roomRouter.transports.keys()) {
+                roomRouter.closeTransport(transportId);
             }
+            for (const producerId of roomRouter.producers.keys()) {
+                roomRouter.closeProducer(producerId);
+            }
+            for (const consumerId of roomRouter.consumers.keys()) {
+                roomRouter.closeConsumer(consumerId);
+            }
+
+            // Close router and remove from registry
+            if (roomRouter.router && !roomRouter.router.closed) {
+                roomRouter.router.close();
+            }
+            this.roomRouters.delete(roomId);
+
+            logger.info(`[SFU] Room cleanup complete: ${roomId}`);
+        } catch (error) {
+            logger.error(`[SFU] Error cleaning up room ${roomId}:`, error);
         }
     }
 
-    cleanUpRoom(roomId) {
-        const service = this.browserServices.get(roomId);
-        if (service) {
-            service.stop();
+    async getExistingProducers(roomId) {
+        const roomRouter = this.roomRouters.get(roomId);
+        if (!roomRouter) {
+            return [];
         }
 
-        const roomRouter = this.roomRouters.get(roomId);
-        if (roomRouter) {
-            console.log(`SFU: Cleaning up room ${roomId}`);
-            roomRouter.router.close(); // This closes all transports and producers associated with it
-            this.roomRouters.delete(roomId);
-        }
+        const producers = roomRouter.getExistingProducers();
+        
+        // Enhance with userId: prefer appData.userId (from mobile/web produce) so stream key
+        // matches room.users[].id for remoteStreams lookup; fallback to Redis user or socketId.
+        const producersWithUserId = await Promise.all(
+            producers.map(async (producer) => {
+                const user = await getUser(producer.socketId);
+                const userId = producer.appData?.userId || (user ? user.id : producer.socketId);
+                return {
+                    ...producer,
+                    userId
+                };
+            })
+        );
+
+        return producersWithUserId;
+    }
+
+    // ============================================
+    // VIRTUAL BROWSER SUPPORT
+    // ============================================
+    async createPlainTransport(roomId) {
+        logger.info(`[SFU] Creating PlainTransport for room: ${roomId}`);
+        
+        const roomRouter = await this.getOrCreateRoomRouter(roomId);
+        const transport = await roomRouter.createPlainTransport();
+        
+        return {
+            id: transport.id,
+            ip: transport.tuple.localIp,
+            port: transport.tuple.localPort,
+            rtcpPort: transport.rtcpTuple ? transport.rtcpTuple.localPort : undefined
+        };
+    }
+
+    async produceFromTransport(roomId, transportId, kind, rtpParameters, appData) {
+        logger.info(`[SFU] Producing from PlainTransport: ${roomId}, ${kind}`);
+        
+        const roomRouter = await this.getOrCreateRoomRouter(roomId);
+        const socketId = `virtual-browser-${roomId}`;
+        
+        roomRouter.addPeerResource(socketId, 'transports', transportId);
+        
+        const { id } = await roomRouter.produce(socketId, transportId, kind, rtpParameters, appData);
+        
+        // Notify others
+        this.io.to(roomId).emit('sfu:newProducer', {
+            producerId: id,
+            socketId: socketId,
+            userId: 'virtual-browser',
+            kind: kind,
+            appData: appData
+        });
+        
+        return { id };
     }
 }
 

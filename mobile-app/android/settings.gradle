@@ -1,0 +1,18 @@
+pluginManagement {
+  // React Native Gradle plugin is provided from node_modules
+  includeBuild("../node_modules/@react-native/gradle-plugin")
+}
+
+plugins {
+  id("com.facebook.react.settings")
+}
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+  ex.autolinkLibrariesFromCommand()
+}
+
+// Make the React Native Gradle plugin itself available as a composite build
+includeBuild("../node_modules/@react-native/gradle-plugin")
+
+rootProject.name = "cospira-mobile-app"
+include(":app")

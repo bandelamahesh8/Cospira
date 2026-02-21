@@ -1,30 +1,28 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN apk add --no-cache python3 py3-pip make g++ linux-headers
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 RUN npm install
 
 # Production stage
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 WORKDIR /app
 
-# Install runtime dependencies for Puppeteer
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
 
-# Skip Puppeteer Chromium download as we installed it via apk
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Copy source code
+COPY . .
 
 # Copy node_modules from builder
+# We do this AFTER copying source code to ensure potential local node_modules
+# (if not ignored) are overwritten by the correct built ones.
 COPY --from=builder /app/node_modules ./node_modules
-COPY . .
 
 EXPOSE 3001
 

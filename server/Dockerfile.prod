@@ -1,0 +1,21 @@
+# Build Stage
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+
+# Production Stage
+FROM node:18-alpine
+WORKDIR /app
+
+# Install FFmpeg for Audio Processing
+RUN apk add --no-cache ffmpeg
+
+COPY --from=builder /app/package*.json ./
+RUN npm ci --only=production
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/uploads ./uploads
+
+EXPOSE 3001
+CMD ["npm", "start"]

@@ -1,3 +1,29 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+import os from 'os';
+
+const getLANIP = () => {
+    const interfaces = os.networkInterfaces();
+    for (const iface of Object.values(interfaces)) {
+        for (const alias of iface) {
+            if (alias.family === 'IPv4' && !alias.internal) {
+                return alias.address;
+            }
+        }
+    }
+    return '127.0.0.1';
+};
+
+const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP || getLANIP();
+
 export default {
     mediasoup: {
         // Worker settings
@@ -58,13 +84,27 @@ export default {
             listenIps: [
                 {
                     ip: '0.0.0.0',
-                    announcedIp: '127.0.0.1' // Replace with public IP in production
+                    announcedIp: announcedIp
                 }
             ],
-            initialAvailableOutgoingBitrate: 1000000,
+            enableUdp: true,
+            enableTcp: true,
+            preferUdp: true,
+            initialAvailableOutgoingBitrate: 1200000,
             minimumAvailableOutgoingBitrate: 600000,
             maxSctpMessageSize: 262144,
             maxIncomingBitrate: 1500000
+        },
+        // PlainTransport options for AI/Recording
+        plainTransport: {
+            listenIp: {
+                ip: '0.0.0.0',
+                announcedIp: announcedIp
+            },
+            maxSctpMessageSize: 262144
         }
+    },
+    ai: {
+        deepgramApiKey: process.env.DEEPGRAM_API_KEY
     }
 };

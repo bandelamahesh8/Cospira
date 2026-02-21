@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clear Auth Token - COSPIRA</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+          sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+      h1 {
+        color: #333;
+        margin-top: 0;
+      }
+      .status {
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+        font-weight: 500;
+      }
+      .info {
+        background: #e3f2fd;
+        color: #1976d2;
+        border-left: 4px solid #1976d2;
+      }
+      .success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        border-left: 4px solid #2e7d32;
+      }
+      .warning {
+        background: #fff3e0;
+        color: #f57c00;
+        border-left: 4px solid #f57c00;
+      }
+      button {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        margin: 10px 0;
+        transition: all 0.3s ease;
+      }
+      button:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+      button:active {
+        transform: translateY(0);
+      }
+      .secondary {
+        background: #6c757d;
+      }
+      .secondary:hover {
+        background: #5a6268;
+      }
+      code {
+        background: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+      }
+      ul {
+        line-height: 1.8;
+      }
+      .step {
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>🔧 Fix Authentication Error</h1>
+
+      <div class="status info">
+        <strong>Issue:</strong> Your browser has a cached authentication token that was signed with
+        an old JWT secret.
+      </div>
+
+      <div id="tokenStatus" class="status warning">
+        <strong>Current Token:</strong> <span id="tokenInfo">Checking...</span>
+      </div>
+
+      <h2>Quick Fix</h2>
+      <button onclick="clearAllAndReload()">🗑️ Clear Token & Reload</button>
+
+      <h2>Manual Steps</h2>
+      <div class="step">
+        <strong>1. Clear Storage:</strong>
+        <button onclick="clearStorage()">Clear LocalStorage & SessionStorage</button>
+      </div>
+
+      <div class="step">
+        <strong>2. Clear Cookies:</strong>
+        <button onclick="clearCookies()">Clear All Cookies</button>
+      </div>
+
+      <div class="step">
+        <strong>3. Reload:</strong>
+        <button class="secondary" onclick="location.reload()">Reload Page</button>
+      </div>
+
+      <div id="result"></div>
+
+      <h2>What This Does</h2>
+      <ul>
+        <li>Removes the old authentication token from <code>localStorage</code></li>
+        <li>Clears <code>sessionStorage</code></li>
+        <li>Removes all cookies</li>
+        <li>Forces a fresh login with the new JWT secret</li>
+      </ul>
+
+      <div class="status info">
+        <strong>After clearing:</strong> You'll need to log in again. The new token will be signed
+        with the correct JWT secret and authentication will work properly.
+      </div>
+    </div>
+
+    <script>
+      // Check current token status
+      function checkToken() {
+        const token = localStorage.getItem('token');
+        const tokenInfo = document.getElementById('tokenInfo');
+
+        if (token) {
+          tokenInfo.textContent = `Found (${token.substring(0, 20)}...)`;
+          tokenInfo.parentElement.className = 'status warning';
+        } else {
+          tokenInfo.textContent = 'No token found';
+          tokenInfo.parentElement.className = 'status success';
+        }
+      }
+
+      function clearStorage() {
+        const itemsBefore = localStorage.length + sessionStorage.length;
+        localStorage.clear();
+        sessionStorage.clear();
+
+        showResult(`✅ Cleared ${itemsBefore} storage items`, 'success');
+        checkToken();
+      }
+
+      function clearCookies() {
+        const cookies = document.cookie.split(';');
+
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i];
+          const eqPos = cookie.indexOf('=');
+          const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+          document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+        }
+
+        showResult(`✅ Cleared ${cookies.length} cookies`, 'success');
+      }
+
+      function clearAllAndReload() {
+        clearStorage();
+        clearCookies();
+
+        showResult('✅ All cleared! Reloading in 2 seconds...', 'success');
+
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      }
+
+      function showResult(message, type) {
+        const result = document.getElementById('result');
+        result.className = `status ${type}`;
+        result.textContent = message;
+        result.style.display = 'block';
+      }
+
+      // Check token on load
+      checkToken();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,61 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    ext {
+        buildToolsVersion = "35.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 35
+        targetSdkVersion = 35
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.1.20"
+    }
+    repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    classpath('com.android.tools.build:gradle:8.11.0')
+    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.20')
+    // React Native Gradle Plugin (RNGP) provides com.facebook.react and related tasks
+    classpath('com.facebook.react:react-native-gradle-plugin')
+  }
+}
+
+allprojects {
+  repositories {
+    google()
+    mavenCentral()
+    maven {
+        url "$rootDir/../node_modules/react-native/android"
+    }
+    maven { url 'https://www.jitpack.io' }
+  }
+}
+
+subprojects {
+    pluginManager.withPlugin("com.android.library") {
+        android {
+            ndkVersion = rootProject.ext.ndkVersion
+            defaultConfig {
+
+                externalNativeBuild {
+                    cmake {
+                        arguments "-DANDROID_STL=c++_shared", "-DCMAKE_SHARED_LINKER_FLAGS=-lc++_shared"
+                    }
+                }
+            }
+        }
+    }
+    pluginManager.withPlugin("com.android.application") {
+        android {
+            ndkVersion = rootProject.ext.ndkVersion
+            defaultConfig {
+                externalNativeBuild {
+                    cmake {
+                        arguments "-DANDROID_STL=c++_shared", "-DCMAKE_SHARED_LINKER_FLAGS=-lc++_shared"
+                    }
+                }
+            }
+        }
+    }
+}

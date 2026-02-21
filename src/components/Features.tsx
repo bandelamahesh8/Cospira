@@ -1,4 +1,4 @@
-import { Shield, MonitorPlay, Gamepad2, FileUp, Mic, Globe, Lock, Cloud } from 'lucide-react';
+import { Shield, Gamepad2, FileUp, Mic, Globe, Lock, Cloud } from 'lucide-react';
 
 const features = [
   {
@@ -6,11 +6,6 @@ const features = [
     title: 'Zero-Trust Security',
     description:
       'Quantum-safe encryption with ephemeral cloud containers. No data touches local devices.',
-  },
-  {
-    icon: MonitorPlay,
-    title: 'Virtual Browser',
-    description: 'Cloud-rendered browser sessions with 8K streaming and pixel-perfect rendering.',
   },
   {
     icon: Gamepad2,

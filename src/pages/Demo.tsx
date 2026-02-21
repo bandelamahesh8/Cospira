@@ -5,11 +5,11 @@ import { Play } from 'lucide-react';
 
 const Demo = () => {
   return (
-    <div className='min-h-screen bg-background'>
+    <div className='min-h-screen bg-[#0B0F14]'>
       <Navbar />
       <div className='container pb-10 pt-32'>
         <div className='text-center max-w-3xl mx-auto mb-12'>
-          <h1 className='text-4xl font-bold mb-6'>Watch ShareUs in Action</h1>
+          <h1 className='text-4xl font-bold mb-6'>Watch Cospira in Action</h1>
           <p className='text-xl text-muted-foreground'>
             See how easy it is to collaborate securely with your team in real-time.
           </p>
@@ -25,7 +25,7 @@ const Demo = () => {
 
         <div className='mt-12 text-center'>
           <h2 className='text-2xl font-semibold mb-4'>Ready to try it yourself?</h2>
-          <Button asChild size='lg'>
+          <Button asChild size='lg' className="btn-luxury border-none ring-0">
             <Link to='/dashboard'>Go to Dashboard</Link>
           </Button>
         </div>

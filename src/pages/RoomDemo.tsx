@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Navbar from '@/components/Navbar';
 import ChatPanel from '@/components/ChatPanel';
@@ -53,14 +53,14 @@ const RoomDemo = () => {
   ];
 
   return (
-    <div className='min-h-screen bg-background flex flex-col'>
+    <div className='min-h-screen bg-[#0B0F14] flex flex-col'>
       <Navbar />
 
       <div className='flex-1 flex pt-16'>
         {/* Main Content Area */}
         <div className='flex-1 flex flex-col p-4'>
           {/* Room Info Bar */}
-          <Card className='glass-card p-4 mb-4'>
+          <Card className='luxury-card bg-[#11161D] border-white/5 p-4 mb-4'>
             <div className='flex items-center justify-between'>
               <div>
                 <h2 className='text-xl font-bold'>Team Collaboration Room</h2>
@@ -87,15 +87,15 @@ const RoomDemo = () => {
           {/* Video Area */}
           <div className='flex-1 flex gap-4'>
             {/* Main Video */}
-            <Card className='flex-1 glass-card relative overflow-hidden'>
+            <Card className='flex-1 luxury-card bg-[#11161D] border-white/5 relative overflow-hidden'>
               <div className='absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10'>
                 <div className='text-center'>
                   <div className='w-24 h-24 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 animate-glow'>
                     <Monitor className='w-12 h-12 text-background' />
                   </div>
-                  <h3 className='text-2xl font-semibold mb-2'>Virtual Browser Session</h3>
+                  <h3 className='text-2xl font-semibold mb-2'>Secure Video Call</h3>
                   <p className='text-muted-foreground'>
-                    Cloud-rendered desktop in ephemeral container
+                    High-definition video processing
                   </p>
                 </div>
               </div>
@@ -134,7 +134,7 @@ const RoomDemo = () => {
 
             {/* Participants Panel */}
             {showParticipants && (
-              <Card className='w-64 glass-card p-4'>
+              <Card className='w-64 luxury-card bg-[#11161D] border-white/5 p-4'>
                 <h3 className='font-semibold mb-4'>Participants ({participants.length})</h3>
                 <div className='space-y-3'>
                   {participants.map((participant) => (
@@ -160,8 +160,8 @@ const RoomDemo = () => {
         {/* Chat Panel */}
         {showChat && (
           <div className='w-80 h-[calc(100vh-4rem)] pt-16'>
-            <Card className='glass-card h-full overflow-hidden'>
-              <ChatPanel roomId='demo' />
+            <Card className='luxury-card bg-[#11161D] border-white/5 h-full overflow-hidden'>
+              <ChatPanel roomId='demo' onClose={() => setShowChat(false)} />
             </Card>
           </div>
         )}

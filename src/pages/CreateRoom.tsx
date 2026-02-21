@@ -1,297 +1,257 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Globe, Video, Gamepad2, FileText, Shield, Lock, Loader2 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { 
+    Zap, 
+    Cpu,
+    Lock,
+    Check
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { ROOM_MODE_CONFIGS, RoomMode } from '@/services/RoomIntelligence';
+import { encodeRoomId } from '@/utils/roomCode';
 
 const CreateRoom = () => {
-  const { user } = useAuth();
   const { createRoom } = useWebSocket();
   const navigate = useNavigate();
 
   const [roomName, setRoomName] = useState('');
-  const [roomType, setRoomType] = useState('browser');
-  const [capacity, setCapacity] = useState('10');
+  const [selectedMode, setSelectedMode] = useState<RoomMode>('mixed');
+  const [isCreating, setIsCreating] = useState(false);
   const [password, setPassword] = useState('');
-  const [settings, setSettings] = useState({
-    micAllowed: true,
-    cameraAllowed: true,
-    fileUpload: true,
-    chat: true,
-    externalLinks: false,
-    drmSafe: false,
-    ghostProtocol: false,
-    complianceMode: false,
-  });
-
-  const roomTypes = [
-    { id: 'browser', icon: Video, label: 'Virtual Browser' },
-    { id: 'watch', icon: Globe, label: 'Watch Party' },
-    { id: 'game', icon: Gamepad2, label: 'Game Room' },
-    { id: 'presentation', icon: FileText, label: 'Presentation' },
-    { id: 'secure', icon: Shield, label: 'Secure Corporate' },
-  ];
 
   const handleCreateRoom = () => {
     if (!roomName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a room name',
-        variant: 'destructive',
-      });
+      toast.error('Sector ID Missing', { description: 'Please assign a name to your new sector.' });
       return;
     }
 
-    // Generate a 6-digit random alphanumeric key
+    setIsCreating(true);
+
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let roomId = '';
     for (let i = 0; i < 6; i++) {
-      roomId += chars.charAt(Math.floor(Math.random() * chars.length));
+        roomId += chars.charAt(Math.floor(Math.random() * chars.length));
     }
 
-    // Determine access type based on password
     const accessType = password ? 'password' : 'public';
+    const settings = {
+        mode: selectedMode,
+        // Inherit default features from mode, but allow overrides if we added toggles later.
+        // For now, we trust the mode config on the backend/room logic.
+    };
 
     createRoom(roomId, roomName, password, accessType, () => {
-      toast({
-        title: 'Success',
-        description: `Room created! Key: ${roomId}`,
-      });
-      navigate(`/room/${roomId}`);
-    });
+      toast.success('Sector Initialized', { description: `Unit ${roomId} is now active in ${ROOM_MODE_CONFIGS[selectedMode].label}.` });
+      const encodedId = encodeRoomId(roomId);
+      console.log('[CreateRoom] Navigating to:', `/room/${encodedId}`, 'Raw:', roomId, 'Encoded:', encodedId);
+      setTimeout(() => navigate(`/room/${encodedId}`), 500);
+    }, undefined, settings);
   };
 
+  const currentConfig = ROOM_MODE_CONFIGS[selectedMode];
+
   return (
-    <div className='min-h-screen bg-background'>
-      <Navbar />
+    <div className='min-h-screen bg-[#05070a] relative overflow-x-hidden selection:bg-indigo-500/30 font-sans text-white'>
+       {/* BACKGROUND EFFECTS */}
+       <div className="fixed inset-0 pointer-events-none z-0">
+          <motion.div 
+            animate={{ 
+                background: selectedMode === 'fun' ? 'radial-gradient(circle at 80% 20%, rgba(168,85,247,0.15), transparent 50%)' :
+                            selectedMode === 'professional' ? 'radial-gradient(circle at 80% 20%, rgba(59,130,246,0.15), transparent 50%)' :
+                            selectedMode === 'ultra' ? 'radial-gradient(circle at 80% 20%, rgba(239,68,68,0.15), transparent 50%)' :
+                            'radial-gradient(circle at 80% 20%, rgba(16,185,129,0.15), transparent 50%)'
+            }}
+            transition={{ duration: 1 }}
+            className="absolute inset-0"
+          />
+          <div className="absolute top-[10%] left-[20%] w-[30%] h-[30%] bg-white/5 blur-[120px] rounded-full mix-blend-screen" />
+          <div className="absolute inset-0 bg-[#05070a]/90" />
+       </div>
 
-      <main className='container mx-auto px-4 pt-24 pb-12'>
-        <div className='max-w-4xl mx-auto'>
-          <div className='mb-8'>
-            <Link
-              to='/dashboard'
-              className='inline-flex items-center text-muted-foreground hover:text-foreground mb-4'
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Navbar />
+
+        <div className='container mx-auto px-4 md:px-8 py-24 md:py-32 max-w-7xl flex-1 flex flex-col'>
+            
+            <motion.div 
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               className="mb-12"
             >
-              <ArrowLeft className='w-4 h-4 mr-2' />
-              Back to Dashboard
-            </Link>
-            <h1 className='text-4xl font-bold mb-2'>Create New Room</h1>
-            <p className='text-muted-foreground text-lg'>
-              Configure your secure collaboration space
-            </p>
-          </div>
-
-          {/* Room Type Selection */}
-          <Card className='glass-card mb-6'>
-            <CardHeader>
-              <CardTitle>Room Type</CardTitle>
-              <CardDescription>Select the type of collaboration space</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className='grid grid-cols-5 gap-3'>
-                {roomTypes.map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => setRoomType(type.id)}
-                    className={`p-4 rounded-lg border-2 transition-all ${roomType === type.id
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50'
-                      }`}
-                  >
-                    <type.icon className='w-8 h-8 mx-auto mb-2 text-primary' />
-                    <p className='text-sm font-medium text-center'>{type.label}</p>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Basic Settings */}
-          <Card className='glass-card mb-6'>
-            <CardHeader>
-              <CardTitle>Basic Settings</CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div>
-                <Label htmlFor='roomName'>Room Name</Label>
-                <Input
-                  id='roomName'
-                  value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
-                  placeholder='My Collaboration Room'
-                />
-              </div>
-
-              <div>
-                <Label htmlFor='capacity'>Max Capacity</Label>
-                <Select value={capacity} onValueChange={setCapacity}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='5'>5 participants</SelectItem>
-                    <SelectItem value='10'>10 participants</SelectItem>
-                    <SelectItem value='25'>25 participants</SelectItem>
-                    <SelectItem value='50'>50 participants</SelectItem>
-                    <SelectItem value='100'>100 participants</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor='password'>Room Password (Optional)</Label>
-                <Input
-                  id='password'
-                  type='password'
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder='Leave empty for no password'
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Host Controls */}
-          <Card className='glass-card mb-6'>
-            <CardHeader>
-              <CardTitle>Host Controls</CardTitle>
-              <CardDescription>Configure what participants can do</CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='flex items-center justify-between'>
-                <Label>Microphone Access</Label>
-                <Switch
-                  checked={settings.micAllowed}
-                  onCheckedChange={(checked) => setSettings({ ...settings, micAllowed: checked })}
-                />
-              </div>
-
-              <div className='flex items-center justify-between'>
-                <Label>Camera Access</Label>
-                <Switch
-                  checked={settings.cameraAllowed}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, cameraAllowed: checked })
-                  }
-                />
-              </div>
-
-              <div className='flex items-center justify-between'>
-                <Label>File Upload</Label>
-                <Switch
-                  checked={settings.fileUpload}
-                  onCheckedChange={(checked) => setSettings({ ...settings, fileUpload: checked })}
-                />
-              </div>
-
-              <div className='flex items-center justify-between'>
-                <Label>Chat</Label>
-                <Switch
-                  checked={settings.chat}
-                  onCheckedChange={(checked) => setSettings({ ...settings, chat: checked })}
-                />
-              </div>
-
-              <div className='flex items-center justify-between'>
-                <Label>External Links</Label>
-                <Switch
-                  checked={settings.externalLinks}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, externalLinks: checked })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Advanced Security */}
-          <Card className='glass-card mb-6'>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <Lock className='w-5 h-5 text-primary' />
-                Advanced Security
-              </CardTitle>
-              <CardDescription>Enterprise-grade security features</CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <Label>DRM-Safe Mode</Label>
-                  <p className='text-sm text-muted-foreground'>
-                    Enable hardware DRM for content protection
-                  </p>
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full mb-4">
+                    <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">System Architect</span>
                 </div>
-                <Switch
-                  checked={settings.drmSafe}
-                  onCheckedChange={(checked) => setSettings({ ...settings, drmSafe: checked })}
-                />
-              </div>
+                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-4">
+                    INITIALIZE SECTOR
+                </h1>
+                <p className="text-white/40 font-medium max-w-xl text-lg">
+                    Select a protocol to define the capabilities, security level, and visual identity of your workspace.
+                </p>
+            </motion.div>
 
-              <Separator />
+            <div className="grid lg:grid-cols-12 gap-12 flex-1">
+                
+                {/* LEFT: MODE SELECTION (VALORANT CARDS) */}
+                <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr">
+                    {(Object.keys(ROOM_MODE_CONFIGS) as RoomMode[]).map((mode) => {
+                        const config = ROOM_MODE_CONFIGS[mode];
+                        const isSelected = selectedMode === mode;
 
-              <div className='flex items-center justify-between'>
-                <div>
-                  <Label>Ghost Protocol</Label>
-                  <p className='text-sm text-muted-foreground'>AI-powered intrusion detection</p>
+                        return (
+                            <motion.button
+                                key={mode}
+                                onClick={() => setSelectedMode(mode)}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={`
+                                    relative group overflow-hidden rounded-[2rem] border text-left p-8 flex flex-col transition-all duration-300
+                                    ${isSelected 
+                                        ? 'bg-[#0c1016] border-white/20 shadow-[0_20px_40px_rgba(0,0,0,0.5)]' 
+                                        : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'
+                                    }
+                                `}
+                            >
+                                {/* Active Outline / Glow */}
+                                {isSelected && (
+                                    <motion.div 
+                                        layoutId="activeGlow"
+                                        className="absolute inset-0 border-2 rounded-[2rem] pointer-events-none z-20"
+                                        style={{ borderColor: mode === 'ultra' ? '#EF4444' : mode === 'fun' ? '#A855F7' : mode === 'professional' ? '#3B82F6' : '#10B981' }}
+                                    />
+                                )}
+
+                                {/* Card Background Gradient */}
+                                <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-br ${
+                                    mode === 'ultra' ? 'from-red-900/10 to-transparent' : 
+                                    mode === 'fun' ? 'from-purple-900/10 to-transparent' : 
+                                    mode === 'professional' ? 'from-blue-900/10 to-transparent' : 
+                                    'from-emerald-900/10 to-transparent'
+                                }`} />
+
+                                <div className="relative z-10 flex-1 flex flex-col">
+                                     <div className="flex items-start justify-between mb-6">
+                                         <div className={`
+                                            w-12 h-12 rounded-2xl flex items-center justify-center text-2xl
+                                            ${isSelected ? 'bg-white/10 text-white' : 'bg-white/5 text-white/50 group-hover:text-white group-hover:bg-white/10'}
+                                         `}>
+                                             {config.icon}
+                                         </div>
+                                         {isSelected && <Check className="w-6 h-6 text-white" />}
+                                     </div>
+
+                                     <h3 className={`text-2xl font-black uppercase tracking-tight mb-2 ${isSelected ? 'text-white' : 'text-white/70 group-hover:text-white'}`}>
+                                         {config.label}
+                                     </h3>
+                                     <p className="text-sm text-white/40 font-medium leading-relaxed mb-6">
+                                         {config.description}
+                                     </p>
+
+                                     {/* Mini Feature Tags */}
+                                     <div className="mt-auto flex flex-wrap gap-2">
+                                         {config.features.games && <span className="px-2 py-1 rounded bg-white/5 text-[10px] font-bold uppercase tracking-wider text-white/50">Games</span>}
+                                         {config.features.summary && <span className="px-2 py-1 rounded bg-white/5 text-[10px] font-bold uppercase tracking-wider text-white/50">AI Summary</span>}
+                                         {config.securityLevel === 'high' && <span className="px-2 py-1 rounded bg-red-500/10 text-[10px] font-bold uppercase tracking-wider text-red-500">Max Security</span>}
+                                     </div>
+                                </div>
+                            </motion.button>
+                        );
+                    })}
                 </div>
-                <Switch
-                  checked={settings.ghostProtocol}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, ghostProtocol: checked })
-                  }
-                />
-              </div>
 
-              <Separator />
+                {/* RIGHT: CONFIGURATION & PREVIEW */}
+                <div className="lg:col-span-4 flex flex-col gap-6">
+                    
+                    {/* INPUTS */}
+                    <div className="bg-[#0c1016] border border-white/5 rounded-[2.5rem] p-8 shadow-2xl space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Sector Name</Label>
+                            <Input 
+                                value={roomName}
+                                onChange={(e) => setRoomName(e.target.value)}
+                                placeholder="e.g. Operation Nightfall"
+                                className="h-14 bg-white/5 border-white/5 rounded-2xl px-5 font-bold text-white focus:border-white/20 transition-all placeholder:text-white/10"
+                            />
+                        </div>
 
-              <div className='flex items-center justify-between'>
-                <div>
-                  <Label>Compliance Mode</Label>
-                  <p className='text-sm text-muted-foreground'>
-                    Enable audit logging and blockchain verification
-                  </p>
+                        <div className="space-y-2">
+                             <Label className="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Passkey (Optional)</Label>
+                             <div className="relative">
+                                 <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                                 <Input 
+                                     type="password"
+                                     value={password}
+                                     onChange={(e) => setPassword(e.target.value)}
+                                     placeholder="Secure Access Token"
+                                     className="h-14 pl-12 bg-white/[0.02] border-white/5 rounded-2xl font-mono text-sm text-white focus:border-white/20 transition-all placeholder:text-white/10"
+                                 />
+                             </div>
+                        </div>
+                    </div>
+
+                    {/* LIVE PREVIEW OF MODE */}
+                    <div className="flex-1 bg-gradient-to-b from-[#0c1016] to-transparent border border-white/5 rounded-[2.5rem] p-8 relative overflow-hidden">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-white/30 mb-6">Protocol Details</h4>
+                        
+                        <div className="space-y-4 relative z-10">
+                            <FeatureRow label="Games & Activities" active={currentConfig.features.games} />
+                            <FeatureRow label="AI Intelligence" active={currentConfig.features.summary} />
+                            <FeatureRow label="Virtual Browser" active={currentConfig.features.virtualBrowser} />
+                            <FeatureRow label="Screen Sharing" active={currentConfig.features.screenShare} />
+                            
+                            <div className="h-px bg-white/5 my-4" />
+                            
+                                    <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-white/50">Security Level</span>
+                                <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${
+                                    currentConfig.securityLevel === 'high' ? 'bg-red-500/20 text-red-500' :
+                                    currentConfig.securityLevel === 'medium' ? 'bg-blue-500/20 text-blue-500' :
+                                    'bg-green-500/20 text-green-500'
+                                }`}>
+                                    {currentConfig.securityLevel}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* CTA */}
+                        <motion.button 
+                            onClick={handleCreateRoom}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full mt-8 h-16 rounded-[1.5rem] bg-white text-black font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:bg-indigo-50 transition-colors"
+                        >
+                            {isCreating ? (
+                                <span className="animate-pulse">Initializing...</span>
+                            ) : (
+                                <>
+                                    <Zap className="w-5 h-5 fill-black" />
+                                    Launch Sector
+                                </>
+                            )}
+                        </motion.button>
+                    </div>
+
                 </div>
-                <Switch
-                  checked={settings.complianceMode}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, complianceMode: checked })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Create Button */}
-          <div className='flex gap-4'>
-            <Button variant='outline' asChild className='flex-1'>
-              <Link to='/dashboard'>Cancel</Link>
-            </Button>
-            <Button onClick={handleCreateRoom} className='flex-1 glow-button'>
-              Create Room
-            </Button>
-          </div>
         </div>
-      </main>
-
-      <Footer />
+      </div>
     </div>
   );
 };
+
+const FeatureRow = ({ label, active }: { label: string, active: boolean }) => (
+    <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-white/70">{label}</span>
+        <div className={`w-8 h-5 rounded-full flex items-center p-1 transition-colors ${active ? 'bg-emerald-500' : 'bg-white/10'}`}>
+            <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${active ? 'translate-x-3' : 'translate-x-0'}`} />
+        </div>
+    </div>
+);
 
 export default CreateRoom;

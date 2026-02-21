@@ -2,8 +2,7 @@ const crypto = require('crypto');
 
 const getTurnCredentials = () => {
     try {
-        const secret = process.env.TURN_SECRET || 'shareus-secret-key-change-me';
-        console.log('Secret:', secret);
+        const secret = process.env.TURN_SECRET || 'cospira-secret-key-change-me';
         const username = `user:${Math.floor(Date.now() / 1000)}`;
         const ttl = 24 * 3600; // 24 hours
 

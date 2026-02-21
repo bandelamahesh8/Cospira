@@ -21,7 +21,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     headers: {
-      'X-Client-Info': 'shareus-cloud-rooms/1.0.0',
+      'X-Client-Info': 'cospira-rooms/1.0.0',
     },
   },
 });

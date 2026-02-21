@@ -1,0 +1,42 @@
+
+Welcome to React Native v0.80
+Starting dev server on http://localhost:8081
+
+
+                        ΓûÆΓûÆΓûôΓûôΓûôΓûôΓûÆΓûÆ
+                     ΓûÆΓûôΓûôΓûôΓûÆΓûÆΓûæΓûæΓûÆΓûÆΓûôΓûôΓûôΓûÆ
+                  ΓûÆΓûôΓûôΓûôΓûôΓûæΓûæΓûæΓûÆΓûÆΓûÆΓûÆΓûæΓûæΓûæΓûôΓûôΓûôΓûôΓûÆ
+                 ΓûôΓûôΓûÆΓûÆΓûÆΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûÆΓûÆΓûÆΓûôΓûô
+                 ΓûôΓûôΓûæΓûæΓûæΓûæΓûæΓûÆΓûôΓûôΓûôΓûôΓûôΓûôΓûÆΓûæΓûæΓûæΓûæΓûæΓûôΓûô
+                 ΓûôΓûôΓûæΓûæΓûôΓûôΓûÆΓûæΓûæΓûæΓûÆΓûÆΓûæΓûæΓûæΓûÆΓûôΓûÆΓûæΓûæΓûôΓûô
+                 ΓûôΓûôΓûæΓûæΓûôΓûôΓûôΓûôΓûôΓûÆΓûÆΓûÆΓûÆΓûôΓûôΓûôΓûôΓûÆΓûæΓûæΓûôΓûô
+                 ΓûôΓûôΓûæΓûæΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûÆΓûæΓûæΓûôΓûô
+                 ΓûôΓûôΓûÆΓûæΓûæΓûÆΓûÆΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûÆΓûæΓûæΓûæΓûÆΓûôΓûô
+                  ΓûÆΓûôΓûôΓûôΓûÆΓûæΓûæΓûæΓûÆΓûôΓûôΓûÆΓûæΓûæΓûæΓûÆΓûôΓûôΓûôΓûÆ
+                     ΓûÆΓûôΓûôΓûôΓûÆΓûæΓûæΓûæΓûæΓûÆΓûôΓûôΓûôΓûÆ
+                        ΓûÆΓûÆΓûôΓûôΓûôΓûôΓûÆΓûÆ
+
+
+ WARN  the transform cache was reset.
+                Welcome to Metro v0.82.5
+              Fast - Scalable - Integrated
+
+
+ INFO  Connection established to app='com.anonymous.cospiramobileapp' on device='sdk_gphone64_x86_64 - 16 - API 36'.
+ INFO  Dev server ready. Press Ctrl+C to exit.
+ INFO  Key commands available:
+
+   r  - reload app(s)
+   d  - open Dev Menu
+   j  - open DevTools
+
+ BUNDLE  ..\..\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app/index.js ΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæ 0.0% (0/1)
+ BUNDLE  ..\..\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app/index.js ΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæ 1.0% (1/1)
+ BUNDLE  ..\..\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app/index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæΓûæΓûæΓûæΓûæΓûæ 64.0% (8/10)
+ BUNDLE  ..\..\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app/index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæΓûæΓûæΓûæΓûæΓûæ 64.0% (53/168)
+ BUNDLE  ..\..\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app/index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæΓûæΓûæΓûæΓûæΓûæ 64.0% (277/368)
+ BUNDLE  ..\..\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app/index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæ 94.4% (483/497)
+ BUNDLE  ..\..\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app/index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæ 98.8% (539/568)
+ BUNDLE  ..\..\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app/index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæ 99.7% (598/599)
+ BUNDLE  ..\..\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app/index.js 
+ INFO  [1m[7m≡ƒÆí JavaScript logs have moved![22m They can now be viewed in React Native DevTools. Tip: Type [1mj[22m in the terminal to open (requires Google Chrome or Microsoft Edge).[27m

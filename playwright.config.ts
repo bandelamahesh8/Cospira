@@ -8,8 +8,9 @@ export default defineConfig({
     workers: process.env.CI ? 1 : undefined,
     reporter: 'html',
     use: {
-        baseURL: 'http://localhost:8080',
+        baseURL: 'https://localhost:8080',
         trace: 'on-first-retry',
+        ignoreHTTPSErrors: true,
         permissions: ['microphone', 'camera'],
         launchOptions: {
             args: [
@@ -26,7 +27,8 @@ export default defineConfig({
     ],
     webServer: {
         command: 'npm run dev',
-        url: 'http://localhost:8080',
+        url: 'https://localhost:8080',
         reuseExistingServer: !process.env.CI,
+        ignoreHTTPSErrors: true,
     },
 });

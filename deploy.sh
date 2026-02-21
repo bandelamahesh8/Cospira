@@ -2,7 +2,7 @@
 
 # Deployment Script
 
-echo "Deploying ShareUs Cloud Rooms..."
+echo "Deploying Cospira..."
 
 # 1. Pull latest changes
 git pull origin main

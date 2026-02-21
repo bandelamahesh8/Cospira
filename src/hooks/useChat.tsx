@@ -35,6 +35,7 @@ export const useChat = (roomId: string) => {
 
         setMessages((data as Message[]) || []);
       } catch (error: unknown) {
+        // eslint-disable-next-line no-console
         console.error('Error fetching messages:', error);
         toast({
           title: 'Error',
@@ -91,6 +92,7 @@ export const useChat = (roomId: string) => {
 
       if (error) throw error;
     } catch (error: unknown) {
+      // eslint-disable-next-line no-console
       console.error('Error sending message:', error);
       toast({
         title: 'Error',
