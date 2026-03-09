@@ -46,7 +46,7 @@ class RoomRouter {
 
             const transport = await this.router.createWebRtcTransport(transportConfig);
             
-            logger.info(`[RoomRouter] Transport created: ${transport.id}`);
+            logger.info(`[RoomRouter] Transport created: ${transport.id} (UDP: ${transportConfig.enableUdp}, TCP: ${transportConfig.enableTcp})`);
 
             // Event handlers
             transport.on('dtlsstatechange', dtlsState => {
@@ -263,8 +263,7 @@ class RoomRouter {
     async pauseProducer(producerId) {
         try {
             const producer = this.producers.get(producerId);
-            if (!producer) {
-                logger.warn(`[RoomRouter] Producer ${producerId} not found for pause`);
+            if (!producer || producer.closed) {
                 return;
             }
 
@@ -281,8 +280,7 @@ class RoomRouter {
     async resumeProducer(producerId) {
         try {
             const producer = this.producers.get(producerId);
-            if (!producer) {
-                logger.warn(`[RoomRouter] Producer ${producerId} not found for resume`);
+            if (!producer || producer.closed) {
                 return;
             }
 
@@ -317,8 +315,9 @@ class RoomRouter {
     async restartIce(transportId) {
         try {
             const transport = this.transports.get(transportId);
-            if (!transport) {
-                throw new Error(`Transport ${transportId} not found`);
+            if (!transport || transport.closed) {
+                logger.warn(`[RoomRouter] transport ${transportId} not found for restartIce (likely already closed)`);
+                return null;
             }
 
             const iceParameters = await transport.restartIce();

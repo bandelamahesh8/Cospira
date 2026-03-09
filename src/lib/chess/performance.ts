@@ -24,7 +24,7 @@ class ChessPerformanceMonitor {
     const duration = performance.now() - start;
 
     this.frameTimings.push(duration);
-    
+
     // Keep only last 100 measurements
     if (this.frameTimings.length > 100) {
       this.frameTimings.shift();
@@ -46,7 +46,7 @@ class ChessPerformanceMonitor {
   /**
    * Track concurrent animations to enforce budget
    */
-  trackAnimation(animationName: string, callback: () => void) {
+  trackAnimation(_animationName: string, callback: () => void) {
     if (this.animationCount >= CHESS_CONFIG.PERFORMANCE.MAX_CONCURRENT_ANIMATIONS) {
       console.warn(
         `⚠️ [Chess Performance] Animation budget exceeded. Current: ${this.animationCount}, Max: ${CHESS_CONFIG.PERFORMANCE.MAX_CONCURRENT_ANIMATIONS}`
@@ -54,7 +54,7 @@ class ChessPerformanceMonitor {
     }
 
     this.animationCount++;
-    
+
     try {
       callback();
     } finally {
@@ -97,7 +97,8 @@ class ChessPerformanceMonitor {
 
       this.assetsPreloaded = true;
       const duration = performance.now() - start;
-      
+
+      // eslint-disable-next-line no-console
       console.log(`✅ [Chess Performance] Assets preloaded in ${duration.toFixed(2)}ms`);
     } catch (error) {
       console.error('❌ [Chess Performance] Asset preload failed:', error);

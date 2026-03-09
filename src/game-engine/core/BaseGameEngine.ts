@@ -10,7 +10,7 @@ import {
 
 /**
  * Base Game Engine Implementation
- * 
+ *
  * Provides common functionality for all game engines.
  * Game-specific engines extend this class.
  */
@@ -24,7 +24,7 @@ export abstract class BaseGameEngine implements GameEngine {
   /**
    * Abstract methods that must be implemented by game-specific engines
    */
-  abstract initGame(players: Player[], config?: any): GameState;
+  abstract initGame(players: Player[], config?: unknown): GameState;
   abstract validateMove(move: Move, state: GameState): ValidationResult;
   abstract applyMove(move: Move, state: GameState): GameState;
   abstract checkWinner(state: GameState): WinnerResult;
@@ -56,7 +56,8 @@ export abstract class BaseGameEngine implements GameEngine {
 
   calculateStats(state: GameState): GameStats {
     const duration = Date.now() - state.createdAt.getTime();
-    const totalMoves = state.metadata.moveHistory?.length || 0;
+    const moveHistory = state.metadata.moveHistory as unknown[];
+    const totalMoves = moveHistory?.length || 0;
 
     return {
       duration,

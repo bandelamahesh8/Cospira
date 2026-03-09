@@ -22,7 +22,7 @@ interface LudoBoard {
 
 /**
  * Ludo Game Engine
- * 
+ *
  * Implements the universal GameEngine interface for Ludo.
  * Supports 2-4 players with standard Ludo rules.
  */
@@ -30,9 +30,13 @@ export class LudoEngine extends BaseGameEngine {
   private readonly BOARD_SIZE = 52;
   private readonly TOKENS_PER_PLAYER = 4;
   private readonly SAFE_POSITIONS = [0, 8, 13, 21, 26, 34, 39, 47];
-  
-  private readonly PLAYER_COLORS: Array<'red' | 'blue' | 'green' | 'yellow'> = 
-    ['red', 'blue', 'green', 'yellow'];
+
+  private readonly PLAYER_COLORS: Array<'red' | 'blue' | 'green' | 'yellow'> = [
+    'red',
+    'blue',
+    'green',
+    'yellow',
+  ];
 
   initGame(players: Player[], config?: { teamMode?: boolean }): GameState {
     if (players.length < 2 || players.length > 4) {
@@ -46,14 +50,19 @@ export class LudoEngine extends BaseGameEngine {
     // Team Assignment: P0 & P2 (Red/Yellow) vs P1 & P3 (Green/Blue)
     // Based on index in players array which corresponds to colors:
     // 0: Red, 1: Green, 2: Yellow, 3: Blue (After color fix below)
-    
+
     // Changing colors to match UI layout: Red -> Green -> Yellow -> Blue
-    const UI_COLORS: Array<'red' | 'green' | 'yellow' | 'blue'> = ['red', 'green', 'yellow', 'blue'];
+    const UI_COLORS: Array<'red' | 'green' | 'yellow' | 'blue'> = [
+      'red',
+      'green',
+      'yellow',
+      'blue',
+    ];
 
     players.forEach((player, playerIndex) => {
       const color = UI_COLORS[playerIndex];
       let teamId = player.id; // Default to individual
-      
+
       if (isTeamMode) {
         // Red (0) & Yellow (2) are Team A
         // Green (1) & Blue (3) are Team B
@@ -69,7 +78,7 @@ export class LudoEngine extends BaseGameEngine {
           color,
         });
       }
-      
+
       // Update player object with teamId if needed (mostly for reference)
       player.teamId = teamId;
       player.role = color;
@@ -93,7 +102,7 @@ export class LudoEngine extends BaseGameEngine {
         moveHistory: [],
         rollCount: 0,
         isTeamMode,
-        teamScores: isTeamMode ? { team_a: 0, team_b: 0 } : undefined
+        teamScores: isTeamMode ? { team_a: 0, team_b: 0 } : undefined,
       },
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -191,13 +200,13 @@ export class LudoEngine extends BaseGameEngine {
       if (capturedTokenIndex !== -1) {
         // In Team Mode, don't capture teammates
         const capturedToken = tokens[capturedTokenIndex];
-        const capturer = state.players.find(p => p.id === token.playerId);
-        const victim = state.players.find(p => p.id === capturedToken.playerId);
-        
+        const capturer = state.players.find((p) => p.id === token.playerId);
+        const victim = state.players.find((p) => p.id === capturedToken.playerId);
+
         const areTeammates = state.metadata.isTeamMode && capturer?.teamId === victim?.teamId;
 
         if (!areTeammates) {
-             tokens[capturedTokenIndex].position = -1; // Send back home
+          tokens[capturedTokenIndex].position = -1; // Send back home
         }
       }
 
@@ -206,22 +215,23 @@ export class LudoEngine extends BaseGameEngine {
       // Determine next turn
       let nextPlayerId = state.currentTurn;
       if (board.diceValue !== 6) {
-          nextPlayerId = this.getNextPlayer(state);
-          
-          // In Team Mode, skip finished players
-          // Actually, standard Ludo simply passes turn. 
-          // If a player is finished, we should skip them?
-          // Let's check finish status of next player
-          let attempts = 0;
-          while (attempts < 4) { // Prevent infinite loop
-              // const nextPlayer = state.players.find(p => p.id === nextPlayerId);
-              const playerTokens = tokens.filter(t => t.playerId === nextPlayerId);
-              const isFinished = playerTokens.every(t => t.position >= 52);
-              
-              if (!isFinished) break;
-              nextPlayerId = this.getNextPlayer({ ...state, currentTurn: nextPlayerId });
-              attempts++;
-          }
+        nextPlayerId = this.getNextPlayer(state);
+
+        // In Team Mode, skip finished players
+        // Actually, standard Ludo simply passes turn.
+        // If a player is finished, we should skip them?
+        // Let's check finish status of next player
+        let attempts = 0;
+        while (attempts < 4) {
+          // Prevent infinite loop
+          // const nextPlayer = state.players.find(p => p.id === nextPlayerId);
+          const playerTokens = tokens.filter((t) => t.playerId === nextPlayerId);
+          const isFinished = playerTokens.every((t) => t.position >= 52);
+
+          if (!isFinished) break;
+          nextPlayerId = this.getNextPlayer({ ...state, currentTurn: nextPlayerId });
+          attempts++;
+        }
       }
 
       const newState: GameState = {
@@ -230,7 +240,10 @@ export class LudoEngine extends BaseGameEngine {
         currentTurn: nextPlayerId,
         metadata: {
           ...state.metadata,
-          moveHistory: [...state.metadata.moveHistory, { type: 'move', tokenId, position: token.position }],
+          moveHistory: [
+            ...state.metadata.moveHistory,
+            { type: 'move', tokenId, position: token.position },
+          ],
         },
         updatedAt: new Date(),
       };
@@ -253,21 +266,21 @@ export class LudoEngine extends BaseGameEngine {
     const board = state.board as LudoBoard;
 
     if (state.metadata.isTeamMode) {
-        // Check Team A (Red/Yellow)
-        const teamAIds = state.players.filter(p => p.teamId === 'team_a').map(p => p.id);
-        const teamATokens = board.tokens.filter(t => teamAIds.includes(t.playerId));
-        const teamAFinished = teamATokens.every(t => t.position >= 52);
-        
-        if (teamAFinished && teamAIds.length > 0) return { finished: true, winner: 'Team A' };
+      // Check Team A (Red/Yellow)
+      const teamAIds = state.players.filter((p) => p.teamId === 'team_a').map((p) => p.id);
+      const teamATokens = board.tokens.filter((t) => teamAIds.includes(t.playerId));
+      const teamAFinished = teamATokens.every((t) => t.position >= 52);
 
-        // Check Team B (Green/Blue)
-        const teamBIds = state.players.filter(p => p.teamId === 'team_b').map(p => p.id);
-        const teamBTokens = board.tokens.filter(t => teamBIds.includes(t.playerId));
-        const teamBFinished = teamBTokens.every(t => t.position >= 52);
+      if (teamAFinished && teamAIds.length > 0) return { finished: true, winner: 'Team A' };
 
-        if (teamBFinished && teamBIds.length > 0) return { finished: true, winner: 'Team B' };
+      // Check Team B (Green/Blue)
+      const teamBIds = state.players.filter((p) => p.teamId === 'team_b').map((p) => p.id);
+      const teamBTokens = board.tokens.filter((t) => teamBIds.includes(t.playerId));
+      const teamBFinished = teamBTokens.every((t) => t.position >= 52);
 
-        return { finished: false, winner: null };
+      if (teamBFinished && teamBIds.length > 0) return { finished: true, winner: 'Team B' };
+
+      return { finished: false, winner: null };
     }
 
     // Individual Mode

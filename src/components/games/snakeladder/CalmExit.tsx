@@ -24,7 +24,7 @@ export const CalmExit = ({ isExiting, onExitComplete }: CalmExitProps) => {
 
   return (
     <motion.div
-      className="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center"
+      className='fixed inset-0 bg-slate-900 z-50 flex items-center justify-center'
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1.5 }} // Slow, gentle fade
@@ -32,7 +32,7 @@ export const CalmExit = ({ isExiting, onExitComplete }: CalmExitProps) => {
     >
       {/* Soft ambient sound fades with screen */}
       <motion.p
-        className="text-white text-xl font-light"
+        className='text-white text-xl font-light'
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.6, 0] }}
         transition={{ duration: 2 }}

@@ -12,8 +12,6 @@ const getSocketUrl = () => {
   return 'http://192.168.1.9:3001';
 };
 
-const DEV_URL = getSocketUrl();
-
 class SocketService {
   constructor() {
     this.socket = null;
@@ -176,6 +174,20 @@ class SocketService {
 
   leaveRoom(roomId) {
     this.emit('leave-room', { roomId });
+  }
+
+  getUserActivity(limit = 20) {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) return reject(new Error('Socket not connected'));
+      
+      this.socket.emit('get-user-activity', { limit }, (response) => {
+        if (response?.success) {
+          resolve(response.activities);
+        } else {
+          reject(new Error(response?.error || 'Failed to fetch activity'));
+        }
+      });
+    });
   }
 }
 

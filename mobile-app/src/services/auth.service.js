@@ -9,6 +9,14 @@ export const authService = {
     return response;
   },
 
+  async refreshSession(refreshToken) {
+    const response = await api.post('/auth/refresh', { refreshToken });
+    if (response.token) {
+      api.setToken(response.token);
+    }
+    return response;
+  },
+
   async register(username, email, password) {
     return api.post('/auth/register', { username, email, password });
   },

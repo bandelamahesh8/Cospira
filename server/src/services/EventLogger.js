@@ -10,18 +10,30 @@ class EventLogger {
   // 1. Room Events (Join/Leave/Mute/Share)
   async logRoomEvent(roomId, userId, eventType, metadata = {}) {
     try {
-      if (!roomId || !userId) return;
-      await RoomEvent.create({
+      if (!roomId || !userId) {
+        logger.warn(`[EventLogger] Missing requirements: room=${roomId}, user=${userId}, type=${eventType}`);
+        return;
+      }
+      
+      const event = await RoomEvent.create({
         roomId,
         userId,
         eventType,
         metadata,
         timestamp: new Date()
       });
-      logger.debug(`[EventLogger] ${eventType} logged for ${userId} in ${roomId}`);
+      
+      logger.debug(`[EventLogger] ${eventType} logged successfully for ${userId} in ${roomId}`);
+      return event;
     } catch (err) {
-        // Non-blocking error logging
-       logger.error('[EventLogger] Failed to log room event:', err);
+      if (err.name === 'ValidationError') {
+        logger.error(`[EventLogger] Validation failed for ${eventType}:`, {
+          errors: Object.keys(err.errors).map(key => `${key}: ${err.errors[key].message}`),
+          payload: { roomId, userId, eventType, metadata }
+        });
+      } else {
+        logger.error(`[EventLogger] Unexpected error logging ${eventType}:`, err);
+      }
     }
   }
 
@@ -211,6 +223,23 @@ class EventLogger {
     });
   }
 
+  // Activity Specific Helpers
+  async logRoomCreated(roomId, userId, roomName) {
+    return this.logRoomEvent(roomId, userId, 'room_created', { roomName });
+  }
+
+  async logRoomDeleted(roomId, userId, roomName) {
+    return this.logRoomEvent(roomId, userId, 'room_deleted', { roomName, deletedAt: new Date() });
+  }
+
+  async logGameStarted(roomId, userId, gameType, players) {
+    return this.logRoomEvent(roomId, userId, 'game_started', { gameType, players });
+  }
+
+  async logGlobalConnect(userId, mode) {
+    return this.logRoomEvent('global', userId, 'global_connect', { mode });
+  }
+
   // Query methods
   async getRecentRoomEvents(roomId, limit = 50) {
     try {
@@ -258,6 +287,20 @@ class EventLogger {
         .lean();
     } catch (error) {
       logger.error('[EventLogger] Failed to get user activity', { roomId, userId, error: error.message });
+      return [];
+    }
+  }
+
+  async getUserGlobalActivity(userId, limit = 50) {
+    try {
+      if (!userId) return [];
+      logger.debug(`[EventLogger] Fetching global activity for user: ${userId}`);
+      return await RoomEvent.find({ userId })
+        .sort({ timestamp: -1 })
+        .limit(limit)
+        .lean();
+    } catch (error) {
+      logger.error('[EventLogger] Failed to get global user activity', { userId, error: error.message });
       return [];
     }
   }

@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { Button } from './ui/button';
 
-
 interface SynchronizedVideoPlayerProps {
   url: string;
   isHost: boolean;
@@ -21,7 +20,6 @@ const SynchronizedVideoPlayer = ({
   onClose,
 }: SynchronizedVideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-
 
   // Socket event listeners
   useEffect(() => {
@@ -42,14 +40,12 @@ const SynchronizedVideoPlayer = ({
       if (videoRef.current) {
         videoRef.current.pause();
         videoRef.current.currentTime = time;
-
       }
     };
 
     const onSeek = ({ time }: { time: number }) => {
       if (videoRef.current) {
         videoRef.current.currentTime = time;
-
       }
     };
 
@@ -76,8 +72,6 @@ const SynchronizedVideoPlayer = ({
       socket.emit('pause-video', { roomId, time: videoRef.current.currentTime });
     }
   };
-
-
 
   const onSeeked = () => {
     if (socket && roomId && videoRef.current) {

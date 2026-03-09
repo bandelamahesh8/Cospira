@@ -17,7 +17,7 @@ export class EmotionalCooldown {
   shouldSuppressEffect(): boolean {
     const now = Date.now();
     const timeSinceSpike = now - this.lastSpikeTime;
-    
+
     // Suppress for cooldown period after spike
     return timeSinceSpike < this.COOLDOWN_MS;
   }
@@ -27,12 +27,12 @@ export class EmotionalCooldown {
    */
   registerSpike(): void {
     const now = Date.now();
-    
+
     // Reset count if too much time passed
     if (now - this.lastSpikeTime > this.RESET_AFTER_MS) {
       this.spikeCount = 0;
     }
-    
+
     this.lastSpikeTime = now;
     this.spikeCount++;
   }

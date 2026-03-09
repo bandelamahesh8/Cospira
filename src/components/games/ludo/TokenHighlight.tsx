@@ -13,7 +13,12 @@ interface TokenHighlightProps {
   isNormal: boolean;
 }
 
-export const TokenHighlight = ({ tokenId, canKill, isSafe, isNormal }: TokenHighlightProps) => {
+export const TokenHighlight = ({
+  tokenId: _tokenId,
+  canKill,
+  isSafe,
+  isNormal,
+}: TokenHighlightProps) => {
   if (!LUDO_CONFIG.FEATURES.INTENT_HIGHLIGHTING) {
     return null;
   }
@@ -38,7 +43,7 @@ export const TokenHighlight = ({ tokenId, canKill, isSafe, isNormal }: TokenHigh
 
   return (
     <motion.div
-      className="absolute inset-0 rounded-full pointer-events-none"
+      className='absolute inset-0 rounded-full pointer-events-none'
       animate={{
         boxShadow: [
           `0 0 0px ${color}0)`,

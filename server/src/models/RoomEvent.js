@@ -10,6 +10,9 @@ const roomEventSchema = new mongoose.Schema({
       // Connection events
       'join', 'leave',
       
+      // Activity events
+      'room_created', 'game_started', 'global_connect',
+      
       // Media events
       'mute', 'unmute', 'share', 'stop_share', 'speak',
       

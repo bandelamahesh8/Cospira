@@ -32,7 +32,7 @@ export const KillAnimation = ({
     execute: () => {
       // Play sound
       playKillSound();
-      
+
       // Trigger haptic feedback
       triggerHaptic('heavy');
     },
@@ -40,9 +40,9 @@ export const KillAnimation = ({
 
   return (
     <motion.div
-      className="absolute pointer-events-none z-50"
-      initial={{ 
-        x: fromPosition.x, 
+      className='absolute pointer-events-none z-50'
+      initial={{
+        x: fromPosition.x,
         y: fromPosition.y,
         scale: 1,
       }}
@@ -60,16 +60,16 @@ export const KillAnimation = ({
     >
       {/* Attacker token */}
       <div
-        className="w-8 h-8 rounded-full"
+        className='w-8 h-8 rounded-full'
         style={{
           backgroundColor: attackerColor,
           boxShadow: `0 0 20px ${attackerColor}`,
         }}
       />
-      
+
       {/* Impact effect */}
       <motion.div
-        className="absolute inset-0 rounded-full"
+        className='absolute inset-0 rounded-full'
         initial={{ scale: 0, opacity: 1 }}
         animate={{ scale: 2, opacity: 0 }}
         transition={{ duration: 0.3 }}

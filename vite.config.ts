@@ -15,13 +15,13 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3001',
+        target: 'https://127.0.0.1:3001',
         secure: false,
         changeOrigin: true,
         rejectUnauthorized: false,
       },
       '/socket.io': {
-        target: 'http://127.0.0.1:3001',
+        target: 'https://127.0.0.1:3001',
         secure: false,
         changeOrigin: true,
         ws: true,

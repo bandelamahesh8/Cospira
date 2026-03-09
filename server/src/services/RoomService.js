@@ -47,7 +47,19 @@ class RoomService {
           allowGuests: settings.allowGuests !== false,
           requireApproval: settings.requireApproval || false,
           maxParticipants: settings.maxParticipants || 50,
-          recordSessions: settings.recordSessions || false
+          recordSessions: settings.recordSessions || false,
+          invite_only: settings.invite_only || false,
+          join_by_link: settings.join_by_link !== false,
+          join_by_code: settings.join_by_code !== false,
+          host_only_code_visibility: settings.host_only_code_visibility || false,
+          waiting_lobby: settings.waiting_lobby || false,
+          organization_only: settings.organization_only || false,
+          host_controlled_speaking: settings.host_controlled_speaking || false,
+          chat_permission: settings.chat_permission || 'everyone',
+          encryption_enabled: settings.encryption_enabled || false,
+          ai_moderation_level: settings.ai_moderation_level || 'off',
+          auto_close_minutes: settings.auto_close_minutes || 0,
+          hidden_room: settings.hidden_room || false
         },
         members: [{
           userId: createdBy,
@@ -220,6 +232,42 @@ class RoomService {
       }
       if (settings.recordSessions !== undefined) {
         room.settings.recordSessions = settings.recordSessions;
+      }
+      if (settings.invite_only !== undefined) {
+        room.settings.invite_only = settings.invite_only;
+      }
+      if (settings.join_by_link !== undefined) {
+        room.settings.join_by_link = settings.join_by_link;
+      }
+      if (settings.join_by_code !== undefined) {
+        room.settings.join_by_code = settings.join_by_code;
+      }
+      if (settings.host_only_code_visibility !== undefined) {
+        room.settings.host_only_code_visibility = settings.host_only_code_visibility;
+      }
+      if (settings.waiting_lobby !== undefined) {
+        room.settings.waiting_lobby = settings.waiting_lobby;
+      }
+      if (settings.organization_only !== undefined) {
+        room.settings.organization_only = settings.organization_only;
+      }
+      if (settings.host_controlled_speaking !== undefined) {
+        room.settings.host_controlled_speaking = settings.host_controlled_speaking;
+      }
+      if (settings.chat_permission !== undefined) {
+        room.settings.chat_permission = settings.chat_permission;
+      }
+      if (settings.encryption_enabled !== undefined) {
+        room.settings.encryption_enabled = settings.encryption_enabled;
+      }
+      if (settings.ai_moderation_level !== undefined) {
+        room.settings.ai_moderation_level = settings.ai_moderation_level;
+      }
+      if (settings.auto_close_minutes !== undefined) {
+        room.settings.auto_close_minutes = settings.auto_close_minutes;
+      }
+      if (settings.hidden_room !== undefined) {
+        room.settings.hidden_room = settings.hidden_room;
       }
 
       await room.save();

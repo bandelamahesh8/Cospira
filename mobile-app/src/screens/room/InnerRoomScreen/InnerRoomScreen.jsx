@@ -81,6 +81,8 @@ const InnerRoomScreen = ({ route, navigation }) => {
     browserFrame,
     startBrowser,
     closeBrowser,
+    startScreenShare,
+    stopScreenShare,
     screenShareStream,
     uploadProgress,
     audioChunks,
@@ -174,21 +176,39 @@ const InnerRoomScreen = ({ route, navigation }) => {
 
 
 
-  // Cleanup on unmount
+  // Cleanup on unmount - Ref-based to avoid stopping tracks on every state update
+  const localStreamRef = useRef(localStream);
+  const remoteStreamsRef = useRef(remoteStreams);
+
+  useEffect(() => {
+    localStreamRef.current = localStream;
+  }, [localStream]);
+
+  useEffect(() => {
+    remoteStreamsRef.current = remoteStreams;
+  }, [remoteStreams]);
+
   useEffect(() => {
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
+      console.log('[InnerRoomScreen] Final unmount cleanup');
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+           console.log(`[InnerRoomScreen] Stopping local ${track.kind} track`);
+           track.stop();
+        });
       }
-      if (remoteStreams && remoteStreams instanceof Map) {
-        Array.from(remoteStreams.values()).forEach((stream) => {
+      if (remoteStreamsRef.current && remoteStreamsRef.current instanceof Map) {
+        Array.from(remoteStreamsRef.current.values()).forEach((stream) => {
           if (stream && typeof stream.getTracks === 'function') {
-            stream.getTracks().forEach((track) => track.stop());
+            stream.getTracks().forEach((track) => {
+               console.log(`[InnerRoomScreen] Stopping remote ${track.kind} track`);
+               track.stop();
+            });
           }
         });
       }
     };
-  }, [localStream, remoteStreams]);
+  }, []); // Run ONLY on unmount
 
   // Handle Game Stats on End
   useEffect(() => {
@@ -306,8 +326,7 @@ const InnerRoomScreen = ({ route, navigation }) => {
           // Handled in Modal
           break;
         case 'screenshare':
-          // Screen share is web-only for now.
-          showToast('info', 'Mobile screen share coming soon');
+          startScreenShare();
           break;
         case 'youtube':
           setYoutubeModalVisible(true);
@@ -396,7 +415,7 @@ const InnerRoomScreen = ({ route, navigation }) => {
   }, [currentUser]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#000000' : '#FFFFFF' }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#000000' : '#F3F4F6' }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Header */}
@@ -411,10 +430,18 @@ const InnerRoomScreen = ({ route, navigation }) => {
         onOpenParticipants={() => setParticipantsModalVisible(true)}
         onOpenLeaderboard={() => setLeaderboardVisible(true)}
         onLeave={handleLeave}
+        isDark={isDark}
       />
 
       {/* Main Content Area */}
       <View style={styles.mainContent}>
+        <View 
+          style={{ flex: 1 }} 
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            setContainerDimensions({ width, height });
+          }}
+        >
         {uploadProgress > 0 && (
           <View style={[styles.uploadProgressOverlay, { zIndex: 9999 }]}>
             <View style={styles.uploadProgressBox}>
@@ -456,7 +483,7 @@ const InnerRoomScreen = ({ route, navigation }) => {
         {!isBrowserActive && !youtubeVideoId && !activeProjectorMedia && screenShareStream && (
           <ScreenShare
             screenShareStream={screenShareStream}
-            onStop={() => {}}
+            onStop={stopScreenShare}
           />
         )}
 
@@ -474,6 +501,7 @@ const InnerRoomScreen = ({ route, navigation }) => {
               sfuCameraType={null}
               onSwitchCamera={() => {}}
               currentUser={currentUser}
+              isDark={isDark}
             />
           </View>
         )}
@@ -493,13 +521,15 @@ const InnerRoomScreen = ({ route, navigation }) => {
               sfuAudioEnabled={isAudioEnabled}
               sfuCameraType={null}
               onSwitchCamera={() => {}}
+              isDark={isDark}
             />
         )}
       </View>
+    </View>
 
       {/* Bottom Controls - auto-hide after 5s, tap to show */}
       <BottomControls
-        visible={taskbarVisible}
+        visible={taskbarVisible && !isChatVisible}
         onShow={() => setTaskbarVisible(true)}
         onInteraction={resetTaskbarTimer}
         keepVisible={urlInputVisible}
@@ -510,6 +540,7 @@ const InnerRoomScreen = ({ route, navigation }) => {
         onOpenChat={() => setIsChatVisible(true)}
         onOpenUpload={() => setUploadModalVisible(true)}
         onOpenGames={() => setGameModalVisible(true)}
+        isDark={isDark}
       />
 
       {/* Chat Overlay */}
@@ -518,6 +549,11 @@ const InnerRoomScreen = ({ route, navigation }) => {
           messages={messages}
           onClose={() => setIsChatVisible(false)}
           onSendMessage={sendMessage}
+          onUploadMedia={uploadMedia}
+          isDark={isDark}
+          currentUser={currentUser}
+          roomName={roomName}
+          activeUsersCount={users.length}
         />
       )}
 
@@ -536,6 +572,7 @@ const InnerRoomScreen = ({ route, navigation }) => {
 
       <UploadModal
         visible={uploadModalVisible}
+        isDark={isDark}
         sfuIsScreenSharing={false}
         onClose={() => setUploadModalVisible(false)}
         onFeatureSelect={handleFeatureSelect}

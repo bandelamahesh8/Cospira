@@ -10,11 +10,11 @@ import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Screen Imports
-import SimulationHubScreen from '../screens/simulation/SimulationHubScreen';
+import SimulationHubScreen from '../screens/simulation/SimulationHubScreen.jsx';
 import CommandHubScreen from '../screens/command/CommandHubScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
-import GlobalConnectScreen from '../screens/connect/GlobalConnectScreen';
-import FriendsScreen from '../screens/friends/FriendsScreen';
+import GlobalConnectScreen from '../screens/connect/GlobalConnectScreen.jsx';
+import FriendsScreen from '../screens/friends/FriendsScreen.jsx';
 
 const Tab = createBottomTabNavigator();
 
@@ -25,7 +25,7 @@ const TabIcon = ({ focused, name, nameFocused, library, label, color }) => {
     <View style={styles.iconContainer}>
       <IconComponent 
           name={focused ? nameFocused : name} 
-          size={normalize(24)} 
+          size={normalize(25)} 
           color={color} 
       />
       {/* Label suppressed for premium visual focus */}
@@ -37,14 +37,55 @@ const TabIcon = ({ focused, name, nameFocused, library, label, color }) => {
 const CustomTabBar = ({ state, descriptors, navigation }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const [containerWidth, setContainerWidth] = useState(0);
+  const translateX = useRef(new Animated.Value(0)).current;
+
+  const tabWidth = containerWidth / state.routes.length;
+
+  useEffect(() => {
+    if (containerWidth > 0) {
+      Animated.spring(translateX, {
+        toValue: state.index * tabWidth,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 12,
+      }).start();
+    }
+  }, [state.index, containerWidth, tabWidth]);
 
   return (
-    <View style={[styles.tabBar, { 
-      backgroundColor: isDark ? colors.surface : colors.background,
-      borderTopColor: isDark ? colors.border : '#E5E7EB',
-      paddingBottom: Math.max(insets.bottom, 10),
-      height: 60 + Math.max(insets.bottom, 10)
-    }]}>
+    <View 
+      style={[styles.tabBar, { 
+        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
+      }]}
+      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width - 20)}
+    >
+      {/* Sliding Background Bubble */}
+      {containerWidth > 0 && (
+        <Animated.View 
+          style={[
+            styles.activeBubble,
+            {
+              position: 'absolute',
+              width: normalize(62),
+              height: normalize(48),
+              left: 10 + (tabWidth - normalize(62)) / 2,
+              opacity: translateX.interpolate({
+                // Fade out when entering the Global tab (index 2)
+                inputRange: [tabWidth * 1.5, tabWidth * 2, tabWidth * 2.5],
+                outputRange: [1, 0, 1],
+                extrapolate: 'clamp'
+              }),
+              transform: [
+                { translateX }, 
+                { translateY: (normalize(65) - normalize(48)) / 2 - 2 } // Vertically centered
+              ]
+            }
+          ]}
+        />
+      )}
+
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const isFocused = state.index === index;
@@ -67,9 +108,18 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             key={route.key}
             onPress={onPress}
             style={styles.tabButton}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-             {options.tabBarIcon({ focused: isFocused, color, size: 24 })}
+             <View style={[
+               styles.iconContainer, 
+               isFocused && route.name === 'Global' && { backgroundColor: 'transparent' }
+             ]}>
+                {options.tabBarIcon({ 
+                  focused: isFocused, 
+                  color: isFocused && route.name !== 'Global' ? '#fff' : color, 
+                  size: 24 
+                })}
+             </View>
           </TouchableOpacity>
         );
       })}
@@ -103,16 +153,33 @@ const BottomNav = () => {
       }}
     >
       <Tab.Screen 
-        name="Hub" 
+        name="Home" 
         component={CommandHubScreen} 
         options={{
           tabBarIcon: ({ focused, color }) => (
             <TabIcon 
               focused={focused} 
               library={Ionicons} 
-              name="grid-outline" 
-              nameFocused="grid"
-              label="Hub" 
+              name="home-outline" 
+              nameFocused="home"
+              label="Home" 
+              color={color} 
+            />
+          ),
+        }}
+      />
+
+      <Tab.Screen 
+        name="Spaces" 
+        component={FriendsScreen} // Matching mockup "Spaces" to friends/groups for now
+        options={{
+          tabBarIcon: ({ focused, color }) => (
+            <TabIcon 
+              focused={focused} 
+              library={MaterialCommunityIcons} 
+              name="view-grid-outline" 
+              nameFocused="view-grid"
+              label="Spaces" 
               color={color} 
             />
           ),
@@ -126,15 +193,15 @@ const BottomNav = () => {
           tabBarIcon: ({ focused, color }) => (
             <View style={[
                 styles.globalTabContainer,
-                { backgroundColor: colors.primary, borderColor: isDark ? '#0B0D12' : '#FFFFFF' }
+                { backgroundColor: '#0B1F3A', borderColor: isDark ? '#101922' : '#FFFFFF' }
             ]}>
                 <LinearGradient
-                  colors={['#8B5CF6', '#3B82F6']}
+                  colors={['#123B6D', '#0B1F3A']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.globalGradient}
                 >
-                    <Ionicons name="flash" size={normalize(28)} color="#fff" />
+                    <Ionicons name="globe-outline" size={normalize(34)} color="#fff" />
                 </LinearGradient>
             </View>
           ),
@@ -151,22 +218,6 @@ const BottomNav = () => {
               name="game-controller-outline" 
               nameFocused="game-controller"
               label="Games" 
-              color={color} 
-            />
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Friends" 
-        component={FriendsScreen} 
-        options={{
-          tabBarIcon: ({ focused, color }) => (
-            <TabIcon 
-              focused={focused} 
-              library={Ionicons} 
-              name="people-outline" 
-              nameFocused="people"
-              label="Friends" 
               color={color} 
             />
           ),
@@ -208,9 +259,21 @@ const BottomNav = () => {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    // Height and padding are now dynamic handled in the component
-    borderTopWidth: 1,
-    elevation: 0,
+    position: 'absolute',
+    bottom: normalize(20),
+    left: normalize(20),
+    right: normalize(20),
+    borderRadius: normalize(40),
+    height: normalize(65),
+    borderWidth: 1.5,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    paddingHorizontal: 10,
+    // Note: Blur is handled by background opacity + platform specifics if needed
+    // In RN, we usually use a blur view if available, otherwise high opacity
   },
   tabButton: {
     flex: 1,
@@ -220,27 +283,39 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: '100%',
-    width: '100%',
+    width: normalize(45),
+    height: normalize(45),
+    borderRadius: normalize(22.5),
+  },
+  activeBubble: {
+    backgroundColor: '#0B1F3A',
+    width: normalize(52),
+    height: normalize(48),
+    borderRadius: normalize(24),
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ translateY: -normalize(4) }],
+    shadowColor: '#0B1F3A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   iconLabel: {
     fontSize: normalize(10),
-    marginTop: 4, 
-    fontWeight: '500',
+    marginTop: 2, 
+    fontWeight: '700',
     textAlign: 'center',
   },
   activeIndicator: {
-    position: 'absolute',
-    bottom: 2, // Moved up slightly
-    width: 12,
-    height: 3,
-    borderRadius: 2,
+    // Hidden in this design as we use active bubble
+    display: 'none',
   },
   avatarWrapper: {
     width: normalize(24),
     height: normalize(24),
     borderRadius: normalize(12),
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: 'transparent',
     overflow: 'hidden',
   },
@@ -249,23 +324,24 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   globalTabContainer: {
-    width: normalize(52),
-    height: normalize(52),
-    borderRadius: normalize(26),
-    marginTop: -normalize(20),
+    width: normalize(60),
+    height: normalize(60),
+    borderRadius: normalize(30),
+    marginTop: -normalize(35),
     overflow: 'hidden',
     borderWidth: 4,
-    // borderColor: '#0B0D12', // Moved to dynamic style
-    elevation: 5,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
+    elevation: 8,
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
   },
   globalGradient: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
 });
 

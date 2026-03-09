@@ -2,17 +2,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { playerService } from '@/services/PlayerService';
 import { useGameStore } from '@/stores/gameStore';
-import {
-  PlayerProfile,
-  GameStats,
-  GameType,
-  MatchHistory,
-  PlayerAchievement,
-} from '@/types/player';
+import { PlayerProfile, GameType, MatchHistory, PlayerAchievement } from '@/types/player';
 
 /**
  * usePlayerProfile Hook
- * 
+ *
  * Manages player profile state and provides methods for
  * fetching and updating player data.
  */
@@ -32,7 +26,7 @@ export function usePlayerProfile() {
       try {
         setLoading(true);
         const profile = await playerService.getPlayerProfile(user.id);
-        
+
         if (profile) {
           setPlayerProfile(profile);
         } else {
@@ -43,7 +37,7 @@ export function usePlayerProfile() {
             displayName: user.user_metadata?.display_name,
             avatarUrl: user.user_metadata?.avatar_url,
           });
-          
+
           if (newProfile) {
             setPlayerProfile(newProfile);
           }
@@ -56,7 +50,13 @@ export function usePlayerProfile() {
     }
 
     fetchProfile();
-  }, [user?.id, setPlayerProfile]);
+  }, [
+    user?.id,
+    user?.email,
+    user?.user_metadata?.display_name,
+    user?.user_metadata?.avatar_url,
+    setPlayerProfile,
+  ]);
 
   /**
    * Update player profile
@@ -92,7 +92,7 @@ export function usePlayerProfile() {
 
 /**
  * useGameStats Hook
- * 
+ *
  * Manages game statistics for a specific game type
  */
 export function useGameStats(gameType: GameType) {
@@ -141,7 +141,7 @@ export function useGameStats(gameType: GameType) {
 
 /**
  * useMatchHistory Hook
- * 
+ *
  * Fetches and manages match history for the current player
  */
 export function useMatchHistory(limit: number = 10) {
@@ -180,7 +180,7 @@ export function useMatchHistory(limit: number = 10) {
 
 /**
  * usePlayerAchievements Hook
- * 
+ *
  * Manages player achievements
  */
 export function usePlayerAchievements() {
@@ -236,11 +236,11 @@ export function usePlayerAchievements() {
 
 /**
  * useLeaderboard Hook
- * 
+ *
  * Fetches leaderboard for a specific game type
  */
 export function useLeaderboard(gameType: GameType, limit: number = 100) {
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

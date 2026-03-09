@@ -1,5 +1,6 @@
 import logger from '../logger.js';
 import analyticsService from '../services/ai/AnalyticsService.js';
+import eventLogger from '../services/EventLogger.js';
 
 /**
  * Register Analytics Socket Handlers
@@ -31,6 +32,22 @@ export default function registerAnalyticsHandlers(io, socket) {
         success: false,
         error: error.message
       });
+    }
+  });
+
+  /**
+   * Get advanced AI insights for user
+   */
+  socket.on('get-user-ai-insights', async (callback) => {
+    try {
+      const userId = socket.user?.id || socket.user?.sub;
+      if (!userId) return callback?.({ success: false, error: 'Auth required' });
+
+      const insights = await analyticsService.getUserAIInsights(userId);
+      callback?.({ success: true, insights });
+    } catch (error) {
+      logger.error('[Analytics] Error getting AI insights:', error);
+      callback?.({ success: false, error: error.message });
     }
   });
 
@@ -175,6 +192,119 @@ export default function registerAnalyticsHandlers(io, socket) {
         success: false,
         error: error.message
       });
+    }
+  });
+
+  /**
+   * Get recent activity for the current user
+   */
+  socket.on('get-user-activity', async ({ limit = 20 } = {}, callback) => {
+    try {
+      const userId = socket.user?.id || socket.user?.sub;
+      console.log(`[Analytics] ${userId} is fetching activities (limit: ${limit})`);
+      if (!userId) {
+        console.warn(`[Analytics] Unauthenticated activity fetch attempted by ${socket.id}`);
+        return callback?.({ success: false, error: 'Authentication required' });
+      }
+
+      const events = await eventLogger.getUserGlobalActivity(userId, limit);
+      console.log(`[Analytics] Found ${events?.length || 0} events for user ${userId}`);
+      
+      const activities = [];
+      const pairedIds = new Set();
+
+      for (let i = 0; i < events.length; i++) {
+        const event = events[i];
+        if (pairedIds.has(event._id.toString())) continue;
+
+        let title = 'Activity';
+        let subtitle = 'Social Interaction';
+        let type = 'social';
+        let time = event.timestamp;
+        let duration = event.metadata?.duration;
+        let endTime = null;
+
+        if (event.eventType === 'leave') {
+          // Look ahead (chronologically backwards) for the corresponding join
+          const joinEvent = events.slice(i + 1).find(e => 
+            e.eventType === 'join' && 
+            e.roomId === event.roomId && 
+            !pairedIds.has(e._id.toString())
+          );
+
+          if (joinEvent) {
+            pairedIds.add(joinEvent._id.toString());
+            title = 'Joined Room';
+            subtitle = `Sector: ${event.metadata?.roomName || event.roomId}`;
+            type = 'room';
+            time = joinEvent.timestamp;
+            endTime = event.timestamp;
+            // Use logged duration or calculate from timestamps
+            duration = duration || (new Date(event.timestamp) - new Date(joinEvent.timestamp)) / 1000;
+          } else {
+            // Unpaired leave (truncated history or joined before limit)
+            title = 'Left Room';
+            subtitle = `Sector: ${event.metadata?.roomName || event.roomId}`;
+            type = 'room';
+          }
+        } else {
+          switch (event.eventType) {
+            case 'join':
+              title = 'Joined Room';
+              subtitle = `Sector: ${event.metadata?.roomName || event.roomId}`;
+              type = 'room';
+              break;
+            case 'room_created':
+              title = 'Created Room';
+              subtitle = `Sector: ${event.metadata?.roomName || event.roomId}`;
+              type = 'room';
+              break;
+            case 'game_started':
+              title = 'Played a Game';
+              subtitle = `${event.metadata?.gameType || 'Match'} session started`;
+              type = 'match';
+              break;
+            case 'global_connect':
+              title = 'Joined Global Connect';
+              subtitle = `Mode: ${event.metadata?.mode || 'video'}`;
+              type = 'social';
+              break;
+            case 'chat':
+              title = 'New Message';
+              subtitle = `Sent in ${event.metadata?.roomName || 'Room'}`;
+              type = 'social';
+              break;
+            case 'action_created':
+              title = 'Action Task Created';
+              subtitle = event.metadata?.actionText || 'New task assigned';
+              type = 'match';
+              break;
+            case 'poll_created':
+              title = 'New Poll Started';
+              subtitle = event.metadata?.question || 'User feedback requested';
+              type = 'achievement';
+              break;
+            default:
+              title = event.eventType.charAt(0).toUpperCase() + event.eventType.slice(1);
+          }
+        }
+
+        activities.push({
+          id: event._id.toString(),
+          type,
+          title,
+          subtitle,
+          time,
+          duration,
+          endTime,
+          roomId: event.roomId
+        });
+      }
+
+      callback?.({ success: true, activities });
+    } catch (error) {
+      logger.error('[Analytics] Error getting user activity:', error);
+      callback?.({ success: false, error: error.message });
     }
   });
 

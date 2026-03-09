@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthResponse, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -7,16 +7,50 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, displayName?: string) => Promise<{ data?: any; error: any; needsVerification: boolean }>;
-  signIn: (email: string, password: string) => Promise<{ data?: any; error: any }>;
-  signInWithGoogle: () => Promise<{ data?: any; error: any }>;
+  signUp: (
+    email: string,
+    password: string,
+    displayName?: string
+  ) => Promise<{
+    data?: AuthResponse['data'];
+    error: AuthError | null;
+    needsVerification: boolean;
+  }>;
+  signIn: (
+    emailOrUsername: string,
+    password: string
+  ) => Promise<{ data?: AuthResponse['data'] | null; error: AuthError | Error | null }>;
+  signInWithGoogle: () => Promise<{
+    data?: { provider: string; url: string } | null;
+    error: AuthError | Error | null;
+  }>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: { display_name?: string; gender?: string; photo_url?: string }) => Promise<void>;
-  resendVerificationEmail: (email: string) => Promise<{ error: any }>;
-  requestOTP: (email: string, purpose: 'forgot_login' | 'change_password') => Promise<{ success: boolean; message?: string; error?: string }>;
-  verifyOTP: (email: string, otp: string, purpose: 'forgot_login' | 'change_password') => Promise<{ success: boolean; resetToken?: string; error?: string }>;
-  resetPassword: (resetToken: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (updates: {
+    display_name?: string;
+    gender?: string;
+    photo_url?: string;
+    username?: string;
+  }) => Promise<void>;
+  resendVerificationEmail: (email: string) => Promise<{ error: AuthError | Error | null }>;
+  requestOTP: (
+    email: string,
+    purpose: 'forgot_login' | 'change_password'
+  ) => Promise<{ success: boolean; message?: string; error?: string }>;
+  verifyOTP: (
+    email: string,
+    otp: string,
+    purpose: 'forgot_login' | 'change_password'
+  ) => Promise<{ success: boolean; resetToken?: string; error?: string }>;
+  resetPassword: (
+    resetToken: string,
+    newPassword: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  changePassword: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  checkUsernameAvailability: (username: string) => Promise<{ available: boolean }>;
+  changeEmail: (newEmail: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,38 +66,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const testUser = localStorage.getItem('cospira-test-user');
       if (testUser) {
         try {
-            const user = JSON.parse(testUser);
-            setUser(user);
-            setSession({
+          const user = JSON.parse(testUser);
+          setUser(user);
+          setSession({
             user,
             access_token: 'mock-token',
             refresh_token: 'mock-refresh',
             expires_in: 3600,
             token_type: 'bearer',
-            } as Session);
-            setLoading(false);
-            return;
+          } as Session);
+          setLoading(false);
+          return;
         } catch (e) {
-            console.error("Test user parse error", e);
+          console.error('Test user parse error', e);
         }
       }
     }
 
     // Get initial session
     let mounted = true;
-    
+
     const initSession = async () => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (mounted) {
-                setSession(session);
-                setUser(session?.user ?? null);
-            }
-        } catch (err) {
-            console.error("Auth init error:", err);
-        } finally {
-            if (mounted) setLoading(false);
+      try {
+        const {
+          data: { session: initialSession },
+        } = await supabase.auth.getSession();
+        if (mounted) {
+          setSession(initialSession);
+          setUser(initialSession?.user ?? null);
         }
+      } catch (err) {
+        console.error('Auth init error:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     };
 
     initSession();
@@ -71,17 +107,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        setLoading(false);
       }
     });
 
     return () => {
-        mounted = false;
-        subscription.unsubscribe();
+      mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -110,7 +146,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Check if email confirmation is required
-      const needsVerification = data.user && !data.session;
+      const needsVerification = !!(data.user && !data.session);
 
       if (needsVerification) {
         return { data, error: null, needsVerification: true };
@@ -121,20 +157,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         return { data, error: null, needsVerification: false };
       }
-    } catch (error: unknown) {
+    } catch (err: unknown) {
+      const error = err as Error;
       toast({
         title: 'Error',
-        description: (error as Error).message,
+        description: error.message,
         variant: 'destructive',
       });
-      return { error, needsVerification: false };
+      return { error: error as unknown as AuthError, needsVerification: false };
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (emailOrUsername: string, password: string) => {
     try {
+      const isEmail = emailOrUsername.includes('@');
+
+      if (!isEmail) {
+        // Use backend proxy for username login
+        const response = await fetch(`/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailOrUsername, password }),
+        });
+
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error(responseData.error || 'Login failed');
+        }
+
+        // Set session in client manually
+        if (responseData.token && responseData.refreshToken) {
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: responseData.token,
+            refresh_token: responseData.refreshToken,
+          });
+
+          if (sessionError) throw sessionError;
+
+          toast({
+            title: 'Welcome back!',
+            description: "You've successfully logged in.",
+          });
+          return { data: sessionData, error: null };
+        }
+
+        throw new Error('Invalid response from server');
+      }
+
+      // Default Direct Supabase Auth for Emails
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: emailOrUsername,
         password,
       });
 
@@ -153,10 +225,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       return { data, error: null };
-    } catch (error: unknown) {
+    } catch (err: unknown) {
+      const error = err as Error;
       toast({
         title: 'Error',
-        description: (error as Error).message,
+        description: error.message,
         variant: 'destructive',
       });
       return { error };
@@ -165,10 +238,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-      // Redirect to /auth after OAuth, not /dashboard
-      // This allows the Auth page to detect login and navigate with replace: true
       const redirectUrl = `${window.location.origin}/auth`;
-      
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -185,17 +256,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error };
       }
 
-      return { data, error: null };
-    } catch (error: unknown) {
+      return { data: data as { provider: string; url: string } | null, error: null };
+    } catch (err: unknown) {
+      const error = err as Error;
       toast({
         title: 'Error',
-        description: (error as Error).message,
+        description: error.message,
         variant: 'destructive',
       });
       return { error };
     }
   };
-
 
   const signOut = async () => {
     try {
@@ -237,8 +308,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     display_name?: string;
     gender?: string;
     photo_url?: string;
+    username?: string;
   }) => {
     try {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+
+      if (currentSession) {
+        const payload = {
+          name: updates.display_name,
+          profileImage: updates.photo_url,
+          username: updates.username,
+        };
+        const backendRes = await fetch(`/api/auth/me`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${currentSession.access_token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!backendRes.ok) {
+          const errData = await backendRes.json();
+          throw new Error(errData.error || 'Failed to sync identity');
+        }
+      }
+
       const { error } = await supabase.auth.updateUser({
         data: updates,
       });
@@ -256,10 +353,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: 'Profile Updated',
         description: 'Your profile has been updated successfully.',
       });
-    } catch (error: unknown) {
+    } catch (err: unknown) {
+      const error = err as Error;
       toast({
         title: 'Error',
-        description: (error as Error).message,
+        description: error.message,
         variant: 'destructive',
       });
       throw error;
@@ -288,19 +386,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       return { error: null };
-    } catch (error: unknown) {
+    } catch (err: unknown) {
+      const error = err as Error;
       toast({
         title: 'Error',
-        description: (error as Error).message,
+        description: error.message,
         variant: 'destructive',
       });
-      return { error };
+      return { error: error as unknown as AuthError };
     }
   };
 
   const requestOTP = async (email: string, purpose: 'forgot_login' | 'change_password') => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_WS_URL || 'http://localhost:3001'}/api/auth/otp/request`, {
+      const response = await fetch(`/api/auth/otp/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, purpose }),
@@ -313,9 +412,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const verifyOTP = async (email: string, otp: string, purpose: 'forgot_login' | 'change_password') => {
+  const verifyOTP = async (
+    email: string,
+    otp: string,
+    purpose: 'forgot_login' | 'change_password'
+  ) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_WS_URL || 'http://localhost:3001'}/api/auth/otp/verify`, {
+      const response = await fetch(`/api/auth/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp, purpose }),
@@ -330,7 +433,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const resetPassword = async (resetToken: string, newPassword: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_WS_URL || 'http://localhost:3001'}/api/auth/password/reset`, {
+      const response = await fetch(`/api/auth/password/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resetToken, newPassword }),
@@ -345,14 +448,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+      if (!currentSession) throw new Error('Not authenticated');
 
-      const response = await fetch(`${import.meta.env.VITE_WS_URL || 'http://localhost:3001'}/api/auth/password/change`, {
+      const response = await fetch(`/api/auth/password/change`, {
         method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentSession.access_token}`,
         },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
@@ -364,27 +469,67 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const checkUsernameAvailability = async (username: string) => {
+    try {
+      const response = await fetch(
+        `/api/auth/check-username?username=${encodeURIComponent(username)}`
+      );
+      const data = await response.json();
+      return { available: data.available || data.isAvailable };
+    } catch {
+      return { available: false };
+    }
+  };
+
+  const changeEmail = async (newEmail: string) => {
+    try {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+      if (!currentSession) throw new Error('Not authenticated');
+
+      const response = await fetch(`/api/auth/email/change`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentSession.access_token}`,
+        },
+        body: JSON.stringify({ newEmail }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Change failed');
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      loading,
-      signUp,
-      signIn,
-      signInWithGoogle,
-      signOut,
-      updateProfile,
-      resendVerificationEmail,
-      requestOTP,
-      verifyOTP,
-      resetPassword,
-      changePassword,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        signUp,
+        signIn,
+        signInWithGoogle,
+        signOut,
+        updateProfile,
+        resendVerificationEmail,
+        requestOTP,
+        verifyOTP,
+        resetPassword,
+        changePassword,
+        checkUsernameAvailability,
+        changeEmail,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

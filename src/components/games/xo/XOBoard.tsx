@@ -16,19 +16,19 @@ interface XOBoardProps {
   justPlacedIndex?: number;
 }
 
-export const XOBoard = ({ 
-  cells, 
-  onCellClick, 
+export const XOBoard = ({
+  cells,
+  onCellClick,
   isMyTurn,
-  mySymbol,
-  justPlacedIndex 
+  mySymbol: _mySymbol,
+  justPlacedIndex,
 }: XOBoardProps) => {
   return (
-    <div className="relative">
+    <div className='relative'>
       {/* Active turn indicator - minimal glow */}
       {isMyTurn && (
         <motion.div
-          className="absolute -inset-2 rounded-lg pointer-events-none"
+          className='absolute -inset-2 rounded-lg pointer-events-none'
           animate={{
             boxShadow: [
               '0 0 0px rgba(255,255,255,0)',
@@ -36,20 +36,20 @@ export const XOBoard = ({
               '0 0 0px rgba(255,255,255,0)',
             ],
           }}
-          transition={{ 
-            duration: 1.5, 
+          transition={{
+            duration: 1.5,
             repeat: Infinity,
-            ease: 'easeInOut'
+            ease: 'easeInOut',
           }}
         />
       )}
 
       {/* Grid - thick lines, high contrast */}
-      <div className="grid grid-cols-3 gap-0 w-80 h-80 bg-slate-900">
+      <div className='grid grid-cols-3 gap-0 w-80 h-80 bg-slate-900'>
         {cells.map((cell, i) => {
           const isJustPlaced = i === justPlacedIndex;
           const isEmpty = cell === null;
-          
+
           return (
             <button
               key={i}

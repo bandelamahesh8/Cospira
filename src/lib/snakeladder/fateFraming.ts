@@ -9,13 +9,13 @@
  */
 export const getSnakeFateMessage = (): string => {
   const messages = [
-    "The snake found you.",
-    "Fate had other plans.",
-    "The path winds downward.",
-    "The journey takes a turn.",
-    "Sometimes we must go back to move forward.",
+    'The snake found you.',
+    'Fate had other plans.',
+    'The path winds downward.',
+    'The journey takes a turn.',
+    'Sometimes we must go back to move forward.',
   ];
-  
+
   return messages[Math.floor(Math.random() * messages.length)];
 };
 
@@ -25,13 +25,13 @@ export const getSnakeFateMessage = (): string => {
  */
 export const getLadderFateMessage = (): string => {
   const messages = [
-    "Luck lifted you.",
-    "Fortune smiles.",
-    "The way opened upward.",
-    "A helping hand appeared.",
-    "The path rises before you.",
+    'Luck lifted you.',
+    'Fortune smiles.',
+    'The way opened upward.',
+    'A helping hand appeared.',
+    'The path rises before you.',
   ];
-  
+
   return messages[Math.floor(Math.random() * messages.length)];
 };
 
@@ -46,11 +46,11 @@ export const getWinMessage = (playerName: string): string => {
  * Get session memory message (light, warm)
  */
 export const getMemoryMessage = (lastEvent: 'snake' | 'ladder' | null): string => {
-  if (!lastEvent) return "Welcome back to the journey.";
-  
+  if (!lastEvent) return 'Welcome back to the journey.';
+
   if (lastEvent === 'ladder') {
-    return "Last time, a ladder helped you.";
+    return 'Last time, a ladder helped you.';
   } else {
-    return "Last time, the path was winding.";
+    return 'Last time, the path was winding.';
   }
 };

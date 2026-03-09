@@ -1,6 +1,6 @@
 /**
  * Game Engine Integration Example
- * 
+ *
  * This file demonstrates how to use the new game engine framework
  * in your React components.
  */
@@ -117,10 +117,8 @@ export function PlayerProfileExample() {
       <p>Level: {profile.level}</p>
       <p>XP: {profile.xp}</p>
       <p>Title: {profile.title}</p>
-      
-      <button onClick={() => updateProfile({ bio: 'New bio!' })}>
-        Update Bio
-      </button>
+
+      <button onClick={() => updateProfile({ bio: 'New bio!' })}>Update Bio</button>
     </div>
   );
 }
@@ -144,10 +142,10 @@ export function LeaderboardExample() {
     <div>
       <h2>Leaderboard - {gameType}</h2>
       <select value={gameType} onChange={(e) => setGameType(e.target.value as GameType)}>
-        <option value="chess">Chess</option>
-        <option value="xoxo">Tic-Tac-Toe</option>
+        <option value='chess'>Chess</option>
+        <option value='xoxo'>Tic-Tac-Toe</option>
       </select>
-      
+
       <ol>
         {leaderboard.map((entry, index) => (
           <li key={entry.id}>
@@ -180,7 +178,9 @@ export function MatchHistoryExample() {
       <h2>Recent Matches</h2>
       {matches.map((match) => (
         <div key={match.id}>
-          <p>{match.gameType} - {match.mode}</p>
+          <p>
+            {match.gameType} - {match.mode}
+          </p>
           <p>Duration: {match.duration}s</p>
           <p>Winner: {match.winnerId || 'Draw'}</p>
         </div>

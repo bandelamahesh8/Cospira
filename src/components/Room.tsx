@@ -11,9 +11,33 @@ import AIPoll from './room/AIPoll';
 import LateJoinBanner from './room/LateJoinBanner';
 import InviteModal from './room/InviteModal';
 import FeedbackModal from '@/components/FeedbackModal'; // Adjusted path check
-import { Paperclip, Send, Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, FileText, Waves, Crop, UserPlus, Heart } from 'lucide-react';
+import {
+  Paperclip,
+  Send,
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  PhoneOff,
+  MessageSquare,
+  FileText,
+  Waves,
+  Crop,
+  UserPlus,
+  Heart,
+} from 'lucide-react';
 
-const VideoPlayer = ({ stream, muted = false, name, isAway = false }: { stream: MediaStream; muted?: boolean; name: string; isAway?: boolean }) => {
+const VideoPlayer = ({
+  stream,
+  muted = false,
+  name,
+  isAway = false,
+}: {
+  stream: MediaStream;
+  muted?: boolean;
+  name: string;
+  isAway?: boolean;
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -31,7 +55,7 @@ const VideoPlayer = ({ stream, muted = false, name, isAway = false }: { stream: 
         muted={muted}
         className={`w-full h-full object-cover transition-opacity duration-300 ${isAway ? 'opacity-30 blur-sm' : ''}`}
       />
-      
+
       {/* Name Tag */}
       <div className='absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium backdrop-blur-sm'>
         {name} {muted && '(You)'}
@@ -40,9 +64,9 @@ const VideoPlayer = ({ stream, muted = false, name, isAway = false }: { stream: 
       {/* Away Overlay */}
       {isAway && (
         <div className='absolute inset-0 flex items-center justify-center'>
-            <span className='bg-yellow-500/90 text-black px-3 py-1 rounded-full text-sm font-bold shadow-lg animate-pulse'>
-                💤 Away
-            </span>
+          <span className='bg-yellow-500/90 text-black px-3 py-1 rounded-full text-sm font-bold shadow-lg animate-pulse'>
+            💤 Away
+          </span>
         </div>
       )}
     </div>
@@ -69,12 +93,12 @@ const Room: React.FC = () => {
     isNoiseSuppressionEnabled,
     toggleNoiseSuppression,
     isAutoFramingEnabled, // Added
-    toggleAutoFraming,    // Added
+    toggleAutoFraming, // Added
     isAway, // Added
     activeTimer,
     activePoll,
     lateJoinSummary,
-    socket
+    socket,
   } = useWebSocket();
 
   const [message, setMessage] = useState('');
@@ -85,7 +109,7 @@ const Room: React.FC = () => {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-  
+
   // Catch Up Logic
   const [catchUpSummary, setCatchUpSummary] = useState<string | null>(null);
   const [isCatchUpVisible, setIsCatchUpVisible] = useState(false);
@@ -102,12 +126,12 @@ const Room: React.FC = () => {
   // Check for Late Join / Catch Up Offer
   useEffect(() => {
     if (roomId && isConnected && !hasCheckedCatchUp.current) {
-        hasCheckedCatchUp.current = true;
-        // Simulate "late join" detection: always show for testing purposes
-        setIsCatchUpVisible(true);
-        // Auto-hide after 15s
-        const timer = setTimeout(() => setIsCatchUpVisible(false), 15000);
-        return () => clearTimeout(timer);
+      hasCheckedCatchUp.current = true;
+      // Simulate "late join" detection: always show for testing purposes
+      setIsCatchUpVisible(true);
+      // Auto-hide after 15s
+      const timer = setTimeout(() => setIsCatchUpVisible(false), 15000);
+      return () => clearTimeout(timer);
     }
   }, [roomId, isConnected]);
 
@@ -139,14 +163,18 @@ const Room: React.FC = () => {
   };
 
   const handleRequestCatchUp = () => {
-      if (!roomId || !socket) return;
-      setIsCatchUpVisible(false); // Hide prompt
-      
-      socket.emit('ai:request-catchup', { roomId }, (res: { success: boolean; summary?: string; error?: string }) => {
-          if (res.success && res.summary) {
-              setCatchUpSummary(res.summary);
-          }
-      });
+    if (!roomId || !socket) return;
+    setIsCatchUpVisible(false); // Hide prompt
+
+    socket.emit(
+      'ai:request-catchup',
+      { roomId },
+      (res: { success: boolean; summary?: string; error?: string }) => {
+        if (res.success && res.summary) {
+          setCatchUpSummary(res.summary);
+        }
+      }
+    );
   };
 
   if (!isConnected) {
@@ -232,27 +260,27 @@ const Room: React.FC = () => {
         </div>
 
         {activeTimer && (
-          <div className="hidden md:block">
-            <AITimer 
-              duration={activeTimer.duration} 
-              startedAt={activeTimer.startedAt} 
-              label={activeTimer.label} 
+          <div className='hidden md:block'>
+            <AITimer
+              duration={activeTimer.duration}
+              startedAt={activeTimer.startedAt}
+              label={activeTimer.label}
             />
           </div>
         )}
 
         <div className='flex items-center gap-2'>
-           {/* Catch Up Button (Visible Only Briefly on Join) */}
-           {isCatchUpVisible && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={handleRequestCatchUp}
-                className="animate-in fade-in slide-in-from-top-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg mr-2"
-              >
-                ✨ Catch Me Up
-              </Button>
-           )}
+          {/* Catch Up Button (Visible Only Briefly on Join) */}
+          {isCatchUpVisible && (
+            <Button
+              variant='default'
+              size='sm'
+              onClick={handleRequestCatchUp}
+              className='animate-in fade-in slide-in-from-top-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg mr-2'
+            >
+              ✨ Catch Me Up
+            </Button>
+          )}
 
           <Button
             variant={isAudioEnabled ? 'outline' : 'destructive'}
@@ -267,10 +295,14 @@ const Room: React.FC = () => {
             variant={isNoiseSuppressionEnabled ? 'secondary' : 'ghost'} // Helper state, ghost if off
             size='icon'
             onClick={toggleNoiseSuppression}
-            title={isNoiseSuppressionEnabled ? 'Disable AI Noise Suppression' : 'Enable AI Noise Suppression'}
+            title={
+              isNoiseSuppressionEnabled
+                ? 'Disable AI Noise Suppression'
+                : 'Enable AI Noise Suppression'
+            }
             className={isNoiseSuppressionEnabled ? 'text-green-600' : 'text-muted-foreground'}
           >
-             <Waves className='h-5 w-5' />
+            <Waves className='h-5 w-5' />
           </Button>
 
           <Button
@@ -289,7 +321,7 @@ const Room: React.FC = () => {
             title={isAutoFramingEnabled ? 'Disable Auto Framing' : 'Enable Auto Framing'}
             className={isAutoFramingEnabled ? 'text-blue-600' : 'text-muted-foreground'}
           >
-             <Crop className='h-5 w-5' />
+            <Crop className='h-5 w-5' />
           </Button>
 
           <Button
@@ -305,27 +337,27 @@ const Room: React.FC = () => {
             variant={isSummaryOpen ? 'secondary' : 'outline'}
             size='icon'
             onClick={() => setIsSummaryOpen(true)}
-            title="Meeting Summary"
+            title='Meeting Summary'
           >
             <FileText className='h-5 w-5' />
           </Button>
 
           <Button
-            variant="outline"
+            variant='outline'
             size='icon'
             onClick={() => setIsInviteOpen(true)}
-            title="Invite People"
-            className="text-primary hover:text-primary hover:bg-primary/5"
+            title='Invite People'
+            className='text-primary hover:text-primary hover:bg-primary/5'
           >
             <UserPlus className='h-5 w-5' />
           </Button>
 
           <Button
-            variant="outline"
+            variant='outline'
             size='icon'
             onClick={() => setIsFeedbackOpen(true)}
-            title="Send Feedback"
-            className="text-pink-500 hover:text-pink-600 hover:bg-pink-500/5"
+            title='Send Feedback'
+            className='text-pink-500 hover:text-pink-600 hover:bg-pink-500/5'
           >
             <Heart className='h-5 w-5' />
           </Button>
@@ -344,17 +376,12 @@ const Room: React.FC = () => {
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
             {/* Local Video */}
             {localStream && (
-              <VideoPlayer
-                stream={localStream}
-                muted={true}
-                name='You'
-                isAway={isAway}
-              />
+              <VideoPlayer stream={localStream} muted={true} name='You' isAway={isAway} />
             )}
 
             {/* Remote Videos */}
             {Array.from(remoteStreams.entries()).map(([userId, stream]) => {
-              const user = users.find(u => u.id === userId);
+              const user = users.find((u) => u.id === userId);
               return (
                 <VideoPlayer
                   key={userId}
@@ -381,29 +408,35 @@ const Room: React.FC = () => {
         {/* Chat Sidebar */}
         {isChatOpen && (
           <div className='w-80 flex flex-col bg-card rounded-lg shadow-sm border'>
-                  <div className='p-3 border-b flex justify-between items-center'>
-                    <span className="font-semibold">Chat</span>
-                    {activeTimer && (
-                      <div className="md:hidden">
-                        <AITimer 
-                          duration={activeTimer.duration} 
-                          startedAt={activeTimer.startedAt} 
-                          label={activeTimer.label} 
-                        />
-                      </div>
-                    )}
-                  </div>
+            <div className='p-3 border-b flex justify-between items-center'>
+              <span className='font-semibold'>Chat</span>
+              {activeTimer && (
+                <div className='md:hidden'>
+                  <AITimer
+                    duration={activeTimer.duration}
+                    startedAt={activeTimer.startedAt}
+                    label={activeTimer.label}
+                  />
+                </div>
+              )}
+            </div>
 
             <ScrollArea className='flex-1 p-4'>
               <div className='space-y-4 text-sm'>
                 {activePoll && (
-                  <div className="mb-6">
-                    <AIPoll 
+                  <div className='mb-6'>
+                    <AIPoll
                       id={activePoll.id}
                       question={activePoll.question}
                       options={activePoll.options}
                       expiresAt={activePoll.expiresAt}
-                      onVote={(index) => socket?.emit('room:poll-vote', { roomId, pollId: activePoll.id, optionIndex: index })}
+                      onVote={(index) =>
+                        socket?.emit('room:poll-vote', {
+                          roomId,
+                          pollId: activePoll.id,
+                          optionIndex: index,
+                        })
+                      }
                       results={activePoll.results}
                       totalVotes={activePoll.totalVotes}
                     />
@@ -416,13 +449,17 @@ const Room: React.FC = () => {
                     className={`flex ${msg.userId === 'me' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-lg p-3 text-sm ${msg.userId === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                        }`}
+                      className={`max-w-[85%] rounded-lg p-3 text-sm ${
+                        msg.userId === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      }`}
                     >
                       <div className='text-xs font-medium mb-1 opacity-90'>{msg.userName}</div>
                       <div>{msg.content}</div>
                       <div className='text-[10px] opacity-70 mt-1 text-right'>
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </div>
                     </div>
                   </div>
@@ -468,7 +505,7 @@ const Room: React.FC = () => {
       </div>
 
       {lateJoinSummary && (
-        <LateJoinBanner 
+        <LateJoinBanner
           summary={lateJoinSummary.summary}
           bullets={lateJoinSummary.bullets}
           duration={lateJoinSummary.duration}
@@ -495,19 +532,24 @@ const Room: React.FC = () => {
 
       {/* Catch Up Modal (Overview Overlay) */}
       {catchUpSummary && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
-           <div className="bg-background border border-border rounded-xl shadow-2xl p-6 max-w-md w-full m-4">
-              <div className="flex justify-between items-center mb-4">
-                 <h3 className="text-lg font-bold">⚡ Quick Catch Up</h3>
-                 <button onClick={() => setCatchUpSummary(null)} className="text-muted-foreground hover:text-foreground">✕</button>
-              </div>
-              <div className="prose prose-sm dark:prose-invert bg-muted/30 p-4 rounded-lg max-h-[60vh] overflow-y-auto">
-                 <p className="whitespace-pre-wrap">{catchUpSummary}</p>
-              </div>
-              <Button onClick={() => setCatchUpSummary(null)} className="w-full mt-4">
-                 Got it, thanks!
-              </Button>
-           </div>
+        <div className='fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in'>
+          <div className='bg-background border border-border rounded-xl shadow-2xl p-6 max-w-md w-full m-4'>
+            <div className='flex justify-between items-center mb-4'>
+              <h3 className='text-lg font-bold'>⚡ Quick Catch Up</h3>
+              <button
+                onClick={() => setCatchUpSummary(null)}
+                className='text-muted-foreground hover:text-foreground'
+              >
+                ✕
+              </button>
+            </div>
+            <div className='prose prose-sm dark:prose-invert bg-muted/30 p-4 rounded-lg max-h-[60vh] overflow-y-auto'>
+              <p className='whitespace-pre-wrap'>{catchUpSummary}</p>
+            </div>
+            <Button onClick={() => setCatchUpSummary(null)} className='w-full mt-4'>
+              Got it, thanks!
+            </Button>
+          </div>
         </div>
       )}
     </div>

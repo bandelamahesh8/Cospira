@@ -1,4 +1,5 @@
 import logger from '../logger.js';
+import eventLogger from '../services/EventLogger.js';
 import { getRoom, saveRoom } from '../redis.js';
 import { sanitizeRoomId } from '../utils/sanitize.js';
 import LudoEngine from '../game/LudoEngine.js';
@@ -352,7 +353,7 @@ export default function registerGameHandlers(io, socket) {
       if (!canControlGame(room)) return callback?.({ success: false, error: 'Only host or co-host can start games' });
       const memberCount = room.users ? Object.keys(room.users).length : 0;
       if (memberCount < 2) return callback?.({ success: false, error: 'Minimum 2 members in room required' });
-      const maxPlayers = { chess: 2, xoxo: 2, ludo: 4, snakeladder: 4, 'ultimate-xoxo': 2, connect4: 2, checkers: 2, battleship: 2 }[type] ?? 2;
+      const maxPlayers = { chess: 2, 'chess-puzzle': 2, xoxo: 2, ludo: 4, snakeladder: 4, 'ultimate-xoxo': 2, connect4: 2, checkers: 2, battleship: 2 }[type] ?? 2;
       if (!players || players.length < 2 || players.length > maxPlayers) return callback?.({ success: false, error: `Invalid player count. This game allows 2–${maxPlayers} players.` });
 
       let gameState = {
@@ -394,6 +395,13 @@ export default function registerGameHandlers(io, socket) {
             const userObj = room.users && Object.values(room.users).find(u => u.id === id);
             return { id, name: userObj?.name || 'Player ' + (idx + 1), role: idx === 0 ? 'white' : 'black' };
         });
+      } else if (type === 'chess-puzzle') {
+        gameState.board = config?.puzzleFen || 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4';
+        gameState.players = players.map((id, idx) => {
+            const userObj = room.users && Object.values(room.users).find(u => u.id === id);
+            return { id, name: userObj?.name || 'Player ' + (idx + 1), role: 'white' }; // both play as white
+        });
+        gameState.turn = 'all'; // Special turn state meaning anyone can solve
       } else if (type === 'xoxo') {
         gameState.board = Array(9).fill(null);
         gameState.players = players.map((id, idx) => {
@@ -409,6 +417,11 @@ export default function registerGameHandlers(io, socket) {
       
       io.to(rid).emit('game-started', gameState);
       io.to(rid).emit('room-status-updated', { status: 'IN_GAME' });
+      
+      // Log Activity for all participants
+      await Promise.all(players.map(pId => 
+        eventLogger.logGameStarted(rid, pId, type, players)
+      ));
       
       startTimer(rid, gameState.turn);
       callback?.({ success: true });
@@ -484,6 +497,27 @@ export default function registerGameHandlers(io, socket) {
         const userId = socket.user?.id;
 
         if (type === 'chess') await handleChessMove(rid, userId, move);
+        else if (type === 'chess-puzzle') {
+            if (move && move.type === 'solve') {
+                room.gameState.winner = userId;
+                room.gameState.isActive = false;
+                if (!room.scores) room.scores = {};
+                room.scores[userId] = (room.scores[userId] || 0) + 10;
+                await saveRoom(room);
+                io.to(rid).emit('game-ended', room.gameState);
+                clearTimer(rid);
+                return callback?.({ success: true });
+            } else if (move && move.type === 'solve-timeout') {
+                if (room.gameState.isActive) {
+                    room.gameState.winner = 'draw';
+                    room.gameState.isActive = false;
+                    await saveRoom(room);
+                    io.to(rid).emit('game-ended', room.gameState);
+                    clearTimer(rid);
+                }
+                return callback?.({ success: true });
+            }
+        }
         else if (type === 'xoxo') await handleXOXOMove(rid, userId, move.index);
         else if (type === 'ludo') {
             if (move.type === 'roll') await handleLudoRoll(rid, userId);

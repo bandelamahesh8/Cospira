@@ -25,9 +25,9 @@ export const useSessionDuration = () => {
   const minutes = Math.floor(duration / 60000);
   const isFatigued = minutes >= (CHESS_CONFIG.VISUAL.FATIGUE_THRESHOLD_MINUTES || 15);
 
-  return { 
-    minutes, 
+  return {
+    minutes,
     isFatigued,
-    sessionStart 
+    sessionStart,
   };
 };

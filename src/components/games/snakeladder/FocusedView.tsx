@@ -15,7 +15,7 @@ interface FocusedViewProps {
 
 export const FocusedView = ({ children, isMajorEvent, eventType }: FocusedViewProps) => {
   return (
-    <div className="relative">
+    <div className='relative'>
       {children}
 
       {/* Dim everything during snake/ladder */}
@@ -26,7 +26,7 @@ export const FocusedView = ({ children, isMajorEvent, eventType }: FocusedViewPr
             animate={{ opacity: SNAKELADDER_CONFIG.VISUAL.BOARD_FADE_ON_EVENT }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="absolute inset-0 bg-black pointer-events-none"
+            className='absolute inset-0 bg-black pointer-events-none'
           >
             {/* Optional fate message overlay */}
             {eventType && (
@@ -34,7 +34,7 @@ export const FocusedView = ({ children, isMajorEvent, eventType }: FocusedViewPr
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-xl font-light text-center"
+                className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-xl font-light text-center'
               >
                 {/* Fate message would go here */}
               </motion.div>

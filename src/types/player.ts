@@ -1,9 +1,11 @@
 /**
  * Player Profile and Game Statistics Types
- * 
+ *
  * Core types for the player profile system, game statistics,
  * match history, and achievements.
  */
+
+import { GameState, Move } from '../game-engine/core/GameEngine.interface';
 
 export type GameType = 'chess' | 'xoxo' | 'ludo' | 'snakeladder' | 'connect4' | 'checkers';
 export type Rank = 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond' | 'Master' | 'Legend';
@@ -25,11 +27,15 @@ export interface PlayerProfile {
   createdAt: Date;
   updatedAt: Date;
   lastSeen: Date;
-  
+
   // Phase 5: Social & Economy
   coins: number;
-  bio?: string;
   isOnline: boolean;
+
+  // Equipped Assets
+  equipped_avatar_id?: string;
+  equipped_frame_id?: string;
+  equipped_banner_id?: string;
 }
 
 /**
@@ -39,27 +45,27 @@ export interface GameStats {
   id: string;
   playerId: string;
   gameType: GameType;
-  
+
   // ELO & Ranking
   elo: number;
   rank: Rank;
   peakElo: number;
-  
+
   // Match Statistics
   wins: number;
   losses: number;
   draws: number;
   totalMatches: number;
   winRate: number;
-  
+
   // Performance Metrics
   avgMatchDuration?: number; // in seconds
   longestWinStreak: number;
   currentWinStreak: number;
-  
+
   // Game-specific stats (flexible)
-  gameSpecificStats: Record<string, any>;
-  
+  gameSpecificStats: Record<string, unknown>;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,7 +77,7 @@ export interface MatchHistory {
   id: string;
   gameType: GameType;
   mode: MatchMode;
-  
+
   // Players
   players: Array<{
     id: string;
@@ -80,16 +86,16 @@ export interface MatchHistory {
     elo?: number;
   }>;
   winnerId?: string;
-  
+
   // Match Data
-  initialState: any; // GameState
-  finalState: any;   // GameState
-  moveHistory: any[]; // Move[]
-  
+  initialState: GameState; // GameState
+  finalState: GameState; // GameState
+  moveHistory: Move[]; // Move[]
+
   // Metadata
   duration: number; // in seconds
   eloChanges?: Record<string, number>;
-  
+
   createdAt: Date;
   endedAt?: Date;
 }
@@ -185,4 +191,19 @@ export function getRankFromElo(elo: number): Rank {
   if (elo >= ELO_CONFIG.RANK_THRESHOLDS.Gold) return 'Gold';
   if (elo >= ELO_CONFIG.RANK_THRESHOLDS.Silver) return 'Silver';
   return 'Bronze';
+}
+
+/**
+ * Game Replay
+ */
+export interface GameReplay {
+  id: string;
+  match_id: string;
+  game_type: GameType;
+  initial_state: GameState;
+  move_history: Move[];
+  final_state: GameState;
+  winner_id?: string;
+  duration?: number;
+  created_at: string;
 }

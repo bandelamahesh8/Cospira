@@ -28,14 +28,17 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full flex-col bg-background overflow-hidden relative">
+      <div className='flex h-screen w-full flex-col bg-background overflow-hidden relative'>
         {/* Navbar */}
         {showNavbar && <Navbar isFixed={true} />}
 
-        <div className={cn("flex flex-1 overflow-hidden", showNavbar && "pt-16")}>
+        <div className={cn('flex flex-1 overflow-hidden', showNavbar && 'pt-16')}>
           {/* Sidebar */}
           {showSidebar && !isMobile && (
-            <Sidebar collapsible="icon" className="hidden md:flex border-r border-border mt-16 h-[calc(100vh-4rem)]">
+            <Sidebar
+              collapsible='icon'
+              className='hidden md:flex border-r border-border mt-16 h-[calc(100vh-4rem)]'
+            >
               <SidebarContent>
                 <AppSidebar />
               </SidebarContent>
@@ -44,17 +47,11 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 
           {/* Mobile Sidebar Trigger */}
           {showSidebar && isMobile && (
-            <SidebarTrigger className="absolute left-4 top-20 z-50 md:hidden" />
+            <SidebarTrigger className='absolute left-4 top-20 z-50 md:hidden' />
           )}
 
           {/* Main Content */}
-          <main
-            className={cn(
-              'flex-1 overflow-auto',
-              !noPadding && 'p-1 md:p-1',
-              className
-            )}
-          >
+          <main className={cn('flex-1 overflow-auto', !noPadding && 'p-1 md:p-1', className)}>
             {children}
           </main>
         </div>

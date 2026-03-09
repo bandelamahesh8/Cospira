@@ -11,7 +11,10 @@ class XOSounds {
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) this.audioContext = new AudioCtx();
     }
   }
 
@@ -22,7 +25,7 @@ class XOSounds {
     if (this.isMuted || !this.audioContext) return;
 
     this.playTone(300, 0.05, 'sine', XO_CONFIG.SOUND.MOVE_VOLUME);
-    
+
     // Light haptic
     this.vibrate(10);
   }
@@ -35,7 +38,7 @@ class XOSounds {
 
     // Single tone
     this.playTone(400, 0.1, 'sine', XO_CONFIG.SOUND.WIN_VOLUME);
-    
+
     // Stronger haptic pattern
     this.vibrate([20, 10, 20]);
   }
@@ -74,10 +77,7 @@ class XOSounds {
     oscillator.type = type;
 
     gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(
-      0.01,
-      this.audioContext.currentTime + duration
-    );
+    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
 
     oscillator.start(this.audioContext.currentTime);
     oscillator.stop(this.audioContext.currentTime + duration);

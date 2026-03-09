@@ -1,265 +1,266 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
-import PressableScale from '../animations/PressableScale';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { wp, hp, normalize } from '../../utils/responsive';
 import { useTheme } from '../../hooks/useTheme';
 
-const RoomListItem = ({ title, subtitle, tags, members, userCount, isLive, matchPercentage, type, rating, capacity, variant, requiresPassword, status, onPress }) => {
+const RoomListItem = ({ title, userCount, capacity, isLive, requiresPassword, lastActive, thumbnail, members, onPress, status }) => {
   const { colors, isDark } = useTheme();
-  if (variant === 'high-fidelity') {
-    const isAI = type === 'AI';
-    const activeColor = isAI ? '#8b5cf6' : '#3b82f6';
-    
-    return (
-      <PressableScale style={[styles.hiFiContainer, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={onPress}>
-        <View style={styles.hiFiIconContainer}>
-            <View style={[styles.hiFiIconCircle, { backgroundColor: isDark ? colors.background : '#f1f5f9' }]}>
-                <MaterialCommunityIcons 
-                    name={isAI ? 'brain' : 'controller-classic'} 
-                    size={normalize(20)} 
-                    color={isDark ? colors.text : colors.primary} 
-                />
-            </View>
-        </View>
-        <View style={styles.hiFiContent}>
-            <Text style={[styles.hiFiTitle, { color: colors.text }]}>{title}</Text>
-            <View style={styles.hiFiSubtitleRow}>
-                <Text style={[styles.hiFiSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
-            </View>
-            
-        </View>
-
-        <View style={[styles.statusBadge, { backgroundColor: isDark ? '#161A23' : '#f1f5f9', borderColor: requiresPassword ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}>
-            <Text style={[styles.statusText, { color: requiresPassword ? '#f87171' : '#4ade80' }]}>
-                {requiresPassword ? 'Private' : 'Public'}
-            </Text>
-        </View>
-      </PressableScale>
-    );
-  }
-
-  const isFull = status === 'full';
   
+  const isStartingSoon = status === 'starting-soon';
+  const isLocked = status === 'locked' || (requiresPassword && status !== 'active');
+
   return (
-    <PressableScale style={[styles.container, isFull && { opacity: 0.7 }]} onPress={isFull ? null : onPress} disabled={isFull}>
-      <View style={[styles.card, { backgroundColor: isDark ? colors.surface : 'rgba(255, 255, 255, 0.6)', borderColor: isFull ? colors.danger : (isDark ? colors.border : 'rgba(255, 255, 255, 0.8)') }]}>
-        <View style={styles.header}>
-            <View style={styles.iconContainer}>
-                 <Ionicons name="flash-outline" size={normalize(20)} color="#ffffff" />
-            </View>
-            <View style={styles.titleSection}>
-                <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-                <View style={styles.userCountRow}>
-                   <Ionicons name="people" size={12} color={isFull ? colors.danger : colors.textSecondary} style={{ marginRight: 4 }} />
-                   <Text style={[styles.tags, { color: isFull ? colors.danger : colors.textSecondary }]}>
-                     {userCount || 0}/{capacity || 50} • {tags.join(' • ')}
-                   </Text>
-                </View>
-            </View>
-            <View style={[styles.joinButton, { backgroundColor: isFull ? colors.border : (isDark ? colors.background : '#ffffff'), borderColor: colors.border }]}>
-                <Text style={[styles.joinText, isFull && { color: colors.textSecondary }]}>{isFull ? 'FULL' : (requiresPassword ? 'Connect' : 'Join')}</Text>
-                <Ionicons 
-                    name={isFull ? "close-circle" : (requiresPassword ? "lock-closed" : "chevron-forward")} 
-                    size={14} 
-                    color={isFull ? colors.textSecondary : "#7b61ff"} 
-                />
-            </View>
+    <TouchableOpacity 
+      style={[
+        styles.container, 
+        isLive && styles.liveContainer,
+        isStartingSoon && styles.soonContainer,
+        isLocked && styles.lockedContainer
+      ]} 
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={styles.thumbnailBox}>
+        <Image 
+          source={thumbnail ? { uri: thumbnail } : require('../../../assets/images/logo.png')} 
+          style={[styles.thumbnail, isLocked && { grayscale: 1 }]} 
+        />
+        {isLive && (
+          <View style={styles.liveIndicatorShadow}>
+            <Ionicons name="eye" size={12} color="#fff" />
+          </View>
+        )}
+      </View>
+
+      <View style={styles.content}>
+        <View style={styles.statusRow}>
+          {isLive && (
+            <>
+              <View style={styles.pulseDot} />
+              <Text style={styles.statusLabel}>ACTIVE NOW</Text>
+            </>
+          )}
+          {isStartingSoon && (
+            <Text style={styles.soonLabel}>STARTING SOON • STARTS IN 8M</Text>
+          )}
+          {isLocked && (
+            <Text style={styles.idleLabel}>IDLE</Text>
+          )}
         </View>
+
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+            {title}
+          </Text>
+          {requiresPassword && (
+            <Ionicons name={isLocked ? "lock-closed" : "lock-open"} size={14} color="#94a3b8" style={{marginLeft: 4}} />
+          )}
+        </View>
+
+        {lastActive && <Text style={styles.lastActive}>{lastActive}</Text>}
 
         <View style={styles.footer}>
-            <View style={styles.membersRow}>
-                {members && Array.isArray(members) && members.map((member, index) => (
-                    <View key={index} style={[styles.memberAvatar, { marginLeft: index > 0 ? -12 : 0, zIndex: 10 - index }]}>
-                        {member.image ? (
-                            <Image source={{ uri: member.image }} style={styles.avatar} />
-                        ) : (
-                            <View style={[styles.avatarPlaceholder, { backgroundColor: ['#bfdbfe', '#fef3c7', '#dcfce7'][index % 3] }]}>
-                                <Text style={styles.placeholderText}>{member.name[0]}</Text>
-                            </View>
-                        )}
-                    </View>
-                ))}
-            </View>
-            {matchPercentage && (
-                <View style={[styles.badgeContainer, { backgroundColor: isDark ? colors.background : '#ffffff', borderColor: colors.border }]}>
-                    <Text style={[styles.matchText, { color: colors.textSecondary }]}>{matchPercentage}% Match</Text>
-                    {isLive && (
-                        <>
-                            <View style={[styles.badgeDivider, { backgroundColor: colors.border }]} />
-                            <Text style={styles.liveText}>LIVE</Text>
-                        </>
-                    )}
-                </View>
-            )}
+          <View style={styles.memberAvatars}>
+            {members && members.slice(0, 3).map((m, idx) => (
+              <View key={idx} style={[styles.miniAvatar, { marginLeft: idx > 0 ? -normalize(8) : 0, zIndex: 5 - idx }]}>
+                {m.image ? <Image source={{ uri: m.image }} style={styles.avatarImg} /> : <View style={styles.avatarPlace} />}
+              </View>
+            ))}
+          </View>
+          <View style={styles.countBox}>
+            <Ionicons name="people" size={12} color="#94a3b8" />
+            <Text style={styles.countText}>{userCount || 0}/{capacity || 20}</Text>
+          </View>
         </View>
       </View>
-    </PressableScale>
+
+      <TouchableOpacity 
+        style={[
+            styles.joinBtn, 
+            isStartingSoon && styles.requestBtn,
+            isLocked && styles.lockedBtn
+        ]}
+        onPress={onPress}
+        disabled={isLocked}
+      >
+        <Text style={[styles.joinBtnText, isStartingSoon && styles.requestBtnText, isLocked && styles.lockedBtnText]}>
+          {isLive ? 'Join' : isStartingSoon ? 'Request' : 'Locked'}
+        </Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  // High-fidelity variant styles
-  hiFiContainer: {
+  container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    padding: 18, // Slightly increased
-    marginBottom: 16,
+    padding: normalize(12),
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
-    // Soft gradient effect via background color or simple shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: 'transparent',
+    marginBottom: 12,
   },
-  hiFiIconContainer: {
-    // This style was not explicitly in the user's snippet, but it's part of the hiFiContainer structure
+  liveContainer: {
+    backgroundColor: '#fff',
+    borderColor: 'rgba(47, 107, 255, 0.6)',
+    borderWidth: 1.5,
+    shadowColor: '#0B1F3A',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 4,
+    transform: [{ scale: 1.02 }],
   },
-  hiFiIconCircle: {
-    width: normalize(40),
-    height: normalize(40),
+  soonContainer: {
+    borderColor: 'rgba(47, 107, 255, 0.3)',
+  },
+  lockedContainer: {
+    opacity: 0.6,
+  },
+  thumbnailBox: {
+    width: normalize(56),
+    height: normalize(56),
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#e2e8f0',
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  liveIndicatorShadow: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    padding: 2,
+    backdropFilter: 'blur(4px)',
   },
-  hiFiTitle: {
-    fontSize: normalize(15),
-    fontWeight: '600',
+  content: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 2,
   },
-  hiFiSubtitle: {
-    fontSize: normalize(11),
-    fontWeight: '400',
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#2F6BFF',
+    marginRight: 6,
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  statusText: {
+  statusLabel: {
     fontSize: normalize(9),
-    fontWeight: '700',
+    fontWeight: '800',
+    color: '#2F6BFF',
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
   },
-
-  // Legacy Styles
-  container: {
-    marginBottom: hp(2),
+  soonLabel: {
+    fontSize: normalize(9),
+    fontWeight: '800',
+    color: '#d97706',
+    letterSpacing: 0.5,
   },
-  card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: normalize(28),
-    padding: normalize(16),
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-    overflow: 'hidden',
+  idleLabel: {
+    fontSize: normalize(9),
+    fontWeight: '800',
+    color: '#94a3b8',
+    letterSpacing: 0.5,
   },
-  header: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: hp(1.5),
-  },
-  iconContainer: {
-    width: normalize(36),
-    height: normalize(36),
-    borderRadius: normalize(12),
-    backgroundColor: '#7b61ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: wp(3),
-  },
-  titleSection: {
-    flex: 1,
   },
   title: {
-    fontSize: normalize(16),
-    fontWeight: '700',
-    color: '#1e293b',
+    fontSize: normalize(14),
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Space Grotesk',
   },
-  tags: {
-    fontSize: normalize(12),
+  lastActive: {
+    fontSize: normalize(9),
     color: '#94a3b8',
-    marginTop: 2,
-  },
-  joinButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  joinText: {
-    fontSize: normalize(13),
-    fontWeight: '600',
-    color: '#7b61ff',
-    marginRight: 2,
+    marginTop: 1,
   },
   footer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 6,
+    gap: 8,
   },
-  membersRow: {
+  memberAvatars: {
     flexDirection: 'row',
   },
-  memberAvatar: {
-    width: normalize(28),
-    height: normalize(28),
-    borderRadius: normalize(14),
-    borderWidth: 2,
-    borderColor: '#ffffff',
+  miniAvatar: {
+    width: normalize(20),
+    height: normalize(20),
+    borderRadius: normalize(10),
+    backgroundColor: '#e2e8f0',
+    borderWidth: 1.5,
+    borderColor: '#fff',
     overflow: 'hidden',
   },
-  avatar: {
+  avatarImg: {
     width: '100%',
     height: '100%',
   },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+  avatarPlace: {
+    flex: 1,
+    backgroundColor: '#CBD5E1',
   },
-  placeholderText: {
-    fontSize: normalize(10),
-    fontWeight: '700',
-    color: '#475569',
-  },
-  badgeContainer: {
+  countBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
+    gap: 4,
   },
-  matchText: {
+  countText: {
     fontSize: normalize(10),
+    color: '#64748b',
     fontWeight: '600',
+  },
+  joinBtn: {
+    backgroundColor: '#0B1F3A',
+    paddingHorizontal: normalize(16),
+    paddingVertical: normalize(8),
+    borderRadius: 10,
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  joinBtnText: {
+    color: '#fff',
+    fontSize: normalize(12),
+    fontWeight: 'bold',
+  },
+  requestBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  requestBtnText: {
     color: '#64748b',
   },
-  badgeDivider: {
-    width: 1,
-    height: 10,
-    backgroundColor: '#e2e8f0',
-    marginHorizontal: 6,
+  lockedBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  liveText: {
-    fontSize: normalize(10),
-    fontWeight: '700',
-    color: '#7b61ff',
-  },
+  lockedBtnText: {
+    color: '#cbd5e1',
+  }
 });
 
 export default RoomListItem;

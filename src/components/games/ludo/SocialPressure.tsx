@@ -11,17 +11,17 @@ interface SocialPressureProps {
   opponentColor: string;
 }
 
-export const SocialPressure = ({ 
-  opponentThinking, 
+export const SocialPressure = ({
+  opponentThinking,
   tokenThreatened,
-  opponentColor 
+  opponentColor,
 }: SocialPressureProps) => {
   return (
     <>
       {/* Opponent dice shadow when they hesitate */}
       {opponentThinking && (
         <motion.div
-          className="absolute top-4 right-4 pointer-events-none"
+          className='absolute top-4 right-4 pointer-events-none'
           animate={{
             x: [-2, 2, -2],
             opacity: [0.3, 0.5, 0.3],
@@ -33,7 +33,7 @@ export const SocialPressure = ({
           }}
         >
           <div
-            className="w-12 h-12 rounded-lg flex items-center justify-center text-xl"
+            className='w-12 h-12 rounded-lg flex items-center justify-center text-xl'
             style={{
               backgroundColor: `${opponentColor}20`,
               border: `2px dashed ${opponentColor}`,
@@ -47,7 +47,7 @@ export const SocialPressure = ({
       {/* Token trembles when threatened */}
       {tokenThreatened && (
         <motion.div
-          className="absolute inset-0 pointer-events-none"
+          className='absolute inset-0 pointer-events-none'
           animate={{
             x: [-1, 1, -1, 1, 0],
             y: [-1, 1, -1, 1, 0],

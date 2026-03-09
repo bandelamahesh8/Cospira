@@ -24,6 +24,7 @@ import { cleanupUploads } from './cleanup.js';
 import LudoEngine from './game/LudoEngine.js';
 import SnakeLadderEngine from './game/SnakeLadderEngine.js';
 import registerSocketHandlers from './sockets/index.js';
+import autoCloseService from './services/AutoCloseService.js';
 import { Chess } from 'chess.js';
 import connectMongoDB from './mongo.js';
 import { supabase } from './supabase.js';
@@ -86,7 +87,8 @@ let server;
 const keyPath = path.resolve(__dirname, '../../localhost+3-key.pem');
 const certPath = path.resolve(__dirname, '../../localhost+3.pem');
 
-const forceHttp = process.env.FORCE_HTTP === 'true' || !isProd;
+// Only force HTTP if explicitly told to — certs are used whenever they exist
+const forceHttp = process.env.FORCE_HTTP === 'true';
 
 if (!forceHttp && fs.existsSync(keyPath) && fs.existsSync(certPath)) {
   try {
@@ -104,7 +106,9 @@ if (!forceHttp && fs.existsSync(keyPath) && fs.existsSync(certPath)) {
   server = http.createServer(app);
   logger.info(`Starting HTTP server (${isProd ? 'production' : 'development'} mode) - SSL certificates not found at ${certPath}`);
 }
-const port = process.env.PORT || 3001;
+
+const port = process.env.PORT || 3002; // Default to 3002 just in case
+logger.info(`[Config] Using port: ${port}`);
 
 // FFmpeg Check (Prevent silent crashes later)
 import { exec } from 'child_process';
@@ -315,26 +319,6 @@ setInterval(() => {
   cleanupUploads(UPLOAD_DIR, MAX_FILE_AGE);
 }, CLEANUP_INTERVAL);
 
-// Room Cleanup Cron (Issue 3 & 11) - Every 5 minutes
-setInterval(async () => {
-    try {
-        const rooms = await getActiveRooms();
-        const now = Date.now();
-        for (const room of rooms) {
-            const userCount = room.users ? Object.keys(room.users).length : 0;
-            const idleTime = now - new Date(room.updatedAt || room.createdAt).getTime();
-            
-            // Delete if empty for more than 10 mins OR inactive for more than 24h
-            if ((userCount === 0 && idleTime > 10 * 60 * 1000) || idleTime > 24 * 60 * 60 * 1000) {
-                await deleteRoom(room.id);
-                logger.info(`Cron: Deleted stale/empty room ${room.id}`);
-            }
-        }
-    } catch (err) {
-        logger.error('Room cleanup cron error:', err);
-    }
-}, 5 * 60 * 1000);
-
 // Create Socket.IO server
 // Socket Connection Rate Limiter (Memory Map)
 const socketConnectionMap = new Map(); // IP -> { count, firstConnectionTime }
@@ -514,20 +498,98 @@ const sanitizeRoomId = (id) => typeof id === 'string' && /^[a-zA-Z0-9-_]{3,80}$/
 app.get('/api/room-info/:code', async (req, res) => {
   const code = sanitizeRoomId(req.params.code);
   if (!code) return res.status(400).json({ error: 'Invalid room code' });
-  const room = await getRoom(code);
-  if (!room || !room.isActive) {
+  
+  let room = await getRoom(code);
+  
+  // Fallback for Breakout Sessions or Organizations: Hydrate from Supabase if not in Redis
+  if (!room && supabase) {
+    try {
+      // 1. Check if it's a breakout session
+      const { data: breakout } = await supabase
+        .from('breakout_sessions')
+        .select('*, organizations(name)')
+        .eq('id', code)
+        .maybeSingle();
+      
+      if (breakout) {
+        room = {
+          id: breakout.id,
+          name: breakout.name || `Breakout ${code.substring(0, 4)}`,
+          password: breakout.password || null,
+          isActive: breakout.status !== 'CLOSED',
+          hasWaitingRoom: true,
+          organizationName: breakout.organizations?.name || null
+        };
+      } else {
+        // 2. Check if it's an organization (ID or Slug)
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('name')
+          .or(`id.eq.${code},slug.eq.${code}`)
+          .maybeSingle();
+        
+        if (org) {
+          room = {
+            id: code,
+            name: 'General',
+            password: null,
+            isActive: true,
+            hasWaitingRoom: true,
+            organizationName: org.name
+          };
+        }
+      }
+    } catch (err) {
+      logger.error(`[Room-Info] Supabase hydration error: ${err.message}`);
+    }
+  }
+
+  if (!room || (room.hasOwnProperty('isActive') && !room.isActive)) {
     return res.status(404).json({ error: 'Room not found' });
   }
 
   const hasPassword = !!(room.password || room.passwordHash);
   const accessType = room.accessType || (hasPassword ? 'password' : 'public');
 
+  let hostName = room.hostName || null;
+  let fetchedOrgName = null;
+  if (supabase) {
+      try {
+          const hostIdToSearch = room.hostId || (room.settings && room.settings.ownerId);
+          if (hostIdToSearch) {
+              if (!hostName) {
+                  const { data: profile } = await supabase.from('player_profiles').select('display_name').eq('id', hostIdToSearch).maybeSingle();
+                  if (profile) hostName = profile.display_name;
+              }
+              
+              if (!room.organizationName && !room.settings?.organizationName) {
+                  let orgIdToCheck = room.settings?.organizationId || room.id;
+                  
+                  // Try to find the exact organization the room ID belongs to, or explicit orgId
+                  const { data: exactOrg } = await supabase.from('organizations').select('name').or(`id.eq.${orgIdToCheck},slug.eq.${orgIdToCheck}`).maybeSingle();
+                  
+                  if (exactOrg) {
+                      fetchedOrgName = exactOrg.name;
+                  } else {
+                      // Only if still missing, try host's organization
+                      const { data: member } = await supabase.from('organization_members').select('organizations(name)').eq('user_id', hostIdToSearch).limit(1).maybeSingle();
+                      if (member && member.organizations) fetchedOrgName = member.organizations.name;
+                  }
+              }
+          }
+      } catch (err) {
+          // ignore
+      }
+  }
+
   res.json({
     exists: true,
     requiresPassword: hasPassword,
     accessType,
     name: room.name || room.id,
-    hasWaitingRoom: !!room.hasWaitingRoom
+    hasWaitingRoom: !!room.hasWaitingRoom,
+    organizationName: room.organizationName || room.settings?.organizationName || fetchedOrgName || null,
+    hostName: hostName || room.hostId || 'a Cospira user'
   });
 });
 
@@ -683,6 +745,7 @@ io.use((socket, next) => {
         return next();
       }
       socket.user = decoded;
+      if (decoded.sub && !decoded.id) socket.user.id = decoded.sub;
       next();
     });
   } else {
@@ -692,6 +755,9 @@ io.use((socket, next) => {
 
 // Initialize Modular Socket Handlers
 registerSocketHandlers(io, sfuHandler);
+
+// Start Auto-Close Service
+autoCloseService.start(io);
 
 // Initialize Matchmaking Service
 import { matchmakingService } from './services/MatchmakingService.js';
@@ -744,7 +810,7 @@ app.get('/api/rooms', async (req, res) => {
   try {
     const rooms = await getActiveRooms();
     const publicRooms = rooms
-      .filter(r => r.accessType !== 'invite') // Hide invite-only rooms
+      .filter(r => r.accessType !== 'invite' && !r.settings?.hidden_room) // Hide invite-only or hidden rooms
       .map(r => {
         const hasPassword = !!(r.password || r.passwordHash);
         const userCount = Array.isArray(r.users) ? r.users.length : (r.users ? Object.keys(r.users).length : 0);
@@ -960,14 +1026,12 @@ startServer();
 // Global Error Handlers
 process.on('unhandledRejection', (reason, promise) => {
   logger.error(`Unhandled Rejection: ${reason.message || reason}`);
-  if (reason.stack) logger.debug(reason.stack);
+  if (reason.stack) logger.error(reason.stack);
 });
 
 process.on('uncaughtException', (error) => {
   logger.error(`Uncaught Exception: ${error.message || error}`);
-  if (error.stack) logger.debug(error.stack);
+  if (error.stack) logger.error(error.stack);
   // Give time for logging before exiting
   setTimeout(() => process.exit(1), 1000);
 });
-
-

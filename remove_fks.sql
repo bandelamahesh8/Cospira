@@ -1,0 +1,2 @@
+ALTER TABLE public.organization_members DROP CONSTRAINT IF EXISTS organization_members_player_profiles_fkey;
+ALTER TABLE public.breakout_participants DROP CONSTRAINT IF EXISTS breakout_participants_player_profiles_fkey;

@@ -1,6 +1,6 @@
 /**
  * Core Game Engine Interface
- * 
+ *
  * All games must implement this interface to ensure consistency,
  * scalability, and maintainability across the gaming ecosystem.
  */
@@ -10,13 +10,14 @@ export interface Player {
   name: string;
   role?: string;
   avatarUrl?: string;
+  photoUrl?: string;
   teamId?: string;
 }
 
 export interface Move {
   playerId: string;
   type: string;
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 
@@ -27,8 +28,8 @@ export interface GameState {
   currentTurn: string;
   status: 'waiting' | 'active' | 'paused' | 'finished';
   winner: string | 'draw' | null;
-  board: any;
-  metadata: Record<string, any>;
+  board: unknown;
+  metadata: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,7 +37,7 @@ export interface GameState {
 export interface GameStats {
   duration: number;
   totalMoves: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ValidationResult {
@@ -51,7 +52,7 @@ export interface WinnerResult {
 
 /**
  * Universal Game Engine Interface
- * 
+ *
  * All game engines must implement these methods for:
  * - Consistent game flow
  * - Server-side validation
@@ -62,7 +63,7 @@ export interface GameEngine {
   /**
    * Initialize a new game with given players and optional config
    */
-  initGame(players: Player[], config?: any): GameState;
+  initGame(players: Player[], config?: unknown): GameState;
 
   /**
    * Validate a move before applying it

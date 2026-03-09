@@ -12,15 +12,11 @@ interface SimplifiedViewProps {
   isMultiSix: boolean;
 }
 
-export const SimplifiedView = ({ 
-  children, 
-  isChainEvent,
-  isMultiSix 
-}: SimplifiedViewProps) => {
+export const SimplifiedView = ({ children, isChainEvent, isMultiSix }: SimplifiedViewProps) => {
   return (
-    <div className="relative">
+    <div className='relative'>
       {children}
-      
+
       {/* Fade non-essential UI during chain events */}
       <AnimatePresence>
         {(isChainEvent || isMultiSix) && (
@@ -29,7 +25,7 @@ export const SimplifiedView = ({
             animate={{ opacity: 0.7 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black pointer-events-none"
+            className='absolute inset-0 bg-black pointer-events-none'
           />
         )}
       </AnimatePresence>

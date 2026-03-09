@@ -78,13 +78,12 @@ export const useDeviceType = () => {
 
       // Only update if device type actually changed
       if (newInfo.type !== prevTypeRef.current) {
-        logger.info(`[useDeviceType] Device type changed: ${prevTypeRef.current} → ${newInfo.type}`);
+        logger.info(
+          `[useDeviceType] Device type changed: ${prevTypeRef.current} → ${newInfo.type}`
+        );
         prevTypeRef.current = newInfo.type;
         setDeviceInfo(newInfo);
-      } else if (
-        newInfo.width !== deviceInfo.width ||
-        newInfo.height !== deviceInfo.height
-      ) {
+      } else if (newInfo.width !== deviceInfo.width || newInfo.height !== deviceInfo.height) {
         // Update dimensions even if type didn't change
         setDeviceInfo(newInfo);
       }

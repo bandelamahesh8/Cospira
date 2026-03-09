@@ -14,8 +14,8 @@ export const MobileBottomNav = () => {
   const location = useLocation();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0b0f14]/90 backdrop-blur-xl border-t border-white/10 pb-safe md:hidden">
-      <div className="flex items-center justify-around h-16">
+    <div className='fixed bottom-0 left-0 right-0 z-50 bg-[#0b0f14]/90 backdrop-blur-xl border-t border-white/10 pb-safe md:hidden'>
+      <div className='flex items-center justify-around h-16'>
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
@@ -25,24 +25,24 @@ export const MobileBottomNav = () => {
               key={item.path}
               onClick={() => navigate(item.path)}
               whileTap={{ scale: 0.9 }}
-              className="relative flex flex-col items-center justify-center w-full h-full gap-1 group"
+              className='relative flex flex-col items-center justify-center w-full h-full gap-1 group'
             >
-              <div className="relative">
+              <div className='relative'>
                 <Icon
                   className={`w-5 h-5 transition-colors ${
                     isActive ? 'text-white' : 'text-white/40'
                   }`}
                 />
-                
+
                 {isActive && (
                   <motion.div
-                    layoutId="activeTab"
-                    className="absolute -inset-2 bg-white/5 rounded-full -z-10"
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    layoutId='activeTab'
+                    className='absolute -inset-2 bg-white/5 rounded-full -z-10'
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   />
                 )}
               </div>
-              
+
               <span
                 className={`text-[10px] font-bold transition-colors ${
                   isActive ? 'text-white' : 'text-white/40'
@@ -53,8 +53,8 @@ export const MobileBottomNav = () => {
 
               {isActive && (
                 <motion.div
-                  layoutId="activeIndicator"
-                  className="absolute top-0 w-8 h-0.5 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                  layoutId='activeIndicator'
+                  className='absolute top-0 w-8 h-0.5 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]'
                 />
               )}
             </motion.button>

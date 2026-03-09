@@ -18,7 +18,7 @@ export const FailureSoftening = ({ justFell, onComplete }: FailureSofteningProps
   useEffect(() => {
     if (justFell) {
       setIsActive(true);
-      
+
       // Auto-complete after softening period
       setTimeout(() => {
         setIsActive(false);
@@ -34,7 +34,7 @@ export const FailureSoftening = ({ justFell, onComplete }: FailureSofteningProps
       {/* Board zoom out slightly */}
       {SNAKELADDER_CONFIG.COMFORT.ZOOM_OUT_AFTER_FALL && (
         <motion.div
-          className="fixed inset-0 pointer-events-none"
+          className='fixed inset-0 pointer-events-none'
           initial={{ scale: 1 }}
           animate={{ scale: 0.95 }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -44,7 +44,7 @@ export const FailureSoftening = ({ justFell, onComplete }: FailureSofteningProps
       {/* Colors soften */}
       {SNAKELADDER_CONFIG.COMFORT.COLOR_SOFTEN_AFTER_FALL && (
         <motion.div
-          className="fixed inset-0 bg-white pointer-events-none"
+          className='fixed inset-0 bg-white pointer-events-none'
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 0.15, 0] }}
           transition={{ duration: 1.5 }}

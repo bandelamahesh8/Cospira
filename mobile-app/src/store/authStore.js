@@ -3,10 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
 
 const SESSION_KEY = '@cospira_session';
+const SESSION_DURATION = 10 * 24 * 60 * 60 * 1000; // 10 days in milliseconds
 
 export const authStore = {
   user: null, // { id, username, email, role }
   token: null,
+  refreshToken: null,
   isAuthenticated: false,
   isLoading: false,
   error: null,
@@ -32,13 +34,40 @@ export const authStore = {
       const sessionData = await AsyncStorage.getItem(SESSION_KEY);
       
       if (sessionData) {
-        const { token, user } = JSON.parse(sessionData);
+        const { token, refreshToken, user, expiresAt } = JSON.parse(sessionData);
+        
+        // Check for session expiration (Sliding Window: 10 days since last app open)
+        if (expiresAt && Date.now() > expiresAt) {
+          console.warn('[AuthStore] Session expired after 10 days of inactivity');
+          await this.logout();
+          return;
+        }
+
         if (token && user) {
           this.token = token;
+          this.refreshToken = refreshToken;
           this.user = user;
           this.isAuthenticated = true;
           api.setToken(token);
-          console.log('[AuthStore] Session restored for:', user.username);
+          
+          console.log('[AuthStore] Session found. Checking refresh requirements...');
+          
+          // Reset the 10-day window on every app open
+          try {
+            if (user.role !== 'guest') {
+                await this.refreshSession(refreshToken || token);
+            } else {
+                await this._updateSessionStorage();
+            }
+          } catch (refreshErr) {
+            console.error('[AuthStore] Initial refresh failed:', refreshErr.message);
+            // If refresh fails but we have a token, we might still be able to use the app 
+            // if the access token hasn't reached its own short-term expiry.
+            // But for security, if sliding window failed, we update the expiry anyway if still authenticated.
+            if (this.isAuthenticated) {
+                await this._updateSessionStorage();
+            }
+          }
         }
       }
       
@@ -64,17 +93,15 @@ export const authStore = {
       console.log('[AuthStore] Attempting login for:', email);
       const response = await authService.login(email, password);
       
-      // Assuming response structure: { token, user }
+      // Assuming response structure: { token, refreshToken, user }
       if (response && response.token) {
         this.user = response.user;
         this.token = response.token;
+        this.refreshToken = response.refreshToken;
         this.isAuthenticated = true;
         
-        // Save to storage
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify({
-          token: response.token,
-          user: response.user
-        }));
+        // Save to storage with 10-day expiry
+        await this._updateSessionStorage();
         
         console.log('[AuthStore] Login success and session saved:', this.user.username);
       } else {
@@ -88,6 +115,42 @@ export const authStore = {
     } finally {
       this.isLoading = false;
       this.notify();
+    }
+  },
+
+  async refreshSession(refreshToken) {
+    try {
+      const response = await authService.refreshSession(refreshToken || this.refreshToken);
+      if (response && response.token) {
+        this.token = response.token;
+        if (response.refreshToken) {
+          this.refreshToken = response.refreshToken;
+        }
+        if (response.user) {
+          this.user = response.user;
+        }
+        
+        await this._updateSessionStorage();
+        console.log('[AuthStore] Session refreshed successfully');
+        this.notify();
+      }
+    } catch (err) {
+      console.error('[AuthStore] Refresh session failed:', err.message);
+      throw err;
+    }
+  },
+
+  async _updateSessionStorage() {
+    try {
+      const expiresAt = Date.now() + SESSION_DURATION;
+      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify({
+        token: this.token,
+        refreshToken: this.refreshToken,
+        user: this.user,
+        expiresAt
+      }));
+    } catch (err) {
+      console.error('[AuthStore] Failed to update storage:', err.message);
     }
   },
 
@@ -113,10 +176,7 @@ export const authStore = {
       this.isAuthenticated = true;
       api.setToken(guestToken);
 
-      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify({
-        token: guestToken,
-        user: guestUser
-      }));
+      await this._updateSessionStorage();
 
       console.log('[AuthStore] Logged in as guest:', guestUser.username);
     } catch (err) {
@@ -158,6 +218,7 @@ export const authStore = {
       await AsyncStorage.removeItem(SESSION_KEY);
       this.user = null;
       this.token = null;
+      this.refreshToken = null;
       this.isAuthenticated = false;
       console.log('[AuthStore] Logged out and session cleared');
       this.notify();

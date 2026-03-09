@@ -1,6 +1,6 @@
 /**
  * Feature Flags System
- * 
+ *
  * Centralized feature flag management for CosPira platform.
  * Enables easy A/B testing, gradual rollouts, and quick feature toggles.
  */
@@ -12,17 +12,17 @@ export const FEATURE_FLAGS = {
   SCREEN_SHARE_ENABLED: true,
   PDF_UPLOAD_ENABLED: true,
   YOUTUBE_ENABLED: true,
-  
+
   // Advanced Features
   RECORDING_ENABLED: false, // Future feature
   MULTI_USER_ENABLED: true,
   ORGANIZATIONS_ENABLED: true,
-  
+
   // Experimental Features
   AI_ASSISTANT_ENABLED: false, // Future feature
   WHITEBOARD_ENABLED: false, // Future feature
   LIVE_CAPTIONS_ENABLED: false, // Future feature
-  
+
   // Platform Features
   ANALYTICS_ENABLED: true,
   FEEDBACK_ENABLED: true,
@@ -64,7 +64,7 @@ export const getDisabledFeatures = (): string[] => {
  * @returns boolean indicating if ALL features are enabled
  */
 export const areAllFeaturesEnabled = (flags: (keyof typeof FEATURE_FLAGS)[]): boolean => {
-  return flags.every(flag => isFeatureEnabled(flag));
+  return flags.every((flag) => isFeatureEnabled(flag));
 };
 
 /**
@@ -73,5 +73,5 @@ export const areAllFeaturesEnabled = (flags: (keyof typeof FEATURE_FLAGS)[]): bo
  * @returns boolean indicating if ANY feature is enabled
  */
 export const isAnyFeatureEnabled = (flags: (keyof typeof FEATURE_FLAGS)[]): boolean => {
-  return flags.some(flag => isFeatureEnabled(flag));
+  return flags.some((flag) => isFeatureEnabled(flag));
 };

@@ -16,13 +16,13 @@ interface SnakeLadderBoard {
 
 /**
  * Snakes & Ladders Game Engine
- * 
+ *
  * Implements the universal GameEngine interface for Snakes & Ladders.
  * Standard 100-square board with predefined snakes and ladders.
  */
 export class SnakeLadderEngine extends BaseGameEngine {
   private readonly BOARD_SIZE = 100;
-  
+
   // Helper to generate random board
   private generateBoard(): { snakes: Record<number, number>; ladders: Record<number, number> } {
     const snakes: Record<number, number> = {};
@@ -40,8 +40,10 @@ export class SnakeLadderEngine extends BaseGameEngine {
       const tail = Math.floor(Math.random() * (head - 10)) + 2; // Below head
 
       if (
-        isValid(head) && isValid(tail) && 
-        !usedStartPositions.has(head) && !usedEndPositions.has(tail) &&
+        isValid(head) &&
+        isValid(tail) &&
+        !usedStartPositions.has(head) &&
+        !usedEndPositions.has(tail) &&
         !usedStartPositions.has(tail) && // Avoid chains
         head !== tail
       ) {
@@ -61,8 +63,10 @@ export class SnakeLadderEngine extends BaseGameEngine {
       const top = Math.floor(Math.random() * (99 - bottom)) + bottom + 1; // Above bottom
 
       if (
-        isValid(bottom) && isValid(top) &&
-        !usedStartPositions.has(bottom) && !usedEndPositions.has(top) &&
+        isValid(bottom) &&
+        isValid(top) &&
+        !usedStartPositions.has(bottom) &&
+        !usedEndPositions.has(top) &&
         !usedEndPositions.has(bottom) && // Avoid chains (snake tail != ladder bottom)
         !usedStartPositions.has(top) && // Avoid loops (ladder top != snake head)
         bottom !== top
@@ -133,40 +137,49 @@ export class SnakeLadderEngine extends BaseGameEngine {
     const board = { ...(state.board as SnakeLadderBoard) };
     const playerPositions = { ...board.playerPositions };
     const metadata = { ...state.metadata };
-    
+
     // Initialize powerups if missing (migration)
     if (!metadata.playerPowerUps) {
-        metadata.playerPowerUps = {};
-        state.players.forEach(p => metadata.playerPowerUps[p.id] = [
+      metadata.playerPowerUps = {};
+      state.players.forEach(
+        (p) =>
+          (metadata.playerPowerUps[p.id] = [
             { id: 'shield', name: 'Shield', count: 1 },
-            { id: 'extra_roll', name: 'Extra Dice', count: 1 }
-        ]);
+            { id: 'extra_roll', name: 'Extra Dice', count: 1 },
+          ])
+      );
     }
 
     if (move.type === 'use-powerup') {
-        const { powerUpId } = move.data;
-        const playerPowerUps = metadata.playerPowerUps[move.playerId] || [];
-        const puIndex = playerPowerUps.findIndex((p: any) => p.id === powerUpId && p.count > 0);
+      const { powerUpId } = move.data;
+      const playerPowerUps = metadata.playerPowerUps[move.playerId] || [];
+      const puIndex = playerPowerUps.findIndex((p: any) => p.id === powerUpId && p.count > 0);
 
-        if (puIndex !== -1) {
-            // Consume powerup
-            playerPowerUps[puIndex].count--;
-            
-            // Apply Effect
-            if (powerUpId === 'shield') {
-                metadata.activeEffects = { ...(metadata.activeEffects || {}), [move.playerId]: { ...((metadata.activeEffects || {})[move.playerId] || {}), shield: true } };
-            }
-            if (powerUpId === 'extra_roll') {
-                 // Next turn will be same player
-                 metadata.extraRollPending = true;
-            }
-            
-            return {
-                ...state,
-                metadata,
-                updatedAt: new Date()
-            };
+      if (puIndex !== -1) {
+        // Consume powerup
+        playerPowerUps[puIndex].count--;
+
+        // Apply Effect
+        if (powerUpId === 'shield') {
+          metadata.activeEffects = {
+            ...(metadata.activeEffects || {}),
+            [move.playerId]: {
+              ...((metadata.activeEffects || {})[move.playerId] || {}),
+              shield: true,
+            },
+          };
         }
+        if (powerUpId === 'extra_roll') {
+          // Next turn will be same player
+          metadata.extraRollPending = true;
+        }
+
+        return {
+          ...state,
+          metadata,
+          updatedAt: new Date(),
+        };
+      }
     }
 
     if (move.type === 'roll') {
@@ -184,13 +197,13 @@ export class SnakeLadderEngine extends BaseGameEngine {
         if (board.snakes[newPosition]) {
           const hasShield = metadata.activeEffects?.[move.playerId]?.shield;
           if (hasShield) {
-              // Shield protects!
-              effectTriggered = 'SHIELD_USED';
-              // Consume shield (single use for one snake hit? or one turn? Let's say one snake hit)
-              metadata.activeEffects[move.playerId].shield = false;
+            // Shield protects!
+            effectTriggered = 'SHIELD_USED';
+            // Consume shield (single use for one snake hit? or one turn? Let's say one snake hit)
+            metadata.activeEffects[move.playerId].shield = false;
           } else {
-              newPosition = board.snakes[newPosition];
-              effectTriggered = 'SNAKE';
+            newPosition = board.snakes[newPosition];
+            effectTriggered = 'SNAKE';
           }
         }
         // Check for ladder
@@ -201,13 +214,13 @@ export class SnakeLadderEngine extends BaseGameEngine {
       }
 
       playerPositions[move.playerId] = newPosition;
-      
+
       // Determine Turn
       let nextTurn = this.getNextPlayer(state);
       if (metadata.extraRollPending) {
-          nextTurn = move.playerId; // Same player
-          metadata.extraRollPending = false;
-          effectTriggered = 'EXTRA_ROLL';
+        nextTurn = move.playerId; // Same player
+        metadata.extraRollPending = false;
+        effectTriggered = 'EXTRA_ROLL';
       }
 
       const newState: GameState = {

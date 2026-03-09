@@ -17,15 +17,15 @@ export class ChainEventManager {
   getAnimationSpeed(): number {
     const now = Date.now();
     const timeSinceLastEvent = now - this.lastEventTime;
-    
+
     // Reset chain if too much time passed
     if (timeSinceLastEvent > this.CHAIN_TIMEOUT_MS) {
       this.chainCount = 0;
     }
-    
+
     this.chainCount++;
     this.lastEventTime = now;
-    
+
     // Calculate speed based on chain count
     if (this.chainCount === 1) {
       return 1.0; // Normal speed
@@ -36,7 +36,7 @@ export class ChainEventManager {
       // 40% faster
       return 1.0 - LUDO_CONFIG.ANIMATION.COMPRESSION.THIRD_CHAIN_SPEEDUP;
     }
-    
+
     return 1.0;
   }
 

@@ -1,4 +1,3 @@
-
 import { createClient, LiveTranscriptionEvents, DeepgramClient, LiveClient } from '@deepgram/sdk';
 import { logger } from '@/utils/logger';
 
@@ -10,7 +9,7 @@ class STTService {
   private connection: LiveClient | null = null;
   private isConnected = false;
   private keepAliveInterval: NodeJS.Timeout | null = null;
-  
+
   // Circuit Breaker State
   private currentStream: MediaStream | null = null;
   private currentCallback: TranscriptCallback | null = null;
@@ -19,18 +18,18 @@ class STTService {
   private isIntentionalStop = false;
   private isMockMode = false;
   private mockInterval: NodeJS.Timeout | null = null;
-  
+
   private mockPhrases = [
     "Alright team, let's initialize the secure handshake protocol.",
     "I'm detecting some latency in the neural link.",
-    "Can we verify the encryption keys for the new sector?",
-    "Deployment to production is scheduled for 0800 hours.",
-    "The AI analysis indicates a 98% success probability.",
-    "Who has the authorization codes for the mainframe?",
+    'Can we verify the encryption keys for the new sector?',
+    'Deployment to production is scheduled for 0800 hours.',
+    'The AI analysis indicates a 98% success probability.',
+    'Who has the authorization codes for the mainframe?',
     "Wait, I'm getting a signal from the external node.",
     "Let's synchronize our data streams.",
-    "Security breach prevented by the orbital firewall.",
-    "Meeting minutes are being compiled automatically."
+    'Security breach prevented by the orbital firewall.',
+    'Meeting minutes are being compiled automatically.',
   ];
 
   /**
@@ -41,10 +40,10 @@ class STTService {
 
     // Auto-enable mock mode if key is 'mock' or empty
     if (!tempKey || tempKey === 'mock') {
-        this.isMockMode = true;
-        this.isConnected = true;
-        logger.info('[STTService] Initialized in MOCK MODE');
-        return;
+      this.isMockMode = true;
+      this.isConnected = true;
+      logger.info('[STTService] Initialized in MOCK MODE');
+      return;
     }
 
     try {
@@ -67,33 +66,33 @@ class STTService {
     this.currentCallback = onTranscript;
     this.isIntentionalStop = false;
     this.retryCount = 0;
-    
+
     await this.connect();
   }
 
   private startMockSimulation() {
-      if (this.mockInterval) clearInterval(this.mockInterval);
-      
-      logger.info('[STTService] Starting Mock Simulation');
-      
-      this.mockInterval = setInterval(() => {
+    if (this.mockInterval) clearInterval(this.mockInterval);
+
+    logger.info('[STTService] Starting Mock Simulation');
+
+    this.mockInterval = setInterval(() => {
+      if (this.currentCallback) {
+        const text = this.mockPhrases[Math.floor(Math.random() * this.mockPhrases.length)];
+        // Simulate partials then final
+        this.currentCallback(text + '...', false);
+        setTimeout(() => {
           if (this.currentCallback) {
-              const text = this.mockPhrases[Math.floor(Math.random() * this.mockPhrases.length)];
-              // Simulate partials then final
-              this.currentCallback(text + "...", false);
-              setTimeout(() => {
-                  if (this.currentCallback) {
-                     this.currentCallback(text, true);
-                  }
-              }, 800);
+            this.currentCallback(text, true);
           }
-      }, 3000);
+        }, 800);
+      }
+    }, 3000);
   }
 
   private async connect() {
     if (this.isMockMode) {
-        this.startMockSimulation();
-        return;
+      this.startMockSimulation();
+      return;
     }
 
     if (!this.client) {
@@ -102,19 +101,19 @@ class STTService {
     }
 
     if (!this.currentStream) {
-         logger.error('[STTService] No stream available for connection.');
-         return;
+      logger.error('[STTService] No stream available for connection.');
+      return;
     }
 
     try {
       // Clean up existing connection if any (ghost connection)
       if (this.connection) {
-          this.cleanupConnection();
+        this.cleanupConnection();
       }
 
       this.connection = this.client.listen.live({
-        model: "nova-2",
-        language: "en-US",
+        model: 'nova-2',
+        language: 'en-US',
         smart_format: true,
         diarize: true,
         interim_results: true,
@@ -124,28 +123,29 @@ class STTService {
       this.connection.on(LiveTranscriptionEvents.Open, () => {
         logger.info('[STTService] Connection open');
         this.retryCount = 0; // Reset retry count on successful connection
-        
+
         // Start sending audio data
         const mediaRecorder = new MediaRecorder(this.currentStream!, { mimeType: 'audio/webm' });
-        
+
         mediaRecorder.addEventListener('dataavailable', (event) => {
-            if (event.data.size > 0 && this.connection && this.connection.getReadyState() === 1) { // 1 = OPEN
-                this.connection.send(event.data);
-            }
+          if (event.data.size > 0 && this.connection && this.connection.getReadyState() === 1) {
+            // 1 = OPEN
+            this.connection.send(event.data);
+          }
         });
 
         mediaRecorder.start(250); // Send chunks every 250ms
-        
+
         // Clean up on close
         this.connection?.on(LiveTranscriptionEvents.Close, () => {
-            logger.info('[STTService] Connection closed');
-            if (mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-            }
-            this.handleConnectionLoss();
+          logger.info('[STTService] Connection closed');
+          if (mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+          }
+          this.handleConnectionLoss();
         });
-        
-        // Store recorder purely for cleanup if needed? 
+
+        // Store recorder purely for cleanup if needed?
         // Actually, the closure handles it. But we need to ensure we don't leak it.
         // If 'connect' is called again, the old event listeners are gone, but the old mediaRecorder might be running?
         // No, 'Close' event stops it.
@@ -155,9 +155,9 @@ class STTService {
       this.connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
         const transcript = data.channel?.alternatives?.[0];
         if (transcript && transcript.transcript && this.currentCallback) {
-            const text = transcript.transcript;
-            const isFinal = data.is_final;
-            this.currentCallback(text, isFinal);
+          const text = transcript.transcript;
+          const isFinal = data.is_final;
+          this.currentCallback(text, isFinal);
         }
       });
 
@@ -171,11 +171,10 @@ class STTService {
       // Keep alive
       if (this.keepAliveInterval) clearInterval(this.keepAliveInterval);
       this.keepAliveInterval = setInterval(() => {
-          if (this.connection && this.connection.getReadyState() === 1) {
-              this.connection.keepAlive(); 
-          }
+        if (this.connection && this.connection.getReadyState() === 1) {
+          this.connection.keepAlive();
+        }
       }, 5000); // More frequent keep-alive
-
     } catch (error) {
       logger.error('[STTService] Failed to start transcription:', error);
       this.handleConnectionLoss();
@@ -183,37 +182,39 @@ class STTService {
   }
 
   private handleConnectionLoss() {
-      if (this.isIntentionalStop) return;
+    if (this.isIntentionalStop) return;
 
-      if (this.retryCount < this.maxRetries) {
-          this.retryCount++;
-          const delay = Math.min(1000 * Math.pow(2, this.retryCount), 10000);
-          logger.warn(`[STTService] Connection lost. Retrying in ${delay}ms (Attempt ${this.retryCount}/${this.maxRetries})`);
-          setTimeout(() => this.connect(), delay);
-      } else {
-          logger.error('[STTService] Circuit breaker open. Max retries reached. Stopping STT.');
-          this.cleanupConnection();
-          // Optionally notify callback about failure?
-      }
+    if (this.retryCount < this.maxRetries) {
+      this.retryCount++;
+      const delay = Math.min(1000 * Math.pow(2, this.retryCount), 10000);
+      logger.warn(
+        `[STTService] Connection lost. Retrying in ${delay}ms (Attempt ${this.retryCount}/${this.maxRetries})`
+      );
+      setTimeout(() => this.connect(), delay);
+    } else {
+      logger.error('[STTService] Circuit breaker open. Max retries reached. Stopping STT.');
+      this.cleanupConnection();
+      // Optionally notify callback about failure?
+    }
   }
 
   private cleanupConnection() {
-      if (this.connection) {
-         try {
-             this.connection.finish();
-         } catch (_e) {
-             // ignore
-         }
-         this.connection = null;
+    if (this.connection) {
+      try {
+        this.connection.finish();
+      } catch (_e) {
+        // ignore
       }
-      if (this.keepAliveInterval) {
-          clearInterval(this.keepAliveInterval);
-          this.keepAliveInterval = null;
-      }
-      if (this.mockInterval) {
-          clearInterval(this.mockInterval);
-          this.mockInterval = null;
-      }
+      this.connection = null;
+    }
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
+    if (this.mockInterval) {
+      clearInterval(this.mockInterval);
+      this.mockInterval = null;
+    }
   }
 
   stop() {

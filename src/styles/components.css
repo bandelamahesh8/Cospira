@@ -1,22 +1,24 @@
 /* Component Lockdown - Phase 6 */
 
 /* Global Card Rules */
-.card, .luxury-card {
+.card,
+.luxury-card {
   width: 100%; /* Force fluid width */
   border-radius: var(--radius) !important;
   padding: var(--sp-2);
-  
+
   /* Base styles for visibility */
   background: var(--background-card, #11161d);
   color: var(--foreground, white);
 }
 
 /* Global Button Rules */
-button, .btn {
+button,
+.btn {
   /* Enforce touch target size minimal padding */
-  padding: 0.6em 1em; 
+  padding: 0.6em 1em;
   font-size: clamp(0.85rem, 3vw, 1rem);
-  
+
   /* Prevent overflow text */
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -25,16 +27,18 @@ button, .btn {
 }
 
 /* Input Discipline */
-input, textarea, select {
-    font-size: 16px; /* Prevent iOS zoom */
-    width: 100%;
-    border-radius: var(--radius);
-    padding: var(--sp-1) var(--sp-2);
+input,
+textarea,
+select {
+  font-size: 16px; /* Prevent iOS zoom */
+  width: 100%;
+  border-radius: var(--radius);
+  padding: var(--sp-1) var(--sp-2);
 }
 
 /* Navbar Adaptive Logic (Generic) */
 nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }

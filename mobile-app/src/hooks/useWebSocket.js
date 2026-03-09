@@ -17,9 +17,9 @@ const VIDEO_CONSTRAINTS = {
   audio: false,
   video: {
     facingMode: 'user',
-    width: { min: 640, ideal: 1280, max: 1920 },
-    height: { min: 480, ideal: 720, max: 1080 },
-    frameRate: { min: 15, ideal: 24, max: 30 },
+    width: { min: 240, ideal: 640, max: 1280 },
+    height: { min: 180, ideal: 360, max: 720 },
+    frameRate: { min: 15, ideal: 20, max: 24 },
   }
 };
 
@@ -40,8 +40,12 @@ export const useWebSocket = (roomId, navigation) => {
   
   // Track References (to prevent closures stale state)
   const localStreamRef = useRef(null);
+  const audioTrackRef = useRef(null);
+  const videoTrackRef = useRef(null);
   const isTogglingAudioRef = useRef(false);
   const isTogglingVideoRef = useRef(false);
+  const cameraTypeRef = useRef('front'); // 'front' or 'back'
+  const screenTrackRef = useRef(null);
   
   // New feature states
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -230,6 +234,21 @@ export const useWebSocket = (roomId, navigation) => {
       setMessages((prev) => [...prev, msg]);
     };
     
+    // Also treat incoming files as messages so they appear in chat
+    const handleNewFile = (file) => {
+      // Create a pseudo-message object
+      const fileMsg = {
+         id: file.id || Date.now().toString(),
+         userId: file.userId,
+         userName: file.userName,
+         content: `[File Sent: ${file.name}]`,
+         isFile: true,
+         fileData: file,
+         timestamp: file.timestamp || new Date().toISOString()
+      };
+      setMessages((prev) => [...prev, fileMsg]);
+    };
+    
     // SFU: New Producer Available (A remote user started streaming)
     const onSfuNewProducer = async ({ producerId, socketId, userId, kind }) => {
         console.log(`[useWebSocket] New Producer Available: ${kind} from ${userId} (${socketId})`);
@@ -298,6 +317,7 @@ export const useWebSocket = (roomId, navigation) => {
 
 
     socketService.on('new-message', handleNewMessage);
+    socketService.on('new-file', handleNewFile);
     socketService.on('user-joined', onUserJoined);
     socketService.on('user-left', onUserLeft);
     socketService.on('sfu:newProducer', onSfuNewProducer);
@@ -311,6 +331,7 @@ export const useWebSocket = (roomId, navigation) => {
     return () => {
       isMounted = false;
       socketService.off('new-message', handleNewMessage);
+      socketService.off('new-file', handleNewFile);
       socketService.off('user-joined', onUserJoined);
       socketService.off('user-left', onUserLeft);
       socketService.off('sfu:newProducer', onSfuNewProducer);
@@ -321,25 +342,37 @@ export const useWebSocket = (roomId, navigation) => {
       
       mobileSFUManager.closeAll();
       socketService.leaveRoom(roomId);
+      
+      // Explicitly stop all local tracks on exit to release hardware
+      if (localStreamRef.current) {
+          console.log('[useWebSocket] Stopping local tracks on exit');
+          localStreamRef.current.getTracks().forEach(track => track.stop());
+          localStreamRef.current = null;
+      }
+      if (screenTrackRef.current) {
+          console.log('[useWebSocket] Stopping screen share track on exit');
+          screenTrackRef.current.stop();
+          screenTrackRef.current = null;
+      }
     };
   }, [roomId]);
   
   // --- 2. Media Controls (Local) ---
   
-  // Helper to sync local stream state
-  const updateLocalStreamState = useCallback(() => {
-      // If we have any tracks, create a stream object for them so <RTCView> can render it
-      // Note: React Native RTCView typically needs a URL or a MediaStream object depending on version.
-      // Modern react-native-webrtc uses streamURL or Z-index with object.
-      // But commonly we pass the stream object itself to the helper that extracts URL.
-      
+  // Helper to sync local stream state from track refs
+  const updateLocalStream = useCallback(() => {
       const tracks = [];
-      // We don't store tracks in ref here (like the hook approach), 
-      // instead we will query the stream in `localStream` state if we want to be pure
-      // sending `localStream` to state is enough.
+      if (audioTrackRef.current) tracks.push(audioTrackRef.current);
+      if (videoTrackRef.current) tracks.push(videoTrackRef.current);
       
-      // Wait, let's use the same pattern as web:
-      // Keep track refs for logic, update state for UI.
+      if (tracks.length > 0) {
+          const newStream = new MediaStream(tracks);
+          localStreamRef.current = newStream;
+          setLocalStream(newStream);
+      } else {
+          localStreamRef.current = null;
+          setLocalStream(null);
+      }
   }, []);
 
   const toggleAudio = useCallback(async () => {
@@ -347,24 +380,20 @@ export const useWebSocket = (roomId, navigation) => {
       isTogglingAudioRef.current = true;
       try {
           if (isAudioEnabled) {
-               // Disable
-               const tracks = localStreamRef.current?.getAudioTracks();
-               tracks?.forEach(t => {
-                   t.stop();
-                   localStreamRef.current.removeTrack(t);
-               });
+               // Disable: Stop track and notify SFU
+               if (audioTrackRef.current) {
+                   audioTrackRef.current.stop();
+                   audioTrackRef.current = null;
+               }
                
                setIsAudioEnabled(false);
-               await mobileSFUManager.closeProducer('mic');
-               // Force update stream object for UI
-               setLocalStream(localStreamRef.current ? new MediaStream(localStreamRef.current.getTracks()) : null);
-               
+               updateLocalStream();
+
+               await mobileSFUManager.replaceTrack(null, 'mic');
+               await mobileSFUManager.pauseProducer('mic');
                socketService.emit('user:media-state', { roomId, audio: false });
-               
           } else {
                // Enable
-               console.log('[useWebSocket] Enabling Audio...');
-               
                if (Platform.OS === 'android') {
                    const granted = await PermissionsAndroid.request(
                        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
@@ -383,28 +412,25 @@ export const useWebSocket = (roomId, navigation) => {
                
                const stream = await mediaDevices.getUserMedia(AUDIO_CONSTRAINTS);
                const track = stream.getAudioTracks()[0];
-               
                if (!track) throw new Error('No audio track obtained');
-               track.enabled = true; // Explicit enable
+               track.enabled = true;
                
-               if(!localStreamRef.current) localStreamRef.current = new MediaStream();
-               
-               localStreamRef.current.addTrack(track);
+               audioTrackRef.current = track;
                setIsAudioEnabled(true);
-               
-               // Update UI *before* network request for responsiveness
-               setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
+               updateLocalStream();
                
                try {
-                   await mobileSFUManager.produce(track, 'mic');
+                   await mobileSFUManager.replaceTrack(track, 'mic');
+                   await mobileSFUManager.resumeProducer('mic');
                    socketService.emit('user:media-state', { roomId, audio: true });
+                   // Pulse keyframes once audio is established to ensure video is recovered if it blipped
+                   setTimeout(() => mobileSFUManager.requestAllVideoKeyFrames(), 800);
                } catch (produceErr) {
                    console.error('[useWebSocket] Produce Audio Failed:', produceErr);
-                   // Revert UI state if produce fails
                    track.stop();
-                   localStreamRef.current.removeTrack(track);
+                   audioTrackRef.current = null;
                    setIsAudioEnabled(false);
-                   setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
+                   updateLocalStream();
                    Alert.alert('Connection Error', 'Failed to send audio. Please rejoin.');
                }
           }
@@ -414,7 +440,7 @@ export const useWebSocket = (roomId, navigation) => {
       } finally {
           isTogglingAudioRef.current = false;
       }
-  }, [isAudioEnabled, roomId]);
+  }, [isAudioEnabled, roomId, updateLocalStream]);
 
   const toggleVideo = useCallback(async () => {
       if (isTogglingVideoRef.current) return;
@@ -422,24 +448,19 @@ export const useWebSocket = (roomId, navigation) => {
       try {
           if (isVideoEnabled) {
                // Disable
-               console.log('[useWebSocket] Disabling Video...');
-               const tracks = localStreamRef.current?.getVideoTracks();
-               tracks?.forEach(t => {
-                   t.stop();
-                   localStreamRef.current.removeTrack(t);
-               });
+               if (videoTrackRef.current) {
+                videoTrackRef.current.stop();
+                videoTrackRef.current = null;
+               }
 
                setIsVideoEnabled(false);
-               await mobileSFUManager.closeProducer('webcam');
-               // Update UI
-               setLocalStream(localStreamRef.current ? new MediaStream(localStreamRef.current.getTracks()) : null);
+               updateLocalStream();
 
+               await mobileSFUManager.replaceTrack(null, 'webcam');
+               await mobileSFUManager.pauseProducer('webcam');
                socketService.emit('user:media-state', { roomId, video: false });
-
           } else {
                // Enable
-               console.log('[useWebSocket] Enabling Video...');
-               
                if (Platform.OS === 'android') {
                    const granted = await PermissionsAndroid.request(
                        PermissionsAndroid.PERMISSIONS.CAMERA,
@@ -456,29 +477,33 @@ export const useWebSocket = (roomId, navigation) => {
                    }
                }
 
-               const stream = await mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
+               const stream = await mediaDevices.getUserMedia({
+                   audio: false,
+                   video: {
+                       ...VIDEO_CONSTRAINTS.video,
+                       facingMode: cameraTypeRef.current === 'front' ? 'user' : 'environment'
+                   }
+               });
                const track = stream.getVideoTracks()[0];
-
                if (!track) throw new Error('No video track obtained');
                track.enabled = true;
 
-               if(!localStreamRef.current) localStreamRef.current = new MediaStream();
-
-               localStreamRef.current.addTrack(track);
+               videoTrackRef.current = track;
                setIsVideoEnabled(true);
-               // Update UI
-               setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
+               updateLocalStream();
 
                try {
-                   await mobileSFUManager.produce(track, 'webcam');
+                   await mobileSFUManager.replaceTrack(track, 'webcam');
+                   await mobileSFUManager.resumeProducer('webcam');
                    socketService.emit('user:media-state', { roomId, video: true });
+                   setTimeout(() => mobileSFUManager.requestAllVideoKeyFrames(), 800);
+                   setTimeout(() => mobileSFUManager.requestAllVideoKeyFrames(), 2500);
                } catch (produceErr) {
                    console.error('[useWebSocket] Produce Video Failed:', produceErr);
-                   // Revert UI if failure
                    track.stop();
-                   localStreamRef.current.removeTrack(track);
+                   videoTrackRef.current = null;
                    setIsVideoEnabled(false);
-                   setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
+                   updateLocalStream();
                    Alert.alert('Connection Error', 'Failed to send video. Please rejoin.');
                }
           }
@@ -488,12 +513,52 @@ export const useWebSocket = (roomId, navigation) => {
       } finally {
           isTogglingVideoRef.current = false;
       }
-  }, [isVideoEnabled, roomId]);
+  }, [isVideoEnabled, roomId, updateLocalStream]);
   
-  const flipCamera = useCallback(() => {
-    // Advanced: Implementation requires swapping tracks
-    Alert.alert('Info', 'Flip camera not yet implemented in this version');
-  }, []);
+  const flipCamera = useCallback(async () => {
+    if (!isVideoEnabled || isTogglingVideoRef.current) return;
+    
+    isTogglingVideoRef.current = true;
+    try {
+        const nextType = cameraTypeRef.current === 'front' ? 'back' : 'front';
+        console.log(`[useWebSocket] Flipping camera to: ${nextType}`);
+        
+        // 1. Stop current video track
+        if (videoTrackRef.current) {
+            videoTrackRef.current.stop();
+        }
+        
+        // 2. Obtain new track with new facing mode
+        const stream = await mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+                ...VIDEO_CONSTRAINTS.video,
+                facingMode: nextType === 'front' ? 'user' : 'environment'
+            }
+        });
+        
+        const track = stream.getVideoTracks()[0];
+        if (!track) throw new Error('Failed to obtain flipped track');
+        track.enabled = true;
+        
+        // 3. Update state & SFU
+        videoTrackRef.current = track;
+        cameraTypeRef.current = nextType;
+        setCameraType(nextType);
+        updateLocalStream();
+        
+        await mobileSFUManager.replaceTrack(track, 'webcam');
+        
+        // Fast recovery request
+        setTimeout(() => mobileSFUManager.requestAllVideoKeyFrames(), 500);
+        
+    } catch (err) {
+        console.error('[useWebSocket] Flip camera error:', err);
+        Alert.alert('Error', 'Could not flip camera');
+    } finally {
+        isTogglingVideoRef.current = false;
+    }
+  }, [isVideoEnabled, updateLocalStream]);
 
   // --- Keep Existing Non-Media Logic ---
   // (Screen Share, Upload, YouTube, Games, Browser)
@@ -501,20 +566,94 @@ export const useWebSocket = (roomId, navigation) => {
   // unless they relied on the old mock streams.
   
   const sendMessage = useCallback((text) => {
-    socketService.emit('send-message', { roomId, text });
+    socketService.emit('send-message', { roomId, message: { content: text } });
   }, [roomId]);
 
   // ... (Other handlers like startScreenShare, uploadMedia, etc. can remain as-is for now) ...
   // For brevity in this replacement, I'll include the essential stubs or the full logic if valid.
   
   const startScreenShare = useCallback(async () => {
-      // Mobile screen share is complex (requires foreground service on Android/Broadcast Ext on iOS)
-      // For now, keep it signaling-only or implement later
-      Alert.alert('Info', 'Mobile Screen Share coming soon');
-  }, []);
+      try {
+          console.log('[useWebSocket] Requesting screen share with constraints...');
+          const stream = await mediaDevices.getDisplayMedia({ video: true });
+          const track = stream.getVideoTracks()[0];
+          if (!track) throw new Error('No screen video track obtained');
+
+          console.log(`[useWebSocket] Screen track obtained: ${track.id}, enabled: ${track.readyState}`);
+          
+          // Force track to be enabled
+          track.enabled = true;
+
+          screenTrackRef.current = track;
+          setIsScreenSharing(true);
+          stream.isLocal = true;
+          setScreenShareStream(stream);
+
+          await mobileSFUManager.produce(track, 'screen');
+          
+          socketService.emit('user:media-state', { roomId, screenshare: true });
+          socketService.emit('user-started-screen-share', { roomId });
+          
+          track.onended = () => {
+              stopScreenShare();
+          };
+      } catch (err) {
+          console.error('[useWebSocket] Screen share error:', err);
+          if (err.message !== 'User canceled screen sharing' && err.message !== 'User cancelled') {
+             Alert.alert('Screen Share Failed', 'Could not start screen sharing');
+          }
+      }
+  }, [roomId]);
   
-  const stopScreenShare = useCallback(() => {}, []);
-  const uploadMedia = useCallback(async () => {}, []); // Stubbed for brevity of this specific fix
+  const stopScreenShare = useCallback(async () => {
+      if (screenTrackRef.current) {
+          screenTrackRef.current.stop();
+          screenTrackRef.current = null;
+      }
+      setIsScreenSharing(false);
+      setScreenShareStream(null);
+      await mobileSFUManager.closeProducer('screen');
+      socketService.emit('user:media-state', { roomId, screenshare: false });
+      socketService.emit('user-stopped-screen-share', { roomId });
+  }, [roomId]);
+  const uploadMedia = useCallback(async (uri, type, filename) => {
+    try {
+        setUploadProgress(10);
+        // Ensure uri is formatted correctly for RNFS
+        let cleanUri = uri;
+        if (Platform.OS === 'android' && cleanUri.startsWith('content://')) {
+           // RNFS can usually read content:// directly, but stat might fail
+           // We will just read it as base64
+        } else if (Platform.OS === 'ios' && cleanUri.startsWith('file://')) {
+           cleanUri = cleanUri.replace('file://', '');
+        }
+
+        const base64Data = await RNFS.readFile(cleanUri, 'base64');
+        setUploadProgress(60);
+
+        const fileData = {
+            id: Date.now().toString(),
+            name: filename || `upload_${Date.now()}`,
+            type: type || 'application/octet-stream',
+            data: `data:${type || 'application/octet-stream'};base64,${base64Data}`,
+            timestamp: new Date().toISOString()
+        };
+
+        socketService.emit('upload-file', { roomId, file: fileData }, (response) => {
+            if (response && response.success) {
+                setUploadProgress(100);
+                setTimeout(() => setUploadProgress(0), 1000);
+            } else {
+                Alert.alert('Upload Failed', response?.error || 'Unknown error');
+                setUploadProgress(0);
+            }
+        });
+    } catch (err) {
+        console.error('[useWebSocket] Upload Media Error:', err);
+        Alert.alert('Error', 'Failed to read file for upload');
+        setUploadProgress(0);
+    }
+  }, [roomId]);
   const syncYouTube = useCallback(() => {}, []);
   const controlYouTube = useCallback(() => {}, []);
   const startBrowser = useCallback(() => {}, []);

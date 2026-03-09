@@ -10,7 +10,7 @@ import {
 
 /**
  * Chess Game Engine
- * 
+ *
  * Implements the universal GameEngine interface for chess.
  * Uses chess.js library for move validation and game logic.
  */
@@ -121,8 +121,8 @@ export class ChessEngine extends BaseGameEngine {
 
     if (this.chess.isCheckmate()) {
       // The player whose turn it is has been checkmated
-      const loser = state.players.find((p) => 
-        p.role === (this.chess.turn() === 'w' ? 'white' : 'black')
+      const loser = state.players.find(
+        (p) => p.role === (this.chess.turn() === 'w' ? 'white' : 'black')
       );
       const winner = state.players.find((p) => p.id !== loser?.id);
       return { finished: true, winner: winner?.id || null };

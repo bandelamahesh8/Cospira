@@ -26,6 +26,18 @@ export const createRoomSchema = z.object({
         securityLevel: z.string().optional(),
         interests: z.array(z.string()).optional(),
         commType: z.string().optional(),
+        invite_only: z.boolean().optional(),
+        join_by_link: z.boolean().optional(),
+        join_by_code: z.boolean().optional(),
+        host_only_code_visibility: z.boolean().optional(),
+        waiting_lobby: z.boolean().optional(),
+        organization_only: z.boolean().optional(),
+        host_controlled_speaking: z.boolean().optional(),
+        chat_permission: z.enum(['everyone', 'host_only', 'none']).optional(),
+        encryption_enabled: z.boolean().optional(),
+        ai_moderation_level: z.enum(['off', 'passive', 'active']).optional(),
+        auto_close_minutes: z.number().int().min(0).optional(),
+        hidden_room: z.boolean().optional(),
     }).passthrough().optional(),
 }).passthrough();
 

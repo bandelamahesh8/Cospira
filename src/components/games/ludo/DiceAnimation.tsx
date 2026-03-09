@@ -3,7 +3,7 @@
  * Features: Luck transparency, dice ownership psychology
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LUDO_CONFIG } from '@/lib/ludo/config';
 import { ludoAnimationQueue } from '@/lib/ludo/animationPriority';
@@ -18,7 +18,6 @@ interface DiceAnimationProps {
 export const DiceAnimation = ({ playerColor, onRollComplete, disabled }: DiceAnimationProps) => {
   const [isRolling, setIsRolling] = useState(false);
   const [currentFace, setCurrentFace] = useState(1);
-  const [diceValue, setDiceValue] = useState(1);
 
   const rollDice = async () => {
     if (disabled || isRolling) return;
@@ -41,13 +40,12 @@ export const DiceAnimation = ({ playerColor, onRollComplete, disabled }: DiceAni
 
         for (let i = 0; i < changes; i++) {
           setCurrentFace(Math.floor(Math.random() * 6) + 1);
-          await new Promise(resolve => setTimeout(resolve, faceChangeInterval));
+          await new Promise((resolve) => setTimeout(resolve, faceChangeInterval));
         }
 
         // Get final result (from server or local)
         const result = await getDiceResult();
         setCurrentFace(result);
-        setDiceValue(result);
         setIsRolling(false);
         onRollComplete(result);
       },
@@ -59,7 +57,7 @@ export const DiceAnimation = ({ playerColor, onRollComplete, disabled }: DiceAni
       onClick={rollDice}
       disabled={disabled || isRolling}
       initial={{ x: -10 }} // Dice ownership: Slight tilt toward player
-      animate={{ 
+      animate={{
         x: 0,
         scale: isRolling ? [1, 1.1, 1] : 1,
         rotateX: isRolling ? 360 : 0,
@@ -71,7 +69,7 @@ export const DiceAnimation = ({ playerColor, onRollComplete, disabled }: DiceAni
         rotateX: { duration: 0.8, ease: 'easeOut' },
         rotateY: { duration: 0.8, ease: 'easeOut' },
       }}
-      className="relative w-16 h-16 rounded-lg flex items-center justify-center font-bold text-2xl cursor-pointer"
+      className='relative w-16 h-16 rounded-lg flex items-center justify-center font-bold text-2xl cursor-pointer'
       style={{
         backgroundColor: disabled ? '#4a5568' : '#fff',
         boxShadow: `0 0 20px ${playerColor}`, // Glow inherits player color
@@ -81,7 +79,7 @@ export const DiceAnimation = ({ playerColor, onRollComplete, disabled }: DiceAni
       }}
     >
       {currentFace}
-      
+
       {/* Dice dots could be rendered here instead of number */}
     </motion.button>
   );
@@ -92,6 +90,6 @@ export const DiceAnimation = ({ playerColor, onRollComplete, disabled }: DiceAni
  */
 const getDiceResult = async (): Promise<number> => {
   // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
   return Math.floor(Math.random() * 6) + 1;
 };

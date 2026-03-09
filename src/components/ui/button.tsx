@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
@@ -11,8 +11,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'btn-luxury text-white hover:opacity-90',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-[0_0_20px_rgba(239,68,68,0.4)]',
-        outline: 'border border-white/10 bg-white/5 hover:bg-white/10 hover:text-white hover:border-white/20 backdrop-blur-md',
+        destructive:
+          'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-[0_0_20px_rgba(239,68,68,0.4)]',
+        outline:
+          'border border-white/10 bg-white/5 hover:bg-white/10 hover:text-white hover:border-white/20 backdrop-blur-md',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-white/5 hover:text-white',
         link: 'text-primary underline-offset-4 hover:underline',
@@ -32,8 +34,7 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
 
@@ -45,18 +46,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const { playClick, playHover } = useSoundEffects();
 
     return (
-      <Comp 
-          className={cn(buttonVariants({ variant, size, className }))} 
-          ref={ref} 
-          onClick={(e) => {
-             playClick();
-             props.onClick?.(e);
-          }}
-          onMouseEnter={(e) => {
-             playHover();
-             props.onMouseEnter?.(e);
-          }}
-          {...props} 
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        onClick={(e) => {
+          playClick();
+          props.onClick?.(e);
+        }}
+        onMouseEnter={(e) => {
+          playHover();
+          props.onMouseEnter?.(e);
+        }}
+        {...props}
       />
     );
   }

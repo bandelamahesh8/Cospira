@@ -62,13 +62,18 @@ export class ClientCore {
     this.onStateChange(this.state);
   }
 
-  private handleRemoteTrack = (userId: string, track: MediaStreamTrack, kind: string, appData: AppData) => {
+  private handleRemoteTrack = (
+    userId: string,
+    track: MediaStreamTrack,
+    kind: string,
+    appData: AppData
+  ) => {
     const isScreen = appData?.source === 'screen';
     const targetMap = isScreen ? this.state.remoteScreenStreams : this.state.remoteStreams;
     const key = String(userId);
 
     const existing = targetMap.get(key);
-    const baseTracks = existing ? existing.getTracks().filter(t => t.kind !== track.kind) : [];
+    const baseTracks = existing ? existing.getTracks().filter((t) => t.kind !== track.kind) : [];
     const stream = new MediaStream([...baseTracks, track]);
     targetMap.set(key, stream);
 
@@ -142,4 +147,3 @@ export class ClientCore {
     this.emitState();
   }
 }
-

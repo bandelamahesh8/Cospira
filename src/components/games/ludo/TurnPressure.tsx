@@ -47,7 +47,7 @@ export const TurnPressure = ({ isMyTurn, onTurnStart }: TurnPressureProps) => {
       {/* Dice pulse intensifies if player delays */}
       {isDelaying && (
         <motion.div
-          className="absolute inset-0 rounded-lg pointer-events-none"
+          className='absolute inset-0 rounded-lg pointer-events-none'
           animate={{
             boxShadow: [
               '0 0 0px rgba(59, 130, 246, 0)',
@@ -68,7 +68,7 @@ export const TurnPressure = ({ isMyTurn, onTurnStart }: TurnPressureProps) => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-amber-500 text-white px-3 py-1 rounded-full text-sm font-bold"
+          className='absolute -bottom-8 left-1/2 -translate-x-1/2 bg-amber-500 text-white px-3 py-1 rounded-full text-sm font-bold'
         >
           {secondsRemaining}s
         </motion.div>

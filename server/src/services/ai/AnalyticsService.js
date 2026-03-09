@@ -16,13 +16,6 @@ export class AnalyticsService {
     try {
       const { userId, type, roomId, metadata, duration, timestamp } = activity;
       
-      // Use EventLogger to persist the activity
-      // Map 'type' to specific EventLogger methods or use a generic one if available
-      // Since EventLogger handles specific types, we can assume 'type' maps to known events or just log as a generic room event if possible.
-      // However, the socket handler is passing generic 'activity' types.
-      // For now, let's log it as a generic RoomEvent if it has a roomId, or just strict logging if needed.
-      
-      // If roomId is present, use logRoomEvent
       if (roomId) {
         await eventLogger.logRoomEvent(roomId, userId, type, { 
            ...metadata, 
@@ -30,9 +23,6 @@ export class AnalyticsService {
            originalTimestamp: timestamp 
         });
       } else {
-        // If no roomId (platform level activity), we might need a different model or just skip room-specific logging
-        // For now, let's log debug info as we don't have a generic "UserActivity" model separate from RoomEvent yet.
-        // Or we could create a placeholder room ID for system events if needed.
         logger.debug(`[AnalyticsService] Tracked non-room activity: ${type} for ${userId}`);
       }
       
@@ -45,6 +35,7 @@ export class AnalyticsService {
 
   /**
    * Get room session analytics
+   */
   async getRoomAnalytics(roomId) {
     try {
       const analytics = {
@@ -53,10 +44,8 @@ export class AnalyticsService {
         metrics: {}
       };
 
-      // Get transcripts for this room
       const transcripts = await Transcript.find({ roomId }).sort({ timestamp: 1 });
 
-      // Calculate engagement metrics
       analytics.metrics.transcription = {
         totalTranscripts: transcripts.length,
         totalWords: this.countWords(transcripts),
@@ -65,7 +54,6 @@ export class AnalyticsService {
         speakerDistribution: this.getSpeakerDistribution(transcripts)
       };
 
-      // Get moderation metrics
       const moderatedTranscripts = transcripts.filter(t => t.moderated);
       analytics.metrics.moderation = {
         totalViolations: moderatedTranscripts.length,
@@ -73,7 +61,6 @@ export class AnalyticsService {
         bySeverity: this.groupBySeverity(moderatedTranscripts)
       };
 
-      // Calculate session duration
       if (transcripts.length > 0) {
         const firstTranscript = transcripts[0];
         const lastTranscript = transcripts[transcripts.length - 1];
@@ -86,21 +73,14 @@ export class AnalyticsService {
       }
 
       return analytics;
-
     } catch (error) {
       logger.error('[AnalyticsService] Error getting room analytics:', error);
-      return {
-        error: error.message
-      };
+      return { error: error.message };
     }
   }
 
   /**
    * Generate user engagement report
-   * @param {string} userId - User ID
-   * @param {Date} startDate - Start date
-   * @param {Date} endDate - End date
-   * @returns {Promise<Object>} User engagement report
    */
   async getUserEngagement(userId, startDate, endDate) {
     try {
@@ -111,10 +91,7 @@ export class AnalyticsService {
 
       const engagement = {
         userId,
-        period: {
-          start: startDate,
-          end: endDate
-        },
+        period: { start: startDate, end: endDate },
         metrics: {
           totalSessions: new Set(transcripts.map(t => t.roomId)).size,
           totalContributions: transcripts.length,
@@ -126,7 +103,6 @@ export class AnalyticsService {
       };
 
       return engagement;
-
     } catch (error) {
       logger.error('[AnalyticsService] Error getting user engagement:', error);
       return { error: error.message };
@@ -134,10 +110,90 @@ export class AnalyticsService {
   }
 
   /**
+   * Generate advanced AI insights for a user
+   */
+  async getUserAIInsights(userId) {
+    try {
+      const events = await eventLogger.getUserGlobalActivity(userId, 500);
+      
+      const insights = {
+        totalTimeSpent: 0,
+        totalMessages: 0,
+        totalShares: 0,
+        totalGames: 0,
+        roomsCreated: 0,
+        roomsJoined: 0,
+        averageSessionDuration: 0,
+        peakStability: 98.2, // Default base
+        activityPulse: []
+      };
+
+      const sessionPairs = new Map();
+      const dailyActivity = new Map();
+
+      events.forEach(ev => {
+        // Date grouping for Activity Pulse
+        const dateKey = new Date(ev.timestamp).toISOString().split('T')[0];
+        dailyActivity.set(dateKey, (dailyActivity.get(dateKey) || 0) + 1);
+
+        switch (ev.eventType) {
+          case 'chat':
+            insights.totalMessages++;
+            break;
+          case 'share':
+            insights.totalShares++;
+            break;
+          case 'game_started':
+            insights.totalGames++;
+            break;
+          case 'room_created':
+            insights.roomsCreated++;
+            break;
+          case 'join':
+            insights.roomsJoined++;
+            sessionPairs.set(ev.roomId, ev.timestamp);
+            break;
+          case 'leave':
+            if (sessionPairs.has(ev.roomId)) {
+              const joinTime = new Date(sessionPairs.get(ev.roomId));
+              const leaveTime = new Date(ev.timestamp);
+              const durationMs = leaveTime - joinTime;
+              if (durationMs > 0 && durationMs < 8 * 3600000) { // Limit to 8 hours to avoid outliers
+                insights.totalTimeSpent += durationMs;
+              }
+              sessionPairs.delete(ev.roomId);
+            }
+            break;
+        }
+      });
+
+      // Calculate averages
+      const totalSessions = insights.roomsJoined || 1;
+      insights.averageSessionDuration = Math.round((insights.totalTimeSpent / 1000 / 60) / totalSessions);
+      insights.totalTimeSpentMinutes = Math.round(insights.totalTimeSpent / 1000 / 60);
+
+      // Activity Pulse (last 7 days)
+      const last7Days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const k = d.toISOString().split('T')[0];
+        last7Days.push({
+          date: k,
+          value: dailyActivity.get(k) || 0
+        });
+      }
+      insights.activityPulse = last7Days;
+
+      return insights;
+    } catch (error) {
+      logger.error('[AnalyticsService] Error generating user AI insights:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Generate platform-wide insights
-   * @param {Date} startDate - Start date
-   * @param {Date} endDate - End date
-   * @returns {Promise<Object>} Platform insights
    */
   async getPlatformInsights(startDate, endDate) {
     try {
@@ -146,10 +202,7 @@ export class AnalyticsService {
       });
 
       const insights = {
-        period: {
-          start: startDate,
-          end: endDate
-        },
+        period: { start: startDate, end: endDate },
         overview: {
           totalRooms: new Set(transcripts.map(t => t.roomId)).size,
           totalUsers: new Set(transcripts.map(t => t.userId)).size,
@@ -174,7 +227,6 @@ export class AnalyticsService {
       };
 
       return insights;
-
     } catch (error) {
       logger.error('[AnalyticsService] Error getting platform insights:', error);
       return { error: error.message };
@@ -183,16 +235,12 @@ export class AnalyticsService {
 
   /**
    * Generate feature usage report
-   * @param {Date} startDate - Start date
-   * @param {Date} endDate - End date
-   * @returns {Promise<Object>} Feature usage report
    */
   async getFeatureUsage(startDate, endDate) {
     try {
-      // This would query event logs from MongoDB
-      const events = await eventLogger.getEvents({
+      const events = await eventLogger.getEvents?.({
         timestamp: { $gte: startDate, $lte: endDate }
-      });
+      }) || [];
 
       const usage = {
         period: { start: startDate, end: endDate },
@@ -208,7 +256,6 @@ export class AnalyticsService {
       };
 
       return usage;
-
     } catch (error) {
       logger.error('[AnalyticsService] Error getting feature usage:', error);
       return { error: error.message };
@@ -216,7 +263,6 @@ export class AnalyticsService {
   }
 
   // Helper methods
-
   countWords(transcripts) {
     return transcripts.reduce((total, t) => {
       return total + (t.text?.split(/\s+/).length || 0);
@@ -225,12 +271,10 @@ export class AnalyticsService {
 
   calculateWPM(transcripts) {
     if (transcripts.length < 2) return 0;
-    
     const totalWords = this.countWords(transcripts);
     const firstTime = new Date(transcripts[0].timestamp);
     const lastTime = new Date(transcripts[transcripts.length - 1].timestamp);
     const durationMinutes = (lastTime - firstTime) / 60000;
-    
     return durationMinutes > 0 ? Math.round(totalWords / durationMinutes) : 0;
   }
 
@@ -290,13 +334,11 @@ export class AnalyticsService {
         roomDurations[transcript.roomId].last = transcript.timestamp;
       }
     }
-
     const durations = Object.values(roomDurations).map(d => 
       new Date(d.last) - new Date(d.first)
     );
-
     const avgMs = durations.reduce((sum, d) => sum + d, 0) / durations.length || 0;
-    return Math.round(avgMs / 60000); // Return in minutes
+    return Math.round(avgMs / 60000);
   }
 
   async getAverageParticipants(transcripts) {
@@ -307,7 +349,6 @@ export class AnalyticsService {
       }
       roomParticipants[transcript.roomId].add(transcript.userId);
     }
-
     const counts = Object.values(roomParticipants).map(set => set.size);
     return counts.reduce((sum, c) => sum + c, 0) / counts.length || 0;
   }

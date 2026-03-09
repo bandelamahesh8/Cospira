@@ -138,10 +138,7 @@ export class TicTacToe5x5Engine extends BaseGameEngine {
         }
 
         // Check diagonal (top-left to bottom-right)
-        if (
-          row <= this.BOARD_SIZE - this.WIN_LENGTH &&
-          col <= this.BOARD_SIZE - this.WIN_LENGTH
-        ) {
+        if (row <= this.BOARD_SIZE - this.WIN_LENGTH && col <= this.BOARD_SIZE - this.WIN_LENGTH) {
           let win = true;
           for (let i = 1; i < this.WIN_LENGTH; i++) {
             if (board[row + i][col + i] !== cell) {
@@ -156,10 +153,7 @@ export class TicTacToe5x5Engine extends BaseGameEngine {
         }
 
         // Check diagonal (top-right to bottom-left)
-        if (
-          row <= this.BOARD_SIZE - this.WIN_LENGTH &&
-          col >= this.WIN_LENGTH - 1
-        ) {
+        if (row <= this.BOARD_SIZE - this.WIN_LENGTH && col >= this.WIN_LENGTH - 1) {
           let win = true;
           for (let i = 1; i < this.WIN_LENGTH; i++) {
             if (board[row + i][col - i] !== cell) {

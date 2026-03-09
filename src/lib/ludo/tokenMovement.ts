@@ -5,7 +5,6 @@
 
 import { ludoAnimationQueue } from './animationPriority';
 import { chainEventManager } from './chainCompression';
-import { LUDO_CONFIG } from './config';
 
 interface Position {
   x: number;
@@ -30,16 +29,16 @@ export const animateTokenMovement = (
   const baseDuration = 100; // ms per step
   const speedUpAfter = 3; // Speed up after 3 steps
   const speedMultiplier = 0.7; // 30% faster after speedup
-  
+
   // Get chain compression speed
   const chainSpeed = chainEventManager.getAnimationSpeed();
-  
+
   let totalDuration = 0;
 
   path.forEach((pos, i) => {
     // Calculate duration for this step
     let stepDuration = baseDuration * chainSpeed;
-    
+
     // Speed up long moves
     if (i > speedUpAfter) {
       stepDuration *= speedMultiplier;
@@ -71,9 +70,7 @@ export const animateTokenMovement = (
 export const getHopAnimationStyles = (isHopping: boolean) => {
   return {
     transform: isHopping ? 'translateY(-4px)' : 'translateY(0)',
-    boxShadow: isHopping 
-      ? '0 6px 12px rgba(0,0,0,0.3)' 
-      : '0 2px 4px rgba(0,0,0,0.2)',
+    boxShadow: isHopping ? '0 6px 12px rgba(0,0,0,0.3)' : '0 2px 4px rgba(0,0,0,0.2)',
     transition: 'all 0.1s ease-out',
   };
 };

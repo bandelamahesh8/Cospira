@@ -1,6 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../logger.js';
+import eventLogger from '../services/EventLogger.js';
 
 // Simple in-memory queue for prototype (Phase 1)
 // In production, use Redis List/Set
@@ -15,7 +16,7 @@ const activeMatches = new Map(); // userId -> roomId
 export default function registerRandomHandlers(io, socket) {
     
     // --- Join Queue ---
-    socket.on('join_random_queue', ({ mode = 'video', interests = [], autoSkip = false }) => {
+    socket.on('join_random_queue', async ({ mode = 'video', interests = [], autoSkip = false }) => {
         const userId = socket.user?.id || socket.id;
         const targetQueue = mode === 'text' ? matchingQueue.text : matchingQueue.video;
 
@@ -53,6 +54,9 @@ export default function registerRandomHandlers(io, socket) {
             // socket.emit('queue_joined', { mode });
             logger.info(`[RandomMatch] User ${userId} joined ${mode} queue. Size: ${targetQueue.length}`);
         }
+
+        // Log Global Connect Activity
+        await eventLogger.logGlobalConnect(userId, mode);
     });
 
     // --- Leave Queue ---

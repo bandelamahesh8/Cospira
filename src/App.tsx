@@ -6,6 +6,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { OrganizationProvider } from '@/contexts/OrganizationContext';
+import { BreakoutProvider } from '@/contexts/BreakoutContext';
+import { AIAssistantProvider } from '@/contexts/AIAssistantContext';
 import AnimatedRoutes from '@/components/AnimatedRoutes';
 import { DesktopLayout } from '@/ui/desktop/DesktopLayout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -26,11 +28,15 @@ const App = () => (
         >
           <AuthProvider>
             <OrganizationProvider>
-              <WebSocketProvider>
-                <DesktopLayout>
-                  <AnimatedRoutes />
-                </DesktopLayout>
-              </WebSocketProvider>
+              <BreakoutProvider>
+                <WebSocketProvider>
+                  <AIAssistantProvider>
+                    <DesktopLayout>
+                      <AnimatedRoutes />
+                    </DesktopLayout>
+                  </AIAssistantProvider>
+                </WebSocketProvider>
+              </BreakoutProvider>
             </OrganizationProvider>
           </AuthProvider>
         </BrowserRouter>

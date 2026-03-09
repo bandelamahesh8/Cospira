@@ -18,21 +18,17 @@ export const TimeDisplay = ({ timeLeft, isMyTurn, winner }: TimeDisplayProps) =>
   const colorClass = isCritical
     ? CHESS_CONFIG.VISUAL.TIME_PRESSURE_COLORS.CRITICAL
     : isWarning
-    ? CHESS_CONFIG.VISUAL.TIME_PRESSURE_COLORS.WARNING
-    : CHESS_CONFIG.VISUAL.TIME_PRESSURE_COLORS.NORMAL;
+      ? CHESS_CONFIG.VISUAL.TIME_PRESSURE_COLORS.WARNING
+      : CHESS_CONFIG.VISUAL.TIME_PRESSURE_COLORS.NORMAL;
 
   return (
     <motion.div
-      className="flex flex-col items-end gap-1"
+      className='flex flex-col items-end gap-1'
       animate={isCritical ? { scale: [1, 1.05, 1] } : {}}
       transition={isCritical ? { duration: 0.5, repeat: Infinity } : {}}
     >
-      <Timer
-        className={cn('w-4 h-4', colorClass, isCritical && 'animate-pulse')}
-      />
-      <span className={cn('text-xs font-mono font-black', colorClass)}>
-        {timeLeft}s
-      </span>
+      <Timer className={cn('w-4 h-4', colorClass, isCritical && 'animate-pulse')} />
+      <span className={cn('text-xs font-mono font-black', colorClass)}>{timeLeft}s</span>
     </motion.div>
   );
 };

@@ -3,15 +3,17 @@
  * Features: Dice roll, kill, win sounds with haptic feedback
  */
 
-import { LUDO_CONFIG } from './config';
-
 class LudoSounds {
   private audioContext: AudioContext | null = null;
   private isMuted: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const Win = window as unknown as {
+        AudioContext: typeof AudioContext;
+        webkitAudioContext: typeof AudioContext;
+      };
+      this.audioContext = new (Win.AudioContext || Win.webkitAudioContext)();
     }
   }
 
@@ -22,8 +24,6 @@ class LudoSounds {
     if (this.isMuted || !this.audioContext) return;
 
     // Rolling sound - rapid frequency changes
-    const duration = 0.3;
-    const now = this.audioContext.currentTime;
 
     for (let i = 0; i < 10; i++) {
       const freq = 150 + Math.random() * 100;
@@ -43,7 +43,7 @@ class LudoSounds {
 
     // Sharp impact sound
     this.playTone(800, 0.05, 'square', 0.3);
-    
+
     // Secondary lower tone
     setTimeout(() => {
       this.playTone(200, 0.1, 'sine', 0.2);
@@ -109,10 +109,7 @@ class LudoSounds {
     oscillator.type = type;
 
     gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(
-      0.01,
-      this.audioContext.currentTime + duration
-    );
+    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
 
     oscillator.start(this.audioContext.currentTime);
     oscillator.stop(this.audioContext.currentTime + duration);

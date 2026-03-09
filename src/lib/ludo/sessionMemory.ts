@@ -55,7 +55,7 @@ export const clearSession = (): void => {
 export const isRecentSession = (): boolean => {
   const session = loadSession();
   if (!session.lastPlayed) return false;
-  
-  const hourAgo = Date.now() - (60 * 60 * 1000);
+
+  const hourAgo = Date.now() - 60 * 60 * 1000;
   return session.lastPlayed > hourAgo;
 };

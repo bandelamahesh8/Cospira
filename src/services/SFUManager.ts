@@ -25,7 +25,12 @@ export class SFUManager {
   private recvTransport: Transport | null = null;
   private producers: Map<string, Producer> = new Map(); // source -> producer
   private consumers: Map<string, Consumer> = new Map(); // consumerId -> consumer
-  private onTrack: (userId: string, track: MediaStreamTrack, kind: string, appData: AppData) => void;
+  private onTrack: (
+    userId: string,
+    track: MediaStreamTrack,
+    kind: string,
+    appData: AppData
+  ) => void;
   private loading: boolean = false;
   private connectionState: ConnectionState = 'disconnected';
   private userId: string | null = null;
@@ -68,13 +73,13 @@ export class SFUManager {
     // Load device if not already loaded
     if (!this.device.loaded) {
       this.loading = true;
-      
+
       try {
         logger.info('[SFUManager] Loading device...');
-        
+
         // Get Router RTP Capabilities
         const routerRtpCapabilities = await this.getRouterRtpCapabilities(roomId);
-        
+
         // Load device
         await this.device.load({ routerRtpCapabilities });
         logger.info('[SFUManager] Device loaded successfully');
@@ -89,19 +94,19 @@ export class SFUManager {
 
     // Create transports
     await this.createTransports(roomId);
-    
+
     this.connectionState = 'connected';
     logger.info('[SFUManager] === JOIN ROOM COMPLETE ===');
   }
 
   private async waitForLoad(maxWait = 10000): Promise<void> {
     const startTime = Date.now();
-    
+
     while (this.loading) {
       if (Date.now() - startTime > maxWait) {
         throw new Error('Timeout waiting for device load');
       }
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 
@@ -113,10 +118,10 @@ export class SFUManager {
 
       this.signaling.emit('sfu:getRouterRtpCapabilities', { roomId }, (arg: unknown) => {
         clearTimeout(timeout);
-        
+
         const data = arg as RtpCapabilities | ResponseWithError;
         const res = data as ResponseWithError;
-        
+
         if (res.error) {
           reject(new Error(res.error));
         } else {
@@ -131,7 +136,7 @@ export class SFUManager {
   // ============================================
   private async createTransports(roomId: string) {
     logger.info('[SFUManager] Creating transports...');
-    
+
     // Close existing transports if any
     if (this.sendTransport && !this.sendTransport.closed) {
       this.sendTransport.close();
@@ -140,17 +145,14 @@ export class SFUManager {
       this.recvTransport.close();
     }
 
-    await Promise.all([
-      this.createSendTransport(roomId),
-      this.createRecvTransport(roomId)
-    ]);
+    await Promise.all([this.createSendTransport(roomId), this.createRecvTransport(roomId)]);
 
     logger.info('[SFUManager] Transports created successfully');
   }
 
   private async createSendTransport(roomId: string) {
     logger.info('[SFUManager] Creating send transport...');
-    
+
     const transportParams = await this.requestTransport(roomId, true);
 
     // Configure with STUN servers
@@ -166,7 +168,7 @@ export class SFUManager {
     // Monitor connection state
     this.sendTransport.on('connectionstatechange', (state: string) => {
       logger.info(`[SFUManager] Send transport state: ${state}`);
-      
+
       if (state === 'connected') {
         this.connectionState = 'connected';
       } else if (state === 'failed') {
@@ -178,22 +180,34 @@ export class SFUManager {
     });
 
     // Connect handler
-    this.sendTransport.on('connect', 
-      ({ dtlsParameters }: { dtlsParameters: DtlsParameters }, callback: () => void, errback: (error: Error) => void) => {
+    this.sendTransport.on(
+      'connect',
+      (
+        { dtlsParameters }: { dtlsParameters: DtlsParameters },
+        callback: () => void,
+        errback: (error: Error) => void
+      ) => {
         this.connectTransport(roomId, this.sendTransport!.id, dtlsParameters)
           .then(() => callback())
-          .catch(err => errback(err));
+          .catch((err) => errback(err));
       }
     );
 
     // Produce handler
-    this.sendTransport.on('produce', 
-      ({ kind, rtpParameters, appData }: { kind: types.MediaKind; rtpParameters: RtpParameters; appData: AppData }, 
-       callback: (data: { id: string }) => void, 
-       errback: (error: Error) => void) => {
+    this.sendTransport.on(
+      'produce',
+      (
+        {
+          kind,
+          rtpParameters,
+          appData,
+        }: { kind: types.MediaKind; rtpParameters: RtpParameters; appData: AppData },
+        callback: (data: { id: string }) => void,
+        errback: (error: Error) => void
+      ) => {
         this.produceOnServer(roomId, this.sendTransport!.id, kind, rtpParameters, appData)
-          .then(id => callback({ id }))
-          .catch(err => errback(err));
+          .then((id) => callback({ id }))
+          .catch((err) => errback(err));
       }
     );
 
@@ -202,7 +216,7 @@ export class SFUManager {
 
   private async createRecvTransport(roomId: string) {
     logger.info('[SFUManager] Creating recv transport...');
-    
+
     const transportParams = await this.requestTransport(roomId, false);
 
     // Configure with STUN servers
@@ -218,7 +232,7 @@ export class SFUManager {
     // Monitor connection state
     this.recvTransport.on('connectionstatechange', (state: string) => {
       logger.info(`[SFUManager] Recv transport state: ${state}`);
-      
+
       if (state === 'failed') {
         logger.error('[SFUManager] Recv transport FAILED');
       } else if (state === 'closed') {
@@ -227,11 +241,16 @@ export class SFUManager {
     });
 
     // Connect handler
-    this.recvTransport.on('connect', 
-      ({ dtlsParameters }: { dtlsParameters: DtlsParameters }, callback: () => void, errback: (error: Error) => void) => {
+    this.recvTransport.on(
+      'connect',
+      (
+        { dtlsParameters }: { dtlsParameters: DtlsParameters },
+        callback: () => void,
+        errback: (error: Error) => void
+      ) => {
         this.connectTransport(roomId, this.recvTransport!.id, dtlsParameters)
           .then(() => callback())
-          .catch(err => errback(err));
+          .catch((err) => errback(err));
       }
     );
 
@@ -244,14 +263,15 @@ export class SFUManager {
         reject(new Error('Timeout creating transport'));
       }, 15000);
 
-      this.signaling.emit('sfu:createWebRtcTransport', 
-        { roomId, forceTcp: true, producing }, 
+      this.signaling.emit(
+        'sfu:createWebRtcTransport',
+        { roomId, forceTcp: false, producing },
         (arg: unknown) => {
           clearTimeout(timeout);
-          
+
           const data = arg as Transport | ResponseWithError;
           const res = data as ResponseWithError;
-          
+
           if (res.error) {
             reject(new Error(res.error));
           } else {
@@ -262,47 +282,59 @@ export class SFUManager {
     });
   }
 
-  private async connectTransport(roomId: string, transportId: string, dtlsParameters: DtlsParameters): Promise<void> {
+  private async connectTransport(
+    roomId: string,
+    transportId: string,
+    dtlsParameters: DtlsParameters
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.signaling.emit('sfu:connectWebRtcTransport', {
-        roomId,
-        transportId,
-        dtlsParameters,
-      }, (response: unknown) => {
-        const res = response as ResponseWithError;
-        
-        if (res.error) {
-          reject(new Error(res.error));
-        } else {
-          resolve();
+      this.signaling.emit(
+        'sfu:connectWebRtcTransport',
+        {
+          roomId,
+          transportId,
+          dtlsParameters,
+        },
+        (response: unknown) => {
+          const res = response as ResponseWithError;
+
+          if (res.error) {
+            reject(new Error(res.error));
+          } else {
+            resolve();
+          }
         }
-      });
+      );
     });
   }
 
   private async produceOnServer(
-    roomId: string, 
-    transportId: string, 
-    kind: types.MediaKind, 
-    rtpParameters: RtpParameters, 
+    roomId: string,
+    transportId: string,
+    kind: types.MediaKind,
+    rtpParameters: RtpParameters,
     appData: AppData
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      this.signaling.emit('sfu:produce', {
-        roomId,
-        transportId,
-        kind,
-        rtpParameters,
-        appData: { ...appData, userId: this.userId },
-      }, (response: unknown) => {
-        const res = response as ResponseWithError;
-        
-        if (res.error) {
-          reject(new Error(res.error));
-        } else {
-          resolve(res.id as string);
+      this.signaling.emit(
+        'sfu:produce',
+        {
+          roomId,
+          transportId,
+          kind,
+          rtpParameters,
+          appData: { ...appData, userId: this.userId },
+        },
+        (response: unknown) => {
+          const res = response as ResponseWithError;
+
+          if (res.error) {
+            reject(new Error(res.error));
+          } else {
+            resolve(res.id as string);
+          }
         }
-      });
+      );
     });
   }
 
@@ -312,20 +344,20 @@ export class SFUManager {
   async produce(track: MediaStreamTrack, source: string = 'webcam'): Promise<Producer> {
     // 1. Check if producer already exists for this source
     const existingProducer = this.producers.get(source);
-    
+
     if (existingProducer && !existingProducer.closed) {
-        logger.info(`[SFUManager] Producer already exists for ${source}, replacing track...`);
-        await existingProducer.replaceTrack({ track });
-        
-        // Ensure it's resumed if it was paused
-        if (existingProducer.paused) {
-            await existingProducer.resume();
-            if (this.roomId) {
-                await this.syncProducerState(existingProducer.id, true);
-            }
+      logger.info(`[SFUManager] Producer already exists for ${source}, replacing track...`);
+      await existingProducer.replaceTrack({ track });
+
+      // Ensure it's resumed if it was paused
+      if (existingProducer.paused) {
+        await existingProducer.resume();
+        if (this.roomId) {
+          await this.syncProducerState(existingProducer.id, true);
         }
-        
-        return existingProducer;
+      }
+
+      return existingProducer;
     }
 
     // Wait for transport
@@ -342,28 +374,24 @@ export class SFUManager {
     if (track.kind === 'video') {
       if (source === 'screen') {
         // Screen sharing: High quality
-        encodings = [
-          { rid: 'r0', maxBitrate: 1500000, scaleResolutionDownBy: 1.0 }
-        ];
+        encodings = [{ rid: 'r0', maxBitrate: 1500000, scaleResolutionDownBy: 1.0 }];
         codecOptions = {
-          videoGoogleStartBitrate: 1000
+          videoGoogleStartBitrate: 1000,
         };
       } else {
         // Webcam: SIMPLIFIED for Mobile Compatibility (No Simulcast, Single Layer)
-        encodings = [
-          { rid: 'r0', maxBitrate: 900000, scaleResolutionDownBy: 1.0 }
-        ];
+        encodings = [{ rid: 'r0', maxBitrate: 600000, scaleResolutionDownBy: 1.0 }];
         codecOptions = {
-          videoGoogleStartBitrate: 1000
+          videoGoogleStartBitrate: 600,
         };
       }
     }
 
-    const producer = await this.sendTransport.produce({ 
-      track, 
-      encodings, 
-      codecOptions, 
-      appData: { source } 
+    const producer = await this.sendTransport.produce({
+      track,
+      encodings,
+      codecOptions,
+      appData: { source },
     });
 
     this.producers.set(source, producer);
@@ -380,7 +408,7 @@ export class SFUManager {
 
   async replaceTrack(track: MediaStreamTrack, source: string = 'webcam') {
     const producer = this.producers.get(source);
-    
+
     if (producer && !producer.closed) {
       await producer.replaceTrack({ track });
       logger.info(`[SFUManager] Track replaced for source: ${source}`);
@@ -391,20 +419,20 @@ export class SFUManager {
 
   closeProducer(source: string) {
     const producer = this.producers.get(source);
-    
+
     if (producer) {
       const { id } = producer;
       if (!producer.closed) {
         producer.close();
         logger.info(`[SFUManager] Producer closed for source: ${source}`);
       }
-      
+
       // Notify server to close producer
       if (this.roomId) {
         this.signaling.emit('sfu:closeProducer', { roomId: this.roomId, producerId: id });
       }
     }
-    
+
     this.producers.delete(source);
   }
 
@@ -414,7 +442,7 @@ export class SFUManager {
 
   async pauseProducer(source: string) {
     const producer = this.producers.get(source);
-    
+
     if (!producer || producer.closed) {
       logger.warn(`[SFUManager] No producer found for ${source}`);
       return;
@@ -422,19 +450,19 @@ export class SFUManager {
 
     if (!producer.paused) {
       await producer.pause();
-      
+
       // Sync with server
       if (this.roomId) {
         await this.syncProducerState(producer.id, false);
       }
-      
+
       logger.info(`[SFUManager] Producer paused: ${source}`);
     }
   }
 
   async resumeProducer(source: string) {
     const producer = this.producers.get(source);
-    
+
     if (!producer || producer.closed) {
       logger.warn(`[SFUManager] No producer found for ${source}`);
       return;
@@ -442,37 +470,70 @@ export class SFUManager {
 
     if (producer.paused) {
       await producer.resume();
-      
+
       // Sync with server
       if (this.roomId) {
         await this.syncProducerState(producer.id, true);
       }
-      
+
       logger.info(`[SFUManager] Producer resumed: ${source}`);
     }
   }
 
   private async syncProducerState(producerId: string, resume: boolean): Promise<void> {
     const event = resume ? 'sfu:resumeProducer' : 'sfu:pauseProducer';
-    
+
     return new Promise((resolve) => {
-      this.signaling.emit(event, 
-        { roomId: this.roomId, producerId }, 
-        (res: unknown) => {
-          const r = res as ResponseWithError;
-          if (r.error) {
-            logger.error(`[SFUManager] Server ${resume ? 'resume' : 'pause'} failed:`, r.error);
-          }
-          resolve();
+      this.signaling.emit(event, { roomId: this.roomId, producerId }, (res: unknown) => {
+        const r = res as ResponseWithError;
+        if (r.error) {
+          logger.error(`[SFUManager] Server ${resume ? 'resume' : 'pause'} failed:`, r.error);
         }
-      );
+        resolve();
+      });
     });
   }
 
   // ============================================
   // CONSUME (RECEIVE MEDIA)
   // ============================================
+
+  /**
+   * Closes existing consumers for the same user and kind.
+   * Important for handling producer replacement on mobile/web without
+   * explicit producerclose notification (e.g. abrupt switch).
+   */
+  private closeStaleConsumers(userId: string, kind: string) {
+    const uid = String(userId);
+    let count = 0;
+
+    for (const [id, consumer] of this.consumers.entries()) {
+      // Note: consumer.appData should contain userId if the server sends it,
+      // or we check the userId we passed to onTrack.
+      // In our case, socketId passed to consume() is the userId.
+
+      // Check if consumer matches user and kind
+      const appData = consumer.appData as Record<string, unknown>;
+      const consumerUserId = appData?.userId || appData?.socketId;
+
+      if (consumer.kind === kind && (String(consumerUserId) === uid || String(id).includes(uid))) {
+        logger.info(`[SFUManager] Closing stale consumer: ${id} (kind: ${kind}, user: ${uid})`);
+        consumer.close();
+        this.consumers.delete(id);
+        this.consumedProducers.delete(consumer.producerId);
+        count++;
+      }
+    }
+
+    if (count > 0) {
+      logger.info(`[SFUManager] Cleaned up ${count} stale consumers for user ${uid}`);
+    }
+  }
+
   async consume(roomId: string, producerId: string, socketId: string, kind: string) {
+    // 1. Clean up stale consumers for this user and kind before creating a new one
+    this.closeStaleConsumers(socketId, kind);
+
     // Deduplication
     if (this.consumedProducers.has(producerId)) {
       logger.warn(`[SFUManager] Producer ${producerId} already consumed`);
@@ -516,7 +577,7 @@ export class SFUManager {
       // Ensure track is enabled
       if (consumer.track) {
         consumer.track.enabled = true;
-        
+
         logger.debug(`[SFUManager] Track state:`, {
           trackId: consumer.track.id,
           kind: consumer.track.kind,
@@ -527,26 +588,28 @@ export class SFUManager {
       }
 
       // Small delay for media data
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Notify app
       logger.info(`[SFUManager] Calling onTrack for ${kind} track, userId: ${socketId}`);
       this.onTrack(socketId, consumer.track, kind, consumer.appData);
 
       // Event handlers
-      consumer.on('transportclose', () => {
-        logger.info(`[SFUManager] Consumer ${consumer.id} transport closed`);
+      const handleTrackEnded = () => {
+        logger.info(`[SFUManager] Consumer ${consumer.id} track/producer ended`);
         this.consumers.delete(consumer.id);
         this.consumedProducers.delete(producerId);
-      });
+      };
 
-      // @ts-ignore
-      consumer.on('producerclose', () => {
-        logger.info(`[SFUManager] Consumer ${consumer.id} producer closed`);
-        this.consumers.delete(consumer.id);
-        this.consumedProducers.delete(producerId);
-      });
+      consumer.on('transportclose', handleTrackEnded);
 
+      // @ts-expect-error - producerclose is a custom event on consumer in some versions of mediasoup-client
+      consumer.on('producerclose', handleTrackEnded);
+
+      // Also monitor track ended
+      if (consumer.track) {
+        consumer.track.onended = handleTrackEnded;
+      }
     } catch (error) {
       logger.error(`[SFUManager] Consume error:`, error);
       this.consumedProducers.delete(producerId);
@@ -554,37 +617,38 @@ export class SFUManager {
   }
 
   private async requestConsume(
-    roomId: string, 
-    producerId: string, 
+    roomId: string,
+    producerId: string,
     rtpCapabilities: RtpCapabilities
   ): Promise<ResponseWithError> {
     return new Promise((resolve, reject) => {
-      this.signaling.emit('sfu:consume', {
-        roomId,
-        transportId: this.recvTransport!.id,
-        producerId,
-        rtpCapabilities,
-      }, (response: unknown) => {
-        const res = response as ResponseWithError;
-        
-        if (res.error) {
-          reject(new Error(String(res.error)));
-        } else {
-          resolve(res);
+      this.signaling.emit(
+        'sfu:consume',
+        {
+          roomId,
+          transportId: this.recvTransport!.id,
+          producerId,
+          rtpCapabilities,
+        },
+        (response: unknown) => {
+          const res = response as ResponseWithError;
+
+          if (res.error) {
+            reject(new Error(String(res.error)));
+          } else {
+            resolve(res);
+          }
         }
-      });
+      );
     });
   }
 
   private async resumeConsumer(roomId: string, consumerId: string): Promise<void> {
     return new Promise((resolve) => {
-      this.signaling.emit('sfu:resumeConsumer', 
-        { roomId, consumerId }, 
-        () => {
-          logger.info(`[SFUManager] Consumer ${consumerId} resumed`);
-          resolve();
-        }
-      );
+      this.signaling.emit('sfu:resumeConsumer', { roomId, consumerId }, () => {
+        logger.info(`[SFUManager] Consumer ${consumerId} resumed`);
+        resolve();
+      });
     });
   }
 
@@ -593,7 +657,7 @@ export class SFUManager {
   // ============================================
   requestKeyFrame(trackId: string) {
     let targetConsumer: Consumer | undefined;
-    
+
     for (const consumer of this.consumers.values()) {
       if (consumer.track.id === trackId) {
         targetConsumer = consumer;
@@ -603,10 +667,10 @@ export class SFUManager {
 
     if (targetConsumer && this.roomId) {
       logger.debug(`[SFUManager] Requesting key frame for consumer ${targetConsumer.id}`);
-      
-      this.signaling.emit('sfu:requestKeyFrame', { 
-        roomId: this.roomId, 
-        consumerId: targetConsumer.id 
+
+      this.signaling.emit('sfu:requestKeyFrame', {
+        roomId: this.roomId,
+        consumerId: targetConsumer.id,
       });
     } else {
       if (!this.roomId) {
@@ -622,23 +686,31 @@ export class SFUManager {
   // ============================================
   async requestExistingProducers(roomId: string) {
     logger.info('[SFUManager] Requesting existing producers for room:', roomId);
-    
+
     return new Promise<void>((resolve) => {
-      this.signaling.emit('sfu:getProducers', { roomId }, async (producers: { producerId: string, socketId: string, userId: string, kind: string }[]) => {
-        if (Array.isArray(producers)) {
-          logger.info(`[SFUManager] Found ${producers.length} existing producers`);
-          
-          for (const p of producers) {
-            // Check if it's our own producer or if already consumed
-            if (p.socketId !== this.signaling.id && !this.consumedProducers.has(p.producerId)) {
-              logger.info(`[SFUManager] Consuming existing producer: ${p.producerId} (${p.kind})`);
-              const userIdForStream = p.userId || p.socketId;
-              await this.consume(roomId, p.producerId, userIdForStream, p.kind);
+      this.signaling.emit(
+        'sfu:getProducers',
+        { roomId },
+        async (
+          producers: { producerId: string; socketId: string; userId: string; kind: string }[]
+        ) => {
+          if (Array.isArray(producers)) {
+            logger.info(`[SFUManager] Found ${producers.length} existing producers`);
+
+            for (const p of producers) {
+              // Check if it's our own producer or if already consumed
+              if (p.socketId !== this.signaling.id && !this.consumedProducers.has(p.producerId)) {
+                logger.info(
+                  `[SFUManager] Consuming existing producer: ${p.producerId} (${p.kind})`
+                );
+                const userIdForStream = p.userId || p.socketId;
+                await this.consume(roomId, p.producerId, userIdForStream, p.kind);
+              }
             }
           }
+          resolve();
         }
-        resolve();
-      });
+      );
     });
   }
 
@@ -665,7 +737,7 @@ export class SFUManager {
         logger.warn('[SFUManager] Timeout waiting for send transport');
         return false;
       }
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
     return true;
@@ -679,7 +751,7 @@ export class SFUManager {
         logger.warn('[SFUManager] Timeout waiting for recv transport');
         return false;
       }
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
     return true;
@@ -690,7 +762,7 @@ export class SFUManager {
   // ============================================
   closeAll() {
     logger.info('[SFUManager] === CLEANUP START ===');
-    
+
     // Close producers
     for (const [source, producer] of this.producers.entries()) {
       if (!producer.closed) {

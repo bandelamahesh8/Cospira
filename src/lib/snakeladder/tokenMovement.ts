@@ -38,7 +38,7 @@ export const animateTokenMovement = async (
 
     // Slight pause on each square
     if (i < path.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, pauseDuration));
+      await new Promise((resolve) => setTimeout(resolve, pauseDuration));
     }
   }
 
@@ -49,12 +49,8 @@ export const animateTokenMovement = async (
 /**
  * Animate single hop
  */
-const animateHop = (
-  element: HTMLElement,
-  to: Position,
-  duration: number
-): Promise<void> => {
-  return new Promise(resolve => {
+const animateHop = (element: HTMLElement, to: Position, duration: number): Promise<void> => {
+  return new Promise((resolve) => {
     element.style.transition = `all ${duration}ms ease-out`;
     element.style.transform = `translate(${to.x}px, ${to.y}px) translateY(-4px)`;
 

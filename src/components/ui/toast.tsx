@@ -44,15 +44,15 @@ const Toast = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> & VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
   const { playSuccess, playError, playHover } = useSoundEffects();
-  
+
   React.useEffect(() => {
     // Only play sound for notifications that aren't default "foreground" info
     if (variant === 'destructive') {
-        playError();
+      playError();
     } else if (variant === 'default') {
-        // Assume default is neutral/success for now, or check title content? 
-        // For now, let's play a subtle tick for all toasts to alert user
-        playHover();
+      // Assume default is neutral/success for now, or check title content?
+      // For now, let's play a subtle tick for all toasts to alert user
+      playHover();
     }
   }, []);
 

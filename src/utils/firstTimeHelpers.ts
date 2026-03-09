@@ -36,7 +36,7 @@ export const markFirstTimeSeen = (flag: string): void => {
  */
 export const resetAllFirstTimeFlags = (): void => {
   if (typeof window === 'undefined') return;
-  Object.values(FirstTimeFlags).forEach(flag => {
+  Object.values(FirstTimeFlags).forEach((flag) => {
     localStorage.removeItem(flag);
   });
 };

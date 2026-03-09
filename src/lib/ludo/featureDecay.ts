@@ -59,9 +59,9 @@ export const getDecayedFeatures = (): string[] => {
 export const shouldHideFeature = (featureName: string): boolean => {
   const usage = getFeatureUsage();
   const lastUsed = usage[featureName];
-  
+
   if (!lastUsed) return false; // Never used, keep visible
-  
+
   const now = Date.now();
   return now - lastUsed > DECAY_THRESHOLD_MS;
 };

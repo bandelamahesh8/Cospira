@@ -25,7 +25,7 @@ const Demo = () => {
 
         <div className='mt-12 text-center'>
           <h2 className='text-2xl font-semibold mb-4'>Ready to try it yourself?</h2>
-          <Button asChild size='lg' className="btn-luxury border-none ring-0">
+          <Button asChild size='lg' className='btn-luxury border-none ring-0'>
             <Link to='/dashboard'>Go to Dashboard</Link>
           </Button>
         </div>

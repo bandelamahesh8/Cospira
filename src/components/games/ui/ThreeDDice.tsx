@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -33,8 +32,8 @@ export const ThreeDDice: React.FC<ThreeDDiceProps> = ({ value, rolling, classNam
         transition: {
           duration: 0.6,
           repeat: Infinity,
-          ease: "linear"
-        }
+          ease: 'linear',
+        },
       });
     } else if (value >= 1 && value <= 6) {
       const target = rotations[value];
@@ -45,8 +44,8 @@ export const ThreeDDice: React.FC<ThreeDDiceProps> = ({ value, rolling, classNam
         transition: {
           type: 'spring',
           stiffness: 260,
-          damping: 20
-        }
+          damping: 20,
+        },
       });
       setCurrentRotation(target);
     }
@@ -54,16 +53,41 @@ export const ThreeDDice: React.FC<ThreeDDiceProps> = ({ value, rolling, classNam
 
   const dotPositions: Record<number, number[][]> = {
     1: [[50, 50]],
-    2: [[25, 25], [75, 75]],
-    3: [[25, 25], [50, 50], [75, 75]],
-    4: [[25, 25], [25, 75], [75, 25], [75, 75]],
-    5: [[25, 25], [25, 75], [75, 25], [75, 75], [50, 50]],
-    6: [[25, 25], [25, 50], [25, 75], [75, 25], [75, 50], [75, 75]],
+    2: [
+      [25, 25],
+      [75, 75],
+    ],
+    3: [
+      [25, 25],
+      [50, 50],
+      [75, 75],
+    ],
+    4: [
+      [25, 25],
+      [25, 75],
+      [75, 25],
+      [75, 75],
+    ],
+    5: [
+      [25, 25],
+      [25, 75],
+      [75, 25],
+      [75, 75],
+      [50, 50],
+    ],
+    6: [
+      [25, 25],
+      [25, 50],
+      [25, 75],
+      [75, 25],
+      [75, 50],
+      [75, 75],
+    ],
   };
 
   const renderFace = (faceValue: number, transform: string) => (
     <div
-      className="absolute bg-white rounded-xl border-2 border-slate-200 shadow-[inset_0_0_15px_rgba(0,0,0,0.1)] flex items-center justify-center overflow-hidden"
+      className='absolute bg-white rounded-xl border-2 border-slate-200 shadow-[inset_0_0_15px_rgba(0,0,0,0.1)] flex items-center justify-center overflow-hidden'
       style={{
         width: size,
         height: size,
@@ -71,11 +95,11 @@ export const ThreeDDice: React.FC<ThreeDDiceProps> = ({ value, rolling, classNam
         backfaceVisibility: 'hidden',
       }}
     >
-      <div className="relative w-full h-full">
+      <div className='relative w-full h-full'>
         {dotPositions[faceValue].map(([x, y], i) => (
           <div
             key={i}
-            className="absolute bg-slate-800 rounded-full shadow-sm"
+            className='absolute bg-slate-800 rounded-full shadow-sm'
             style={{
               width: size * 0.18,
               height: size * 0.18,
@@ -92,10 +116,10 @@ export const ThreeDDice: React.FC<ThreeDDiceProps> = ({ value, rolling, classNam
   const halfSize = size / 2;
 
   return (
-    <div className={cn("perspective-1000", className)} style={{ width: size, height: size }}>
+    <div className={cn('perspective-1000', className)} style={{ width: size, height: size }}>
       <motion.div
         animate={controls}
-        className="relative w-full h-full transform-style-3d"
+        className='relative w-full h-full transform-style-3d'
         style={{ perspective: 1000 }}
       >
         {/* Front */}

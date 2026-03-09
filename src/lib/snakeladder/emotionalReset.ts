@@ -12,12 +12,12 @@ export class EmotionalReset {
   async resetToNeutral(): Promise<void> {
     // Fade all highlights
     this.fadeHighlights();
-    
+
     // Return board to calm state
     await this.returnToCalmState();
-    
+
     // Brief pause for clean slate
-    await new Promise(resolve => 
+    await new Promise((resolve) =>
       setTimeout(resolve, SNAKELADDER_CONFIG.TIMING.TURN_TRANSITION_MS)
     );
   }
@@ -28,7 +28,7 @@ export class EmotionalReset {
   private fadeHighlights(): void {
     // Remove all active glows, warnings, etc.
     const highlights = document.querySelectorAll('.highlight, .warning, .glow');
-    highlights.forEach(el => {
+    highlights.forEach((el) => {
       (el as HTMLElement).style.opacity = '0';
     });
   }

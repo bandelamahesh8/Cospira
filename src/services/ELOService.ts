@@ -1,8 +1,8 @@
-import { ELO_CONFIG, Rank, getRankFromElo, ELOResult } from '@/types/player';
+import { ELO_CONFIG, getRankFromElo, ELOResult } from '@/types/player';
 
 /**
  * ELO Rating Service
- * 
+ *
  * Implements the ELO rating system for competitive matchmaking.
  * Based on the standard ELO formula with configurable K-factor.
  */
@@ -37,7 +37,7 @@ export class ELOService {
   ): ELOResult {
     const expected = this.calculateExpectedScore(playerElo, opponentElo);
     const actual = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0;
-    
+
     const change = Math.round(this.kFactor * (actual - expected));
     const newElo = Math.max(0, playerElo + change); // ELO can't go below 0
     const newRank = getRankFromElo(newElo);
@@ -55,10 +55,7 @@ export class ELOService {
    * @param rankings - Final rankings (1st, 2nd, 3rd, 4th)
    * @returns Array of ELO results
    */
-  calculateMultiplayerELO(
-    players: number[],
-    rankings: number[]
-  ): ELOResult[] {
+  calculateMultiplayerELO(players: number[], rankings: number[]): ELOResult[] {
     if (players.length !== rankings.length) {
       throw new Error('Players and rankings arrays must have same length');
     }
@@ -69,10 +66,10 @@ export class ELOService {
     for (let i = 0; i < players.length; i++) {
       const playerElo = players[i];
       const ranking = rankings[i];
-      
+
       // Calculate score based on ranking (1st = 1.0, 2nd = 0.66, 3rd = 0.33, 4th = 0.0)
       const score = (players.length - ranking) / (players.length - 1);
-      
+
       const expected = this.calculateExpectedScore(playerElo, avgElo);
       const change = Math.round(this.kFactor * (score - expected));
       const newElo = Math.max(0, playerElo + change);
@@ -97,7 +94,7 @@ export class ELOService {
   getMatchmakingRange(elo: number, waitTime: number = 0): { min: number; max: number } {
     // Base range: ±100 ELO
     let range = 100;
-    
+
     // Expand range by 20 ELO every 10 seconds of waiting (max 500)
     const expansion = Math.min(500, Math.floor(waitTime / 10) * 20);
     range += expansion;

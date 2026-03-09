@@ -1,7 +1,10 @@
 import logger from '../logger.js';
 import BrowserPool from '../browser/BrowserPool.js';
-import { getRoom } from '../redis.js';
+import { getRoom, saveRoom } from '../redis.js';
 import { sanitizeRoomId } from '../utils/sanitize.js';
+import { parseIntent, validateAction } from '../services/ai/BrowserIntentParser.js';
+import BrowserActionExecutor from '../services/ai/BrowserActionExecutor.js';
+import llmService from '../services/ai/LLMService.js';
 
 // Initialize browser pool (singleton)
 const browserPool = new BrowserPool({
@@ -16,7 +19,10 @@ const browserPool = new BrowserPool({
 // Track room-to-session mapping
 const roomSessions = new Map(); // roomId -> sessionId
 
-export default function registerBrowserHandlers(io, socket) {
+// Action Executor
+const actionExecutor = new BrowserActionExecutor(browserPool);
+
+export default function registerBrowserHandlers(io, socket, sfuHandler) {
   /**
    * Start virtual browser session
    */
@@ -34,42 +40,80 @@ export default function registerBrowserHandlers(io, socket) {
 
       const sessionId = `browser-${rid}`;
       let manager = browserPool.getSession(sessionId);
-      
+
       if (!manager) {
+        // Create the manager through the pool.
+        // We use the sfuHandler passed from index.js
         manager = await browserPool.createSession(userId, sessionId, {
-          viewport: viewport || { width: 390, height: 844 },
+          io,
+          sfuHandler,
+          viewport: viewport || { width: 1280, height: 720 },
           quality: 60,
-          enableAudio,
+          enableAudio: true,
           roomId: rid
+        });
+
+        manager.on('crash', async () => {
+          logger.error(`[Browser] Crash detected. Cleaning up room ${rid}`);
+          await browserPool.closeSession(userId, sessionId);
+          roomSessions.delete(rid);
+          const roomToUpdate = await getRoom(rid);
+          if (roomToUpdate) {
+            delete roomToUpdate.virtualBrowser;
+            await saveRoom(roomToUpdate);
+          }
+          io.to(rid).emit('browser-closed');
         });
 
         roomSessions.set(rid, sessionId);
 
-        manager.startFrameCapture((data) => {
-          if (data.type === 'audio') {
-            io.to(rid).emit('browser-audio', data);
-          } else {
-            io.to(rid).emit('browser-frame', data);
-          }
-        });
+        // Actually start the WebRTC session now
+        await manager.startSession(rid, url || 'https://www.google.com');
 
         manager.once('closed', () => {
           roomSessions.delete(rid);
         });
 
-        if (url) {
-          await manager.navigate(url);
+        // We don't call navigate here again because startSession already navigates
+
+
+        const room = await getRoom(rid);
+        if (room) {
+          room.virtualBrowser = { 
+            url: url || 'https://www.google.com', 
+            isActive: true,
+            sessionId: sessionId 
+          };
+          await saveRoom(room);
         }
 
         io.to(rid).emit('browser-started', { 
           url: url || 'https://www.google.com' 
         });
+      } else {
+        // If session exists but a new URL is provided, navigate
+        if (url && url !== manager.currentUrl) {
+          await manager.navigate(url);
+          
+          const room = await getRoom(rid);
+          if (room) {
+            room.virtualBrowser = { 
+              ...room.virtualBrowser,
+              url: url
+            };
+            await saveRoom(room);
+          }
+
+          io.to(rid).emit('browser-url-updated', { url });
+        }
       }
 
       socket.emit('virtual-browser-ready', {
         roomId: rid,
-        url: url || 'https://www.google.com',
-        stats: manager.getStats()
+        url: manager.currentUrl || url || 'https://www.google.com',
+        stats: manager.getStats(),
+        tabs: Array.from(manager.getSession()?.pages?.values() || []).map(t => ({ id: t.id, url: t.url, title: t.title })),
+        activeTabId: manager.getSession()?.activeTabId
       });
 
     } catch (error) {
@@ -103,10 +147,39 @@ export default function registerBrowserHandlers(io, socket) {
       const safeUrl = url.trim().slice(0, 2048);
       if (!safeUrl.startsWith('http://') && !safeUrl.startsWith('https://')) return;
       await manager.navigate(safeUrl);
-      io.to(rid).emit('browser-url-updated', { url: safeUrl });
     } catch (error) {
       logger.error(`Navigation error: ${error.message}`);
     }
+  });
+
+  socket.on('browser-new-tab', async (data) => {
+    try {
+      const { roomId, tabId, url } = data || {};
+      const rid = sanitizeRoomId(roomId);
+      if (!rid || !tabId) return;
+      const manager = getBrowserManager(rid);
+      if (manager) await manager.createTab(tabId, url || 'https://www.google.com', true);
+    } catch (e) { logger.error(e.message); }
+  });
+
+  socket.on('browser-switch-tab', async (data) => {
+    try {
+      const { roomId, tabId } = data || {};
+      const rid = sanitizeRoomId(roomId);
+      if (!rid || !tabId) return;
+      const manager = getBrowserManager(rid);
+      if (manager) await manager.switchTab(tabId);
+    } catch (e) { logger.error(e.message); }
+  });
+
+  socket.on('browser-close-tab', async (data) => {
+    try {
+      const { roomId, tabId } = data || {};
+      const rid = sanitizeRoomId(roomId);
+      if (!rid || !tabId) return;
+      const manager = getBrowserManager(rid);
+      if (manager) await manager.closeTab(tabId);
+    } catch (e) { logger.error(e.message); }
   });
 
   /**
@@ -135,18 +208,18 @@ export default function registerBrowserHandlers(io, socket) {
         return;
       }
 
-      if (!manager.page) return;
+      if (!manager.activePage) return;
 
       if (input.type === 'navigate') {
         switch (input.action) {
           case 'back':
-            if (manager.page) await manager.page.goBack();
+            if (manager.activePage) await manager.activePage.goBack().catch(()=>{});
             break;
           case 'forward':
-            if (manager.page) await manager.page.goForward();
+            if (manager.activePage) await manager.activePage.goForward().catch(()=>{});
             break;
           case 'reload':
-            if (manager.page) await manager.page.reload();
+            if (manager.activePage) await manager.activePage.reload().catch(()=>{});
             break;
         }
         return;
@@ -157,6 +230,67 @@ export default function registerBrowserHandlers(io, socket) {
       if (error.message && !error.message.includes('Target closed') && !error.message.includes('Session closed')) {
         logger.debug(`Browser input error: ${error.message}`);
       }
+    }
+  });
+
+  /**
+   * Handle AI Agent Commands
+   */
+  socket.on('browser-command', async (data, callback) => {
+    try {
+      const { roomId, command } = data || {};
+      const rid = sanitizeRoomId(roomId);
+      if (!rid || !command) return;
+
+      logger.info(`[BrowserAgent] Received command for room ${rid}: "${command}"`);
+
+      // 1. Parse Intent
+      const action = parseIntent(command);
+      
+      if (action.error && action.action !== 'unknown') {
+        return callback?.({ success: false, error: action.error });
+      }
+
+      // 2. Validate
+      const validation = validateAction(action);
+      if (!validation.valid) {
+        return callback?.({ success: false, error: validation.error });
+      }
+
+      // 3. Special Case: AI Summary / Generation
+      if (command.toLowerCase().includes('summarize') || command.toLowerCase().includes('what is this page about')) {
+        const manager = getBrowserManager(rid);
+        if (manager && manager.activePage) {
+          const content = await manager.activePage.textContent('body');
+          const summary = await llmService.generateContent(`Summarize the following web page content concisely for a user in a watch party:\n\n${content.substring(0, 5000)}`);
+          io.to(rid).emit('browser-announcement', { 
+            type: 'ai-insight', 
+            message: summary,
+            title: 'AI Page Summary'
+          });
+          return callback?.({ success: true, message: 'Summary generated' });
+        }
+      }
+
+      // 4. Execute Browser Action
+      const result = await actionExecutor.executeAction(rid, action);
+      
+      if (result.success) {
+        callback?.({ success: true, message: result.message });
+        // Optionally announce significant actions
+        if (['navigate', 'search'].includes(action.action)) {
+          io.to(rid).emit('browser-announcement', { 
+            type: 'action', 
+            message: result.message 
+          });
+        }
+      } else {
+        callback?.({ success: false, error: result.error });
+      }
+
+    } catch (error) {
+      logger.error(`[BrowserAgent] Command error: ${error.message}`);
+      callback?.({ success: false, error: 'Failed to process AI command' });
     }
   });
 
@@ -194,34 +328,44 @@ export default function registerBrowserHandlers(io, socket) {
       await browserPool.closeSession(userId, sessionId);
 
       roomSessions.delete(rid);
-      io.to(rid).emit('browser-closed');
+      
+      const room = await getRoom(rid);
+      if (room) {
+        delete room.virtualBrowser;
+        await saveRoom(room);
+      }
 
-      logger.info(`Browser closed for room ${rid} (close-browser)`);
+      io.to(rid).emit('browser-closed');
+      logger.info(`Browser closed for room ${rid}`);
     } catch (error) {
       logger.error(`Close browser error: ${error.message}`);
     }
   });
 
-  /**
-   * Close browser
-   */
   socket.on('stop-virtual-browser', async (data) => {
     try {
-      const { roomId } = data;
-      if (!roomId) return;
+      const { roomId } = data || {};
+      const rid = sanitizeRoomId(roomId);
+      if (!rid) return;
 
-      const sessionId = roomSessions.get(roomId);
+      const sessionId = roomSessions.get(rid);
       if (!sessionId) return;
 
       const userId = socket.handshake.auth?.userId || socket.id;
       await browserPool.closeSession(userId, sessionId);
       
-      roomSessions.delete(roomId);
-      io.to(roomId).emit('browser-closed');
-      
-      logger.info(`Browser closed for room ${roomId}`);
+      roomSessions.delete(rid);
+
+      const room = await getRoom(rid);
+      if (room) {
+        delete room.virtualBrowser;
+        await saveRoom(room);
+      }
+
+      io.to(rid).emit('browser-closed');
+      logger.info(`Browser stopped for room ${rid}`);
     } catch (error) {
-      logger.error(`Close browser error: ${error.message}`);
+      logger.error(`Stop browser error: ${error.message}`);
     }
   });
 

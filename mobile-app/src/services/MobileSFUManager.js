@@ -93,7 +93,7 @@ class MobileSFUManager {
   async createSendTransport() {
     const data = await this.getSignalingData('sfu:createWebRtcTransport', { 
         roomId: this.roomId, 
-        forceTcp: true, // Force TCP for better emulator/network compatibility
+        forceTcp: false, // Switch to UDP for performance; will fallback to TCP if blocked
         rtpCapabilities: this.device.rtpCapabilities 
     });
 
@@ -131,6 +131,9 @@ class MobileSFUManager {
     
     this.sendTransport.on('connectionstatechange', (state) => {
         console.log(`[MobileSFU] Send Transport state: ${state}`);
+        if (state === 'failed' || state === 'disconnected') {
+            this.restartTransportIce('send');
+        }
     });
 
     console.log('[MobileSFU] Send Transport created');
@@ -139,7 +142,7 @@ class MobileSFUManager {
   async createRecvTransport() {
     const data = await this.getSignalingData('sfu:createWebRtcTransport', { 
         roomId: this.roomId, 
-        forceTcp: true, // Force TCP for better emulator/network compatibility
+        forceTcp: false, // Switch to UDP for performance
         rtpCapabilities: this.device.rtpCapabilities 
     });
 
@@ -162,6 +165,14 @@ class MobileSFUManager {
 
     this.recvTransport.on('connectionstatechange', (state) => {
         console.log(`[MobileSFU] Recv Transport state: ${state}`);
+        if (state === 'failed' || state === 'disconnected') {
+            this.restartTransportIce('recv');
+        }
+        // When transport reconnects after a brief disruption (e.g. camera
+        // acquisition on Android), request keyframes to recover video.
+        if (state === 'connected') {
+            setTimeout(() => this.requestAllVideoKeyFrames(), 300);
+        }
     });
 
     console.log('[MobileSFU] Recv Transport created');
@@ -186,8 +197,38 @@ class MobileSFUManager {
         if (!this.userId && this.signaling?.socket?.id) {
             console.warn('[MobileSFU] Producing without setUserId; using socket.id for appData.userId. Call setUserId(joinedAsUserId) after join-room for correct web lookup.');
         }
+
+        let encodings;
+        let codecOptions;
+
+        if (track.kind === 'video') {
+            if (source === 'screen') {
+                // MASSIVE scale down required for Android 14 Emulators and Pixel devices
+                // High native resolutions crash hardware encoders producing black frames.
+                // scaleResolutionDownBy: 2.0 ensures even dimensions (avoiding 3.0 fractions that crash encoders)
+                // Remove rid to disable simulcast trickery which causes black frames on Android screen share
+                encodings = [
+                    { maxBitrate: 1500000, scaleResolutionDownBy: 2.0 }
+                ];
+                codecOptions = {
+                    videoGoogleStartBitrate: 500
+                };
+            } else {
+                // SIMPLIFIED for Mobile Compatibility (No Simulcast, Single Layer)
+                // This reduces CPU/GPU load significantly on Android
+                encodings = [
+                    { rid: 'r0', maxBitrate: 500000, scaleResolutionDownBy: 1.5 }
+                ];
+                codecOptions = {
+                    videoGoogleStartBitrate: 500
+                };
+            }
+        }
+
         const producer = await this.sendTransport.produce({
             track,
+            encodings,
+            codecOptions,
             appData: { source, userId: appUserId }
         });
 
@@ -214,13 +255,20 @@ class MobileSFUManager {
   async replaceTrack(track, source = 'webcam') {
       const producer = this.producers.get(source);
       if (producer && !producer.closed) {
-          console.log(`[MobileSFU] Replacing track for ${source}`);
-          await producer.replaceTrack({ track });
-          return producer;
-      } else {
+          console.log(`[MobileSFU] Replacing track for ${source} (track: ${track ? track.id : 'null'})`);
+          try {
+              await producer.replaceTrack({ track });
+              return producer;
+          } catch (err) {
+              console.warn(`[MobileSFU] replaceTrack failed, falling back to produce:`, err);
+              if (track) return await this.produce(track, source);
+              throw err;
+          }
+      } else if (track) {
           console.log(`[MobileSFU] No active producer for ${source}, creating new`);
           return await this.produce(track, source);
       }
+      return null;
   }
 
   async closeProducer(source) {
@@ -272,6 +320,20 @@ class MobileSFUManager {
         return;
     }
 
+    // 2. Close stale consumers for the SAME user+kind (producer was re-created
+    //    on the web but producerclose never fired on this mobile client).
+    for (const [cid, c] of this.consumers) {
+        if (c._userId === userId && c.kind === kind) {
+            console.log(`[MobileSFU] Closing stale ${kind} consumer ${cid} for ${userId} (replaced by ${producerId})`);
+            try { c.close(); } catch (_e) { /* already closed */ }
+            this.consumers.delete(cid);
+            // Notify UI to remove the stale track
+            if (this.onTrack) {
+                this.onTrack(userId, null, kind, { reason: 'replaced' });
+            }
+        }
+    }
+
     // 2. Serialize consume to avoid crash when mobile producing + web starts producing
     const runConsume = async (pid, uid, k) => {
       this.pendingConsumers.add(pid);
@@ -295,10 +357,13 @@ class MobileSFUManager {
 
       const consumer = await this.recvTransport.consume({
         id,
-        producerId,
+        producerId: pid,
         kind: consumerKind,
         rtpParameters
       });
+
+      // Tag consumer with userId for stale consumer dedup
+      consumer._userId = uid;
 
       // Ensure remote track is explicitly enabled
       if (consumer.track) {
@@ -320,17 +385,21 @@ class MobileSFUManager {
           consumerId: consumer.id
       });
       
-      // For video, proactively request a key frame to avoid black frames,
-      // mirroring the older, battle-tested mobile SFU hook.
+      // For video, proactively request key frames with retries to avoid
+      // black/corrupted frames (camera acquisition can disrupt the recv transport).
       if (consumer.kind === 'video') {
-        setTimeout(() => {
-          this.getSignalingData('sfu:requestKeyFrame', {
-            roomId: this.roomId,
-            consumerId: consumer.id,
-          }).catch((err) => {
-            console.warn('[MobileSFU] Keyframe request failed (non-fatal):', err?.message || err);
-          });
-        }, 500);
+        const keyFrameDelays = [1500, 4000];
+        keyFrameDelays.forEach(delay => {
+          setTimeout(() => {
+            if (consumer.closed) return;
+            this.getSignalingData('sfu:requestKeyFrame', {
+              roomId: this.roomId,
+              consumerId: consumer.id,
+            }).catch((err) => {
+              console.warn('[MobileSFU] Keyframe request failed (non-fatal):', err?.message || err);
+            });
+          }, delay);
+        });
       }
 
       // If the remote video track gets muted/unmuted (often happens when local camera toggles),
@@ -384,6 +453,10 @@ class MobileSFUManager {
 
       // When web pauses then resumes (replaceTrack), we get producerresume.
       // Request keyframe and force UI refresh so video displays correctly.
+      consumer.on('producerpause', () => {
+        console.log(`[MobileSFU] Producer paused for consumer ${consumer.id} (${consumer.kind})`);
+      });
+
       consumer.on('producerresume', () => {
         if (consumer.kind === 'video' && this.roomId) {
           this.getSignalingData('sfu:requestKeyFrame', {
@@ -422,6 +495,27 @@ class MobileSFUManager {
     runConsume(producerId, userId, kind);
   }
 
+  /**
+   * Close and recreate a consumer. Used to recover from
+   * native track interruptions (e.g. Android camera acquisition).
+   */
+  async recoverConsumer(pid, uid, kind) {
+    console.log(`[MobileSFU] Recovering ${kind} consumer for producer ${pid}`);
+    
+    // Find and close existing consumer
+    for (const [cid, c] of this.consumers) {
+        if (c.producerId === pid) {
+            console.log(`[MobileSFU] Closing interrupted consumer ${cid} before recovery`);
+            try { c.close(); } catch (_e) {}
+            this.consumers.delete(cid);
+            break;
+        }
+    }
+
+    // Attempt to consume again
+    return await this.consume(pid, uid, kind);
+  }
+
   async getExistingProducers() {
       try {
           const producers = await this.getSignalingData('sfu:getProducers', { roomId: this.roomId });
@@ -435,6 +529,41 @@ class MobileSFUManager {
       } catch (err) {
           console.error('[MobileSFU] Failed to get existing producers:', err);
       }
+  }
+
+  /**
+   * Request keyframes on ALL active video consumers.
+   * Call after producing local video/audio to recover from
+   * transient recv transport disruptions caused by getUserMedia().
+   */
+  requestAllVideoKeyFrames() {
+    if (!this.roomId) return;
+    for (const [id, consumer] of this.consumers) {
+      if (consumer.kind === 'video' && !consumer.closed) {
+        // Recovery check: if track is ended but producer is likely still active, recover it.
+        // NOTE: We only recover if track has BEEN ended for more than 2 seconds, 
+        // to avoid recovering during transient camera acquisition blips on Android.
+        if (consumer.track && consumer.track.readyState === 'ended' && !consumer.paused) {
+          if (!consumer._endedAt) consumer._endedAt = Date.now();
+          
+          if (Date.now() - consumer._endedAt > 2000) {
+             console.warn(`[MobileSFU] Video consumer ${id} track ended for >2s, recovering...`);
+             this.recoverConsumer(consumer.producerId, consumer._userId, 'video');
+          }
+          continue;
+        } else {
+          consumer._endedAt = null;
+        }
+
+        console.log(`[MobileSFU] Requesting recovery keyframe for consumer ${id}`);
+        this.getSignalingData('sfu:requestKeyFrame', {
+          roomId: this.roomId,
+          consumerId: id,
+        }).catch((err) => {
+          console.warn('[MobileSFU] Recovery keyframe failed (non-fatal):', err?.message || err);
+        });
+      }
+    }
   }
 
   closeAll() {
@@ -452,6 +581,23 @@ class MobileSFUManager {
   }
 
   // --- Helper for Promise-based Socket Emits ---
+  async restartTransportIce(transportType) {
+    const transport = transportType === 'send' ? this.sendTransport : this.recvTransport;
+    if (!transport || transport.closed) return;
+
+    console.log(`[MobileSFU] Restarting ICE for ${transportType} transport...`);
+    try {
+        const { iceParameters } = await this.getSignalingData('sfu:restartIce', {
+            roomId: this.roomId,
+            transportId: transport.id
+          });
+          await transport.restartIce({ iceParameters });
+          console.log(`[MobileSFU] ICE restarted for ${transportType} transport`);
+      } catch (err) {
+          console.error(`[MobileSFU] ICE restart failed for ${transportType}:`, err);
+      }
+  }
+
   getSignalingData(event, data = {}) {
     return new Promise((resolve, reject) => {
       if (!this.signaling || !this.signaling.socket) {

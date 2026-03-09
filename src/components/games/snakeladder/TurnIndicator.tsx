@@ -14,10 +14,10 @@ interface TurnIndicatorProps {
   position: { x: number; y: number };
 }
 
-export const TurnIndicator = ({ activePlayer, position }: TurnIndicatorProps) => {
+export const TurnIndicator = ({ activePlayer: _activePlayer, position }: TurnIndicatorProps) => {
   return (
     <motion.div
-      className="absolute pointer-events-none"
+      className='absolute pointer-events-none'
       style={{ left: position.x, top: position.y }}
       animate={{
         boxShadow: [
@@ -33,7 +33,7 @@ export const TurnIndicator = ({ activePlayer, position }: TurnIndicatorProps) =>
       }}
     >
       {/* Soft halo circle */}
-      <div className="w-12 h-12 rounded-full border-2 border-blue-400" />
+      <div className='w-12 h-12 rounded-full border-2 border-blue-400' />
     </motion.div>
   );
 };

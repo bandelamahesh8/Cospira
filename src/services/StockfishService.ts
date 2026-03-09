@@ -1,8 +1,7 @@
-
-
+import { logger } from '@/utils/logger';
 
 // We'll use the public URL for the stockfish worker
-const STOCKFISH_WORKER_PATH = '/stockfish.js'; 
+const STOCKFISH_WORKER_PATH = '/stockfish.js';
 
 export class StockfishService {
   private worker: Worker | null = null;
@@ -20,14 +19,14 @@ export class StockfishService {
       // Since we installed via npm, we might need to rely on the bundler moving it or referencing it
       // For now, attempting to use the file if it exists in public or via simple fetch
       // If run locally, user might need to ensure stockfish.js is in public/ folder.
-      
+
       // Attempting to resolve via standard worker construction
       // Note: Vite might need specific worker import query
-      
+
       // Fallback: Check if window.Stockfish exists (if loaded via script tag)
-      // Otherwise assumes it's available at the root 
+      // Otherwise assumes it's available at the root
       this.worker = new Worker(STOCKFISH_WORKER_PATH);
-      
+
       this.worker.onmessage = (event) => {
         const line = event.data;
         if (typeof line === 'string') {
@@ -43,7 +42,7 @@ export class StockfishService {
       this.worker.postMessage('uci');
       this.configureDifficulty();
     } catch (error) {
-      console.error('Failed to initialize Stockfish worker:', error);
+      logger.error('Failed to initialize Stockfish worker:', error);
     }
   }
 
@@ -55,19 +54,12 @@ export class StockfishService {
     const skillLevel = {
       easy: 1,
       medium: 8,
-      hard: 20
-    }[this.difficulty];
-
-    const depth = {
-        easy: 1,
-        medium: 3,
-        hard: 8
+      hard: 20,
     }[this.difficulty];
 
     this.worker.postMessage(`setoption name Skill Level value ${skillLevel}`);
-    // Use depth for something or just remove if unrelated to 'Skill Level'
-    // Actually Stockfish usually uses depth in 'go' command, not setoption.
-    // But 'Skill Level' limits strength.
+    // Note: depth is used in go command, not setoption.
+    // 'Skill Level' limits strength.
 
     this.worker.postMessage(`setoption name MultiPV value 1`);
   }
@@ -81,14 +73,14 @@ export class StockfishService {
     if (!this.worker) return;
     this.onMove = callback;
     this.worker.postMessage(`position fen ${fen}`);
-    
+
     // Adjust depth based on difficulty
     const depth = {
-        easy: 5,
-        medium: 10,
-        hard: 18
+      easy: 5,
+      medium: 10,
+      hard: 18,
     }[this.difficulty];
-    
+
     this.worker.postMessage(`go depth ${depth}`);
   }
 

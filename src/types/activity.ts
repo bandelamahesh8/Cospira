@@ -1,10 +1,17 @@
 /**
  * Activity Page Types
- * 
+ *
  * Type definitions for the Activity page showing user's room history
  */
 
-export type ActivityType = 'room' | 'presentation' | 'game' | 'browser' | 'youtube' | 'screen' | 'session-group';
+export type ActivityType =
+  | 'room'
+  | 'presentation'
+  | 'game'
+  | 'browser'
+  | 'youtube'
+  | 'screen'
+  | 'session-group';
 
 export type ActivityFilter = 'All' | 'Rooms' | 'Presentations' | 'Games' | 'Media' | 'Feedback';
 
@@ -57,11 +64,11 @@ export interface SessionGroupActivity extends BaseActivity {
   participants: number;
 }
 
-export type Activity = 
-  | RoomActivity 
-  | PresentationActivity 
-  | GameActivity 
-  | BrowserActivity 
+export type Activity =
+  | RoomActivity
+  | PresentationActivity
+  | GameActivity
+  | BrowserActivity
   | SessionGroupActivity;
 
 /**

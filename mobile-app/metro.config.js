@@ -9,6 +9,7 @@ const path = require('path');
  */
 const config = {
   resolver: {
+    sourceExts: [...getDefaultConfig(__dirname).resolver.sourceExts, 'jsx'],
     unstable_enablePackageExports: true,
     unstable_conditionNames: ['react-native', 'browser', 'require', 'import', 'default'],
     extraNodeModules: {

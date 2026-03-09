@@ -16,12 +16,19 @@ import registerRandomHandlers from './random.socket.js';
 import registerMatchmakingHandlers from './matchmaking.socket.js';
 import registerChessHandlers from './chess.socket.js';
 import registerLudoHandlers from './ludo.socket.js';
+import registerBreakoutHandlers, { handleBreakoutHostDisconnect } from './breakout.socket.js';
+import registerBreakoutAIHandlers from './breakout-ai.socket.js';
+import BreakoutAIIngest from '../services/breakout/BreakoutAIIngest.js';
+import { registerPolicySockets } from './policy.socket.js';
 import { getSystemStats } from '../redis.js';
 import logger from '../logger.js';
 
 export default function registerSocketHandlers(io, sfuHandler) {
   // Maps userId -> socketId
   const userSockets = new Map();
+
+  // Initialize AI ingest queue with io (so processors can emit insights)
+  BreakoutAIIngest.init(io);
 
   const broadcastStats = async () => {
     try {
@@ -81,6 +88,10 @@ export default function registerSocketHandlers(io, sfuHandler) {
     registerMatchmakingHandlers(io, socket);
     registerChessHandlers(io, socket);
     registerLudoHandlers(io, socket);
+    registerBreakoutHandlers(io, socket);
+    registerBreakoutAIHandlers(io, socket);
+    // Neural Controls — Policy, State Machine, Authority, Command Network
+    registerPolicySockets(io, socket);
 
     // Cleanup on disconnect
     socket.on('disconnect', () => {
@@ -91,6 +102,11 @@ export default function registerSocketHandlers(io, sfuHandler) {
         }
         // Stop AI Transcription
         import('../services/ai/AIService.js').then(m => m.default.stopTranscription(userId));
+
+        // GAP 5: Host failure policy — handle breakout host disconnect
+        handleBreakoutHostDisconnect(io, userId).catch(err =>
+          logger.error('[Sockets] handleBreakoutHostDisconnect error:', err.message)
+        );
       } else {
         // Fallback for non-authenticated users if they were using socket.id as userId
         import('../services/ai/AIService.js').then(m => m.default.stopTranscription(socket.id));

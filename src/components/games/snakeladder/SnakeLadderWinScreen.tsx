@@ -24,14 +24,14 @@ export const SnakeLadderWinScreen = ({ winner, onPlayAgain, onExit }: WinScreenP
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1.5 }} // Slow, gentle reveal
-      className="fixed inset-0 flex flex-col items-center justify-center z-50 bg-slate-900/80 backdrop-blur-sm"
+      className='fixed inset-0 flex flex-col items-center justify-center z-50 bg-slate-900/80 backdrop-blur-sm'
     >
       {/* Board fades */}
       <motion.div
         initial={{ opacity: 1 }}
         animate={{ opacity: 0 }}
         transition={{ duration: 2 }}
-        className="absolute inset-0"
+        className='absolute inset-0'
       />
 
       {/* Calm win reveal */}
@@ -39,19 +39,15 @@ export const SnakeLadderWinScreen = ({ winner, onPlayAgain, onExit }: WinScreenP
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.5, duration: 1 }}
-        className="flex flex-col items-center gap-6 text-center"
+        className='flex flex-col items-center gap-6 text-center'
       >
         {/* Gentle icon */}
-        <div className="text-6xl">🎯</div>
+        <div className='text-6xl'>🎯</div>
 
         {/* Storybook message */}
-        <h2 className="text-3xl font-light text-white">
-          {getWinMessage(winner.name)}
-        </h2>
+        <h2 className='text-3xl font-light text-white'>{getWinMessage(winner.name)}</h2>
 
-        <p className="text-lg text-slate-300 font-light">
-          The journey is complete
-        </p>
+        <p className='text-lg text-slate-300 font-light'>The journey is complete</p>
 
         {/* Others fade respectfully (not shown, just implied) */}
 
@@ -60,21 +56,17 @@ export const SnakeLadderWinScreen = ({ winner, onPlayAgain, onExit }: WinScreenP
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 1, duration: 0.8 }}
-          className="flex gap-4 mt-4"
+          className='flex gap-4 mt-4'
         >
-          <Button
-            onClick={onPlayAgain}
-            size="lg"
-            className="bg-blue-500 hover:bg-blue-600"
-          >
+          <Button onClick={onPlayAgain} size='lg' className='bg-blue-500 hover:bg-blue-600'>
             Another Journey
           </Button>
 
           <Button
             onClick={onExit}
-            size="lg"
-            variant="outline"
-            className="text-slate-300 border-slate-600"
+            size='lg'
+            variant='outline'
+            className='text-slate-300 border-slate-600'
           >
             Rest
           </Button>

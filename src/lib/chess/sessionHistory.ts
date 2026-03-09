@@ -26,9 +26,9 @@ export const saveGameSession = (session: Omit<GameSession, 'id' | 'timestamp'>):
       id: crypto.randomUUID(),
       timestamp: Date.now(),
     };
-    
+
     history.unshift(newSession);
-    
+
     // Keep only last MAX_HISTORY_SIZE games
     const trimmed = history.slice(0, MAX_HISTORY_SIZE);
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(trimmed));
@@ -55,10 +55,10 @@ export const getSessionHistory = (): GameSession[] => {
  */
 export const getSessionStats = () => {
   const history = getSessionHistory();
-  const wins = history.filter(g => g.result === 'win').length;
-  const losses = history.filter(g => g.result === 'loss').length;
-  const draws = history.filter(g => g.result === 'draw').length;
-  
+  const wins = history.filter((g) => g.result === 'win').length;
+  const losses = history.filter((g) => g.result === 'loss').length;
+  const draws = history.filter((g) => g.result === 'draw').length;
+
   return {
     total: history.length,
     wins,

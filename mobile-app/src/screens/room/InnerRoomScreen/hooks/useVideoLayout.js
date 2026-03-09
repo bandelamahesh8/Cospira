@@ -6,7 +6,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export const useVideoLayout = () => {
   const [containerDimensions, setContainerDimensions] = useState({
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.7,
+    height: SCREEN_HEIGHT * 0.85,
   });
 
   const calculateGridLayout = useCallback(

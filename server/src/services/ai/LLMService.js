@@ -91,6 +91,27 @@ class LLMService {
       throw error;
     }
   }
+
+  /**
+   * Generic content generation
+   * @param {string} prompt 
+   * @returns {Promise<string>}
+   */
+  async generateContent(prompt) {
+    if (!this.model) {
+      this.init();
+      if (!this.model) throw new Error('LLM Service not initialized');
+    }
+
+    try {
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      return response.text().trim();
+    } catch (error) {
+      logger.error('[LLMService] Generic generation failed:', error);
+      throw error;
+    }
+  }
 }
 
 export default new LLMService();

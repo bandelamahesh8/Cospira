@@ -6,579 +6,796 @@ import ffmpegPath from '@ffmpeg-installer/ffmpeg';
 chromium.use(stealth());
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
+import crypto from 'crypto';
+import dgram from 'dgram';
 
-const IS_WIN = process.platform === 'win32';
-
-/**
- * WebRTC Browser Manager
- * Manages headless browser instances with WebRTC video/audio streaming
- * 
- * Architecture:
- * - Chromium runs on Xvfb (Linux) or Visible (Windows)
- * - FFmpeg captures display + Audio (Pulse on Linux, Silence/Desktop on Windows)
- * - Streams encoded VP8/Opus via WebRTC
- */
 class WebRTCBrowserManager extends EventEmitter {
   constructor(io, sfuHandler) {
     super();
     this.io = io;
     this.sfuHandler = sfuHandler;
-    this.sessions = new Map(); // roomId -> session
+    this.session = null;
   }
 
-  /**
-   * Start a new browser session with WebRTC streaming
-   */
+  get activePage() {
+    if (!this.session) return null;
+    const tab = this.session.pages.get(this.session.activeTabId);
+    return tab ? tab.page : null;
+  }
+
+  get activeClient() {
+    if (!this.session) return null;
+    const tab = this.session.pages.get(this.session.activeTabId);
+    return tab ? tab.client : null;
+  }
+
+  get currentUrl() {
+    if (!this.session) return null;
+    const tab = this.session.pages.get(this.session.activeTabId);
+    return tab ? tab.url : null;
+  }
+
   async startSession(roomId, initialUrl = 'https://www.google.com') {
-    if (this.sessions.has(roomId)) {
+    if (this.session) {
       logger.info(`Session already exists for room ${roomId}`);
-      return this.sessions.get(roomId);
+      return this.session;
     }
 
     try {
-      logger.info(`🚀 Starting WebRTC browser session for room ${roomId}`);
+      logger.info(`🚀 Starting WebRTC CDP browser session for room ${roomId}`);
       
       const launchOptions = {
-         headless: !IS_WIN,
+         headless: true, // Always headless
          args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
+            '--disable-software-rasterizer',
             '--autoplay-policy=no-user-gesture-required',
             '--disable-blink-features=AutomationControlled',
-            // Touch events support
             '--touch-events=enabled', 
             '--enable-features=Touch',
+            '--no-first-run',
+            '--disable-web-security',
+            '--allow-running-insecure-content',
+            '--mute-audio', // We capture audio via MediaRecorder, prevent system bleeding
+            '--use-fake-device-for-media-stream' // Required for headless audio testing/routing
          ],
          executablePath: process.env.CHROMIUM_PATH || undefined
       };
 
-      if (!IS_WIN) {
-         launchOptions.args.push(
-            '--enable-features=PulseAudio',
-            '--use-fake-ui-for-media-stream',
-            '--enable-audio-service-sandbox',
-            '--audio-output-channels=2'
-         );
-         if (!process.env.CHROMIUM_PATH) launchOptions.executablePath = '/usr/bin/chromium';
+      if (process.platform === 'linux' && !process.env.CHROMIUM_PATH) {
+          launchOptions.executablePath = '/usr/bin/chromium';
       }
 
-      // Launch Chromium
       const browser = await chromium.launch(launchOptions);
 
       const context = await browser.newContext({
         viewport: { width: 1280, height: 720 },
+        deviceScaleFactor: 1,
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         permissions: ['microphone', 'camera', 'notifications'],
-        hasTouch: true, // Enable touch emulation in context
-        recordVideo: !IS_WIN ? {
-          dir: `/tmp/browser-sessions/${roomId}`,
-          size: { width: 1280, height: 720 }
-        } : undefined // Windows recordVideo might fail or need path adjustment
+        hasTouch: true,
+        colorScheme: 'dark',
       });
 
-      const page = await context.newPage();
-
-      // Navigate to initial URL
-      try {
-        await page.goto(initialUrl, { 
-          waitUntil: 'domcontentloaded', 
-          timeout: 15000 
-        });
-      } catch (e) {
-        logger.warn(`Initial navigation failed: ${e.message}`);
-      }
-
-      // Create session object
       const session = {
         browser,
         context,
-        page,
+        pages: new Map(),
+        activeTabId: '1',
         roomId,
         url: initialUrl,
         lastActivity: Date.now(),
-        ffmpegProcess: null,
-        sfuTransport: null, // Mediasoup PlainTransport details
+        ffmpegVideoProc: null,
+        ffmpegAudioProc: null,
+        sfuTransport: null, 
+        sfuAudioTransport: null,
         stats: {
           framesStreamed: 0,
-          audioPackets: 0,
+          audioChunks: 0,
           startTime: Date.now()
         },
         viewport: { width: 1280, height: 720 },
         touchState: {
-           startX: 0,
-           startY: 0,
-           lastX: 0,
-           lastY: 0,
-           isScrolling: false,
-           scrollThreshold: 10 // pixels
-        }
+           startX: 0, startY: 0,
+           lastX: 0, lastY: 0,
+           isScrolling: false, scrollThreshold: 10
+        },
+        lastFrameHash: null,
+        frameSkipCount: 0
       };
 
-      // Start WebRTC streaming via Mediasoup
-      await this.startWebRTCStream(session);
+      this.session = session;
 
-      this.sessions.set(roomId, session);
+      // Expose binding globally for ALL pages in context to map their audio securely
+      await context.exposeBinding('__cospira_audio_chunk', ({ page }, base64Chunk) => {
+          const activePage = this.activePage;
+          if (!activePage || page !== activePage || !base64Chunk || !base64Chunk.length) return;
 
-      // Cleanup on browser disconnect
-      browser.on('disconnected', () => {
-        logger.warn(`Browser disconnected for room ${roomId}`);
-        this.cleanupSession(roomId);
+          if (base64Chunk.startsWith('GkXf') && session.restartAudioPipe) {
+              // New WebM EBML header — the browser's MediaRecorder has restarted (page reload)
+              // Buffer this header and the next chunks, restart FFmpeg, then drain the buffer.
+              logger.info(`[Audio] New WebM header detected. Buffering & restarting FFmpeg audio pipe.`);
+              
+              // Start buffering
+              session.audioBuffer = [Buffer.from(base64Chunk, 'base64')];
+              session.audioBuffering = true;
+
+              // Kill old process and start new one
+              session.restartAudioPipe();
+
+              // After a short delay (let ffmpeg process initialize), drain the buffer
+              setTimeout(() => {
+                  session.audioBuffering = false;
+                  if (session.audioBuffer && session.audioBuffer.length > 0) {
+                      for (const chunk of session.audioBuffer) {
+                          if (session.ffmpegAudioProc && !session.ffmpegAudioProc.killed) {
+                              try { session.ffmpegAudioProc.stdin.write(chunk); } catch(e) {}
+                          }
+                      }
+                      session.audioBuffer = [];
+                  }
+              }, 300); // Give FFmpeg 300ms to spin up
+              return;
+          }
+
+          if (session.audioBuffering) {
+              // Still waiting for FFmpeg to be ready — keep buffering
+              if (!session.audioBuffer) session.audioBuffer = [];
+              session.audioBuffer.push(Buffer.from(base64Chunk, 'base64'));
+              return;
+          }
+
+          if (session.ffmpegAudioProc && !session.ffmpegAudioProc.killed) {
+              session.stats.audioChunks++;
+              try {
+                  const buffer = Buffer.from(base64Chunk, 'base64');
+                  session.ffmpegAudioProc.stdin.write(buffer);
+              } catch (e) {
+                  // Pipe might be closing
+              }
+          }
       });
 
-      logger.info(`✅ WebRTC browser session started for room ${roomId}`);
+      // Inject DOM Audio Capture into all frames
+      await context.addInitScript(() => {
+        function sendChunk(base64) {
+          if (!base64 || base64.length === 0) return;
+          if (typeof window.__cospira_audio_chunk === 'function') {
+            window.__cospira_audio_chunk(base64);
+          } else if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'cospira-audio', payload: base64 }, '*');
+          }
+        }
+
+        if (window === window.top) {
+          window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'cospira-audio' && typeof window.__cospira_audio_chunk === 'function') {
+              window.__cospira_audio_chunk(e.data.payload);
+            }
+          });
+
+          // Unmute audio elements constantly to override site protections
+          document.addEventListener('play', (e) => {
+            if (e.target && e.target.muted) {
+               e.target.muted = false;
+               e.target.volume = 1.0;
+            }
+          }, true);
+        }
+
+        async function initCospiraAudio() {
+          // Always allow re-initialization on each page load (no active guard)
+          // Reset the capture flag so this page gets fresh audio capture
+          if (window.__cospira_recorder) {
+            try { window.__cospira_recorder.stop(); } catch(e) {}
+            window.__cospira_recorder = null;
+          }
+          if (window.__cospira_audio_ctx) {
+            try { window.__cospira_audio_ctx.close(); } catch(e) {}
+            window.__cospira_audio_ctx = null;
+          }
+          
+          try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+
+            const audioCtx = new AudioContext();
+            window.__cospira_audio_ctx = audioCtx;
+            
+            // Resume immediately (autoplay policy workaround)
+            if (audioCtx.state === 'suspended') {
+              await audioCtx.resume().catch(() => {});
+            }
+            
+            const destination = audioCtx.createMediaStreamDestination();
+
+            const captureMedia = (el) => {
+              if (el.__cospira_captured) return;
+              try {
+                el.setAttribute('crossorigin', 'anonymous');
+                const source = audioCtx.createMediaElementSource(el);
+                source.connect(destination);
+                source.connect(audioCtx.destination);
+                el.__cospira_captured = true;
+                // Force unmute
+                el.muted = false;
+                el.volume = 1.0;
+              } catch (e) {}
+            };
+
+            const observer = new MutationObserver((mutations) => {
+              mutations.forEach(m => {
+                m.addedNodes.forEach(node => {
+                  if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') captureMedia(node);
+                  else if (node.querySelectorAll) node.querySelectorAll('video, audio').forEach(captureMedia);
+                });
+              });
+            });
+            if (document.body) {
+              observer.observe(document.body, { childList: true, subtree: true });
+              document.querySelectorAll('video, audio').forEach(captureMedia);
+            }
+
+            // Record as WebM/Opus and send back to Node
+            const recorder = new MediaRecorder(destination.stream, {
+              mimeType: 'audio/webm;codecs=opus',
+              audioBitsPerSecond: 128000
+            });
+            window.__cospira_recorder = recorder;
+            
+            recorder.ondataavailable = (event) => {
+              if (event.data.size > 0) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const base64 = reader.result && reader.result.split(',')[1];
+                  if (base64) sendChunk(base64);
+                };
+                reader.readAsDataURL(event.data);
+              }
+            };
+            recorder.start(500); // 500ms chunks for lower latency
+
+            // Periodically resume AudioContext if it gets suspended
+            setInterval(() => {
+              if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+            }, 2000);
+          } catch (e) {}
+        }
+
+        // Initialize on DOMContentLoaded (fires before load but after DOM is ready)
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => setTimeout(initCospiraAudio, 100));
+        } else {
+          // Document already parsed; fire immediately
+          setTimeout(initCospiraAudio, 100);
+        }
+        
+        // Also re-init on load (for pages where media elements are inserted dynamically)
+        window.addEventListener('load', () => setTimeout(initCospiraAudio, 300));
+      });
+
+      // Start WebRTC streaming via Mediasoup SFU
+      await this.startWebRTCStream(session);
+
+      // Create primary tab and activate screencast
+      await this.createTab(session.activeTabId, initialUrl, true);
+
+      browser.on('disconnected', () => {
+        logger.warn(`Browser disconnected for room ${roomId}`);
+        this.emit('crash');
+        this.cleanupSession();
+      });
+
+      logger.info(`✅ WebRTC CDP browser session started for room ${roomId}`);
       this.io.to(roomId).emit('browser-started', { url: initialUrl });
 
       return session;
 
     } catch (error) {
-      logger.error(`Failed to start browser session: ${error.message}`, error);
+      logger.error(`Failed to start CDP WebRTC browser session: ${error.message}`, error);
       throw error;
     }
   }
 
-  /**
-   * Start FFmpeg WebRTC streaming
-   * Captures Xvfb/Desktop + Audio and encodes to VP8/Opus and sends to Mediasoup PlainTransport
-   */
+  async createTab(tabId, url = 'https://www.google.com', switchImmediately = true) {
+      if (!this.session) return;
+      const session = this.session;
+
+      const page = await session.context.newPage();
+      const client = await session.context.newCDPSession(page);
+
+      session.pages.set(tabId, { id: tabId, page, client, url, title: 'New Tab' });
+
+      page.on('framenavigated', (frame) => {
+          if (frame === page.mainFrame()) {
+               const tab = session.pages.get(tabId);
+               if (tab) {
+                   tab.url = frame.url();
+                   if (session.activeTabId === tabId) {
+                       session.url = tab.url;
+                       this.io.to(session.roomId).emit('browser-url-updated', { url: tab.url });
+                   }
+                   this.emitTabsUpdate();
+               }
+          }
+      });
+      
+      page.on('load', async () => {
+          try {
+              const title = await page.title();
+              const tab = session.pages.get(tabId);
+              if (tab) {
+                  tab.title = title;
+                  this.emitTabsUpdate();
+              }
+          } catch (e) {}
+      });
+
+      page.on('crash', () => {
+          logger.error(`Browser page crashed for room ${session.roomId}, tab ${tabId}`);
+      });
+
+      try {
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      } catch (e) {
+          logger.warn(`Navigation failed for tab ${tabId}: ${e.message}`);
+      }
+
+      if (switchImmediately) {
+          await this.switchTab(tabId);
+      } else {
+          this.emitTabsUpdate();
+      }
+  }
+
+  async switchTab(tabId) {
+      if (!this.session || !this.session.pages.has(tabId)) return;
+      
+      const oldClient = this.activeClient;
+      if (oldClient && this.session.activeTabId !== tabId) {
+          await this.deactivateScreencast(oldClient);
+      }
+
+      this.session.activeTabId = tabId;
+      const newPage = this.activePage;
+      const newClient = this.activeClient;
+
+      try {
+          await newPage.bringToFront();
+          await newPage.evaluate(() => {
+              document.querySelectorAll('video, audio').forEach(m => m.muted = false);
+          }).catch(()=>{});
+      } catch (e) {}
+
+      await this.activateScreencast(newClient);
+      
+      this.session.url = newPage.url();
+      this.io.to(this.session.roomId).emit('browser-url-updated', { url: this.session.url });
+      this.emitTabsUpdate();
+  }
+
+  async closeTab(tabId) {
+      if (!this.session) return;
+      const tab = this.session.pages.get(tabId);
+      if (!tab) return;
+      
+      try {
+          await tab.client.send('Page.stopScreencast').catch(()=>{});
+          await tab.page.close().catch(()=>{});
+      } catch(e) {}
+
+      this.session.pages.delete(tabId);
+      this.emitTabsUpdate();
+  }
+
+  emitTabsUpdate() {
+      if (!this.session) return;
+      const tabs = Array.from(this.session.pages.values()).map(t => ({
+          id: t.id,
+          url: t.url,
+          title: t.title || t.url
+      }));
+      this.io.to(this.session.roomId).emit('browser-tabs-updated', {
+          tabs,
+          activeTabId: this.session.activeTabId
+      });
+  }
+
+  async activateScreencast(client) {
+      if (!client || !this.session) return;
+      try {
+          await client.send('Page.startScreencast', {
+              format: 'jpeg',
+              quality: 60,
+              maxWidth: this.session.viewport.width,
+              maxHeight: this.session.viewport.height,
+              everyNthFrame: 1
+          });
+
+          client.on('Page.screencastFrame', async ({ data, sessionId: cdpSessionId }) => {
+              try {
+                  await client.send('Page.screencastFrameAck', { sessionId: cdpSessionId }).catch(()=>{});
+                  
+                  if (this.activeClient !== client) return;
+
+                  this.session.lastFrameBuffer = Buffer.from(data, 'base64');
+              } catch (e) {}
+          });
+      } catch (e) {}
+  }
+
+  async deactivateScreencast(client) {
+      if (!client) return;
+      try {
+          await client.send('Page.stopScreencast');
+          client.removeAllListeners('Page.screencastFrame');
+      } catch (e) {}
+  }
+
   async startWebRTCStream(session) {
     const { roomId } = session;
 
     try {
-      logger.info(`🎥 Starting FFmpeg Mediasoup stream for room ${roomId} (Platform: ${process.platform})`);
+      logger.info(`🎥 Starting FFmpeg Pipes for room ${roomId}`);
+
+      // Clean up old pipes if restarting stream
+      if (session.ffmpegVideoProc) {
+          session.ffmpegVideoProc.kill('SIGKILL');
+          session.ffmpegVideoProc = null;
+      }
+      if (session.ffmpegAudioProc) {
+          session.ffmpegAudioProc.kill('SIGKILL');
+          session.ffmpegAudioProc = null;
+      }
+      if (session.frameInterval) {
+          clearInterval(session.frameInterval);
+          session.frameInterval = null;
+      }
 
       if (!this.sfuHandler) {
           throw new Error('SFU Handler not available for WebRTC streaming');
       }
 
-      // 1. Create PlainTransport on SFU
+      // Create Video Transport
       const sfuTransport = await this.sfuHandler.createPlainTransport(roomId);
       session.sfuTransport = sfuTransport;
       
-      logger.info(`SFU PlainTransport created: ${sfuTransport.ip}:${sfuTransport.port} (RTCP: ${sfuTransport.rtcpPort})`);
-
-      // 2. Prepare FFmpeg Args
-      let ffmpegArgs = [];
-      const platform = process.platform;
-      
-      // Target RTP addresses
-      // Note: We send Video to Port, Audio to Port + 2 (usually? or same port with different SSRC/Payload?)
-      // Mediasoup PlainTransport with `comedia:true` latches on the first incoming packet.
-      // But if we send both Audio and Video, we might need TWO PlainTransports or rely on Payload Type multiplexing if supported by PlainTransport.
-      // Standard Mediasoup PlainTransport handles ONE stream (Video OR Audio) typically unless bundled?
-      // Actually `createPlainTransport` creates one port. If rtcpMux=false, +RTCP port.
-      // To send BOTH Audio and Video to the SAME port, we need to bundle them or use different SSRC/PayloadTypes.
-      // `comedia` mode latches to the source IP/Port.
-      // Ideally we create TWO transports: one for Video, one for Audio.
-      
-      // Let's create a SECOND transport for Audio to be safe and robust.
+      // Create Audio Transport
       const sfuAudioTransport = await this.sfuHandler.createPlainTransport(roomId);
       session.sfuAudioTransport = sfuAudioTransport;
       
-      logger.info(`SFU Audio Transport created: ${sfuAudioTransport.ip}:${sfuAudioTransport.port}`);
+      // Create a UDP proxy for Audio so FFmpeg restarts don't break Mediasoup comedia
+      const audioProxy = dgram.createSocket('udp4');
+      await new Promise((resolve, reject) => {
+          audioProxy.once('error', reject);
+          audioProxy.bind(0, '127.0.0.1', () => {
+              audioProxy.removeListener('error', reject);
+              resolve();
+          });
+      });
+      session.audioProxy = audioProxy;
+      const audioProxyPort = audioProxy.address().port;
 
-      if (platform === 'win32') {
-         // Windows - Attempt Real Audio Capture
-         ffmpegArgs = [
-            '-f', 'gdigrab',
-             '-framerate', '30',
-             '-i', 'desktop', 
-             
-             '-f', 'dshow', 
-             '-i', 'audio=Microphone Array (Intel® Smart Sound Technology for Digital Microphones)', 
+      audioProxy.on('message', (msg) => {
+          audioProxy.send(msg, 0, msg.length, sfuAudioTransport.port, '127.0.0.1');
+      });
 
-             // Video Output -> Transport 1
-             '-c:v', 'libvpx',
-             '-b:v', '1000k',
-             '-deadline', 'realtime',
-             '-cpu-used', '5',
-             '-error-resilient', '1',
-             '-f', 'rtp',
-             '-payload_type', '101', // VP8 generic
-             '-ssrc', '11111111',
-             `rtp://${sfuTransport.ip}:${sfuTransport.port}`,
+      logger.info(`SFU Transport V:${sfuTransport.port} A:${sfuAudioTransport.port} (Proxy A:${audioProxyPort})`);
 
-             // Audio Output -> Transport 2
-             '-c:a', 'libopus',
-             '-b:a', '96k',
-             '-f', 'rtp',
-             '-payload_type', '100', // Opus generic
-             '-ssrc', '22222222',
-             `rtp://${sfuAudioTransport.ip}:${sfuAudioTransport.port}`
-         ];
-      } else if (platform === 'darwin') {
-         // macOS
-         ffmpegArgs = [
-            '-f', 'avfoundation',
-            '-framerate', '30',
-            '-i', '1:0', 
+      // Get Mediasoup assigned payload types
+      const roomRouter = await this.sfuHandler.getOrCreateRoomRouter(roomId);
+      const codecs = roomRouter.router.rtpCapabilities.codecs;
+      const vp8Codec = codecs.find(c => c.mimeType.toLowerCase() === 'video/vp8');
+      const opusCodec = codecs.find(c => c.mimeType.toLowerCase() === 'audio/opus');
+      
+      const videoPayloadType = vp8Codec ? vp8Codec.preferredPayloadType : 101;
+      const audioPayloadType = opusCodec ? opusCodec.preferredPayloadType : 100;
 
-            '-c:v', 'libvpx',
-            '-b:v', '1000k',
-            '-deadline', 'realtime',
-            '-cpu-used', '5',
-            '-error-resilient', '1',
-            '-f', 'rtp',
-            '-payload_type', '101',
-            '-ssrc', '11111111',
-            `rtp://${sfuTransport.ip}:${sfuTransport.port}`,
+      // Setup Video FFmpeg Pipe (image2pipe -> VP8 -> RTP)
+      const videoArgs = [
+          '-f', 'image2pipe',
+          '-vcodec', 'mjpeg',
+          '-framerate', '30',
+          '-i', 'pipe:0', // Read from stdin
+          '-c:v', 'libvpx',
+          '-b:v', '1500k',
+          '-maxrate', '1500k',
+          '-bufsize', '3000k',
+          '-g', '60',
+          '-deadline', 'realtime',
+          '-cpu-used', '5',
+          '-error-resilient', '1',
+          '-f', 'rtp',
+          '-payload_type', videoPayloadType.toString(),
+          '-ssrc', '11111111', // Video SSRC
+          `rtp://127.0.0.1:${sfuTransport.port}`
+      ];
 
-            '-c:a', 'libopus',
-            '-b:a', '96k',
-            '-f', 'rtp',
-            '-payload_type', '100',
-            '-ssrc', '22222222',
-            `rtp://${sfuAudioTransport.ip}:${sfuAudioTransport.port}`
-         ];
-      } else {
-         // Linux
-         ffmpegArgs = [
-            '-f', 'x11grab',
-            '-video_size', '1280x720',
-            '-framerate', '30',
-            '-i', process.env.DISPLAY || ':99',
-    
-            '-f', 'pulse',
-            '-i', 'default',
-    
-            // Video
-            '-c:v', 'libvpx',
-            '-b:v', '2M',
-            '-maxrate', '2M',
-            '-bufsize', '4M',
-            '-quality', 'realtime',
-            '-speed', '6',
-            '-threads', '4',
-            '-deadline', 'realtime',
-            '-error-resilient', '1',
-            '-f', 'rtp',
-            '-payload_type', '101',
-            '-ssrc', '11111111',
-            `rtp://${sfuTransport.ip}:${sfuTransport.port}`,
+      session.ffmpegVideoProc = spawn(ffmpegPath.path, videoArgs, { stdio: ['pipe', 'ignore', 'pipe'] });
+      
+      session.frameInterval = setInterval(() => {
+          if (session.ffmpegVideoProc && !session.ffmpegVideoProc.killed && session.lastFrameBuffer) {
+              try {
+                  session.ffmpegVideoProc.stdin.write(session.lastFrameBuffer);
+                  session.stats.framesStreamed++;
+              } catch (e) {}
+          }
+      }, 1000 / 30);
+      
+      session.ffmpegVideoProc.stderr.on('data', (data) => {
+          const str = data.toString();
+          if (str.includes('Error') || str.includes('failed')) {
+              logger.debug(`[VideoPipe] ${str.trim()}`);
+          }
+      });
 
-            // Audio
-            '-c:a', 'libopus',
-            '-b:a', '128k',
-            '-ar', '48000',
-            '-ac', '2',
-            '-f', 'rtp',
-            '-payload_type', '100', // Opus
-            '-ssrc', '22222222',
-            `rtp://${sfuAudioTransport.ip}:${sfuAudioTransport.port}`
+      session.audioPayloadType = audioPayloadType;
+      
+      session.restartAudioPipe = () => {
+          if (session.ffmpegAudioProc) {
+              session.ffmpegAudioProc.kill('SIGKILL');
+          }
+          const audioArgs = [
+              '-f', 'webm',
+              '-i', 'pipe:0', // Read WebM chunks from stdin
+              '-c:a', 'libopus',
+              '-b:a', '64k',
+              '-ar', '48000',
+              '-ac', '2',
+              '-f', 'rtp',
+              '-payload_type', session.audioPayloadType.toString(),
+              '-ssrc', '22222222', // Audio SSRC
+              `rtp://127.0.0.1:${audioProxyPort}`
           ];
-      }
+          session.ffmpegAudioProc = spawn(ffmpegPath.path, audioArgs, { stdio: ['pipe', 'ignore', 'pipe'] });
+          session.ffmpegAudioProc.stderr.on('data', (data) => {
+              const str = data.toString();
+              if (str.includes('Error') || str.includes('failed')) {
+                  logger.debug(`[AudioPipe] ${str.trim()}`);
+              }
+          });
+      };
 
-      const ffmpeg = spawn(ffmpegPath.path, ffmpegArgs, {
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
+      session.restartAudioPipe();
 
-      session.ffmpegProcess = ffmpeg;
-
-      ffmpeg.stderr.on('data', (data) => {
-        const output = data.toString();
-        // Log basic progress
-        if (output.includes('frame=') && Math.random() < 0.05) { // throttled log
-           logger.debug(`FFmpeg ${roomId}: ${output.trim()}`);
-        }
-        if (output.includes('error') || output.includes('Error')) {
-           // logger.error(`FFmpeg error for room ${roomId}: ${output}`);
-        }
-      });
-
-      ffmpeg.on('exit', (code) => {
-        if (code !== 0 && code !== null) {
-          logger.warn(`FFmpeg exited with code ${code} for room ${roomId}`);
-        }
-      });
-
-      // 3. Tell SFU to produce
-      // Video
+      // Tell SFU to produce Video
       await this.sfuHandler.produceFromTransport(roomId, sfuTransport.id, 'video', {
           codecs: [{
               mimeType: 'video/VP8',
-              payloadType: 101,
+              payloadType: videoPayloadType,
               clockRate: 90000,
           }],
           encodings: [{ ssrc: 11111111 }]
-      }, { type: 'virtual-browser-video' });
+      }, { type: 'virtual-browser-video', userId: 'virtual-browser' });
 
-      // Audio
+      // Tell SFU to produce Audio
       await this.sfuHandler.produceFromTransport(roomId, sfuAudioTransport.id, 'audio', {
           codecs: [{
               mimeType: 'audio/opus',
-              payloadType: 100,
+              payloadType: audioPayloadType,
               clockRate: 48000,
               channels: 2
           }],
           encodings: [{ ssrc: 22222222 }]
-      }, { type: 'virtual-browser-audio' });
+      }, { type: 'virtual-browser-audio', userId: 'virtual-browser' });
 
-      logger.info(`✅ FFmpeg Mediasoup streaming started for room ${roomId}`);
+      logger.info(`✅ FFmpeg Mediasoup streaming piped correctly`);
 
     } catch (error) {
-      logger.error(`Failed to start FFmpeg stream: ${error.message}`);
+      logger.error(`Failed to start stream pipes: ${error.message}`);
       throw error;
     }
   }
 
-  /**
-   * Navigate to a new URL
-   */
-  async navigate(roomId, url) {
-    const session = this.sessions.get(roomId);
-    if (!session || !session.page) {
-      throw new Error('No active session');
-    }
-    const page = session.page;
+  async navigate(url) {
+    const page = this.activePage;
+    if (!this.session || !page) return;
+    const session = this.session;
+    const roomId = session.roomId;
 
     try {
-      // Handle Special Navigation
       if (url === 'back') {
         await page.goBack({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-        session.url = page.url();
-        this.io.to(roomId).emit('browser-url-updated', { url: session.url });
+        await page.evaluate(() => {
+          document.querySelectorAll('video, audio').forEach(m => m.muted = false);
+        }).catch(()=>{});
         return;
       }
 
       if (url === 'forward') {
         await page.goForward({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-        session.url = page.url();
-        this.io.to(roomId).emit('browser-url-updated', { url: session.url });
+        await page.evaluate(() => {
+          document.querySelectorAll('video, audio').forEach(m => m.muted = false);
+        }).catch(()=>{});
         return;
       }
 
       if (url === 'reload') {
-        await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+        await page.evaluate(() => {
+          document.querySelectorAll('video, audio').forEach(m => m.muted = false);
+        }).catch(()=>{});
         return;
       }
 
-      // Valid URL check
       let targetUrl = url;
       if (!targetUrl.startsWith('http')) {
         targetUrl = 'https://' + targetUrl;
       }
-      try {
-        new URL(targetUrl);
-      } catch (e) {
-        logger.warn(`Invalid URL blocked: ${targetUrl}`);
-        return;
-      }
+      try { new URL(targetUrl); } catch (e) { return; }
 
-      logger.info(`Navigating to ${targetUrl} in room ${roomId}`);
-      await page.goto(targetUrl, { 
-        waitUntil: 'domcontentloaded', 
-        timeout: 30000 
-      });
+      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-      // CAPTCHA Check
-      const pageTitle = await page.title();
-      if (pageTitle.includes('Cloudflare') || pageTitle.includes('Just a moment')) {
-          this.io.to(roomId).emit('browser-status', { type: 'captcha', message: 'CAPTCHA Detected - Please Solve' });
-      }
+      await page.evaluate(() => {
+        document.querySelectorAll('video, audio').forEach(m => m.muted = false);
+      }).catch(()=>{});
 
-      session.url = page.url();
       session.lastActivity = Date.now();
-      
-      this.io.to(roomId).emit('browser-url-updated', { url: session.url });
     } catch (error) {
-      logger.error(`Navigation error: ${error.message}`);
-      
-      // Recovery
-      try {
-        if (!page.isClosed() && page.url() === 'about:blank') {
-            await page.goto('https://www.google.com');
-        }
-      } catch (e) {}
+      if (!page.isClosed() && page.url() === 'about:blank') {
+          await page.goto('https://www.google.com').catch(()=>{});
+      }
     }
   }
 
-  /**
-   * Set Viewport Size
-   */
-  async setViewport(roomId, width, height, isMobile = false) {
-    const session = this.sessions.get(roomId);
-    if (!session || !session.page) return;
+  async setViewport(width, height, isMobile = false) {
+    if (!this.session) return;
+    const session = this.session;
+    const roomId = session.roomId;
 
     try {
-        logger.info(`Resizing viewport for room ${roomId} to ${width}x${height} (Mobile: ${isMobile})`);
-        
-        // Update session state
         session.viewport = { width, height };
         
-        await session.page.setViewportSize({ width, height });
+        // Update all pages viewports natively
+        for (const [_, tab] of session.pages) {
+             await tab.page.setViewportSize({ width, height }).catch(()=>{});
+        }
         
-        // Notify clients
+        // Restart screencast for the active tab to pick up new resolution
+        if (this.activeClient) {
+            await this.deactivateScreencast(this.activeClient);
+            await this.activateScreencast(this.activeClient);
+        }
+        
         this.io.to(roomId).emit('browser-viewport-updated', { width, height, isMobile });
-        
-    } catch (error) {
-        logger.error(`Failed to resize viewport: ${error.message}`);
-    }
+    } catch (error) {}
   }
 
-  /**
-   * Handle user input (mouse, keyboard, touch)
-   */
-  async handleInput(roomId, input) {
-    const session = this.sessions.get(roomId);
-    if (!session || !session.page) return;
+  async handleInput(input) {
+    const page = this.activePage;
+    if (!this.session || !page) return;
+    const session = this.session;
+    const roomId = session.roomId;
 
     session.lastActivity = Date.now();
-    const page = session.page;
 
     try {
       const width = session.viewport?.width || 1280;
       const height = session.viewport?.height || 720;
       const touch = session.touchState;
 
-      // --- Enhanced Touch Handling (Swipe to Scroll) ---
+      // Touch Handling
       if (input.pointerType === 'touch') {
           const x = input.x * width;
           const y = input.y * height;
 
           switch (input.type) {
-              case 'mousedown': // touchstart
-                  touch.startX = x;
-                  touch.startY = y;
-                  touch.lastX = x;
-                  touch.lastY = y;
+              case 'mousedown':
+                  touch.startX = x; touch.startY = y;
+                  touch.lastX = x; touch.lastY = y;
                   touch.isScrolling = false;
                   break;
-
-              case 'mousemove': // touchmove
+              case 'mousemove':
                   if (touch.isScrolling) {
-                      // Already scrolling, just scroll more
-                      const deltaX = touch.lastX - x;
-                      const deltaY = touch.lastY - y;
-                      await page.mouse.wheel(deltaX, deltaY);
-                      touch.lastX = x; // Update last pos
-                      touch.lastY = y;
+                      await page.mouse.wheel(touch.lastX - x, touch.lastY - y);
+                      touch.lastX = x; touch.lastY = y;
                   } else {
-                      // Check threshold
-                      const dist = Math.hypot(x - touch.startX, y - touch.startY);
-                      if (dist > touch.scrollThreshold) {
+                      if (Math.hypot(x - touch.startX, y - touch.startY) > touch.scrollThreshold) {
                           touch.isScrolling = true;
-                          // Start scrolling
-                          const deltaX = touch.lastX - x;
-                          const deltaY = touch.lastY - y;
-                          await page.mouse.wheel(deltaX, deltaY);
-                          touch.lastX = x;
-                          touch.lastY = y;
+                          await page.mouse.wheel(touch.lastX - x, touch.lastY - y);
+                          touch.lastX = x; touch.lastY = y;
                       }
                   }
                   break;
-
-              case 'mouseup': // touchend
-                  if (!touch.isScrolling) {
-                      // It was a tap!
-                      await page.mouse.click(x, y);
-                  }
-                  // Reset
+              case 'mouseup':
+                  if (!touch.isScrolling) await page.mouse.click(x, y);
                   touch.isScrolling = false;
                   break;
           }
-          return; // Stop processing, we handled it
+          return;
       }
 
-      // --- Standard Mouse/Keyboard Handling ---
+      // Mouse/Keyboard
       switch (input.type) {
-        case 'mousemove':
-          await page.mouse.move(input.x * width, input.y * height);
-          break;
-
-        case 'click':
-          await page.mouse.click(input.x * width, input.y * height);
-          break;
-
-        case 'mousedown':
-            await page.mouse.down();
+        case 'mousemove': await page.mouse.move(input.x * width, input.y * height); break;
+        case 'click': await page.mouse.click(input.x * width, input.y * height); break;
+        case 'dblclick': await page.mouse.dblclick(input.x * width, input.y * height); break;
+        case 'mousedown': await page.mouse.down(); break;
+        case 'mouseup': await page.mouse.up(); break;
+        case 'keydown': 
+            if (input.key) {
+                await page.keyboard.down(input.key).catch(()=>{}); 
+            }
             break;
-            
-        case 'mouseup':
-            await page.mouse.up();
+        case 'insertText':
+            if (input.text) {
+                await page.keyboard.insertText(input.text).catch(()=>{});
+            }
             break;
-
-        case 'keydown':
-          await page.keyboard.down(input.key);
-          break;
-
-        case 'keyup':
-          await page.keyboard.up(input.key);
-          break;
-
-        case 'scroll':
-        case 'wheel':
-          await page.mouse.wheel(input.deltaX || 0, input.deltaY || 0);
-          break;
-
-        case 'navigate':
-          await this.navigate(roomId, input.url);
-          break;
-
-        default:
-          logger.warn(`Unknown input type: ${input.type}`);
+        case 'keyup': 
+            if (input.key) {
+                await page.keyboard.up(input.key).catch(()=>{});
+            }
+            break;  
+        case 'wheel': 
+            if (input.x !== undefined && input.y !== undefined) {
+                await page.mouse.move(input.x * width, input.y * height);
+            }
+            await page.mouse.wheel(input.deltaX || 0, input.deltaY || 0); 
+            break;
+        case 'navigate': await this.navigate(input.url || input.action); break;
       }
-    } catch (error) {
-      logger.warn(`Input handling error: ${error.message}`);
-    }
+    } catch (error) {}
   }
 
-  /**
-   * Stop a browser session
-   */
-  async stopSession(roomId) {
-    const session = this.sessions.get(roomId);
-    if (!session) return;
-
-    logger.info(`Stopping browser session for room ${roomId}`);
+  async stopSession() {
+    if (!this.session) return;
+    const session = this.session;
+    const roomId = session.roomId;
 
     try {
-      // Stop FFmpeg
-      if (session.ffmpegProcess) {
-        session.ffmpegProcess.kill('SIGTERM');
-        session.ffmpegProcess = null;
+      if (session.ffmpegVideoProc) {
+         session.ffmpegVideoProc.stdin.end();
+         session.ffmpegVideoProc.kill('SIGTERM');
+      }
+      if (session.ffmpegAudioProc) {
+         session.ffmpegAudioProc.stdin.end();
+         session.ffmpegAudioProc.kill('SIGTERM');
       }
 
-      // Close browser
-      if (session.context) await session.context.close();
-      if (session.browser) await session.browser.close();
+      if (session.audioProxy) {
+          session.audioProxy.close();
+          session.audioProxy = null;
+      }
 
-      this.sessions.delete(roomId);
+      if (session.frameInterval) {
+          clearInterval(session.frameInterval);
+          session.frameInterval = null;
+      }
+
+      if (session.context) await session.context.close().catch(()=>{});
+      if (session.browser) await session.browser.close().catch(()=>{});
+
+      this.session = null;
+      this.emit('closed');
       this.io.to(roomId).emit('browser-closed');
-
-      logger.info(`✅ Browser session stopped for room ${roomId}`);
-    } catch (error) {
-      logger.error(`Error stopping session: ${error.message}`);
-    }
+      logger.info(`✅ WebRTC CDP Browser session stopped`);
+    } catch (error) {}
   }
 
-  /**
-   * Cleanup session
-   */
-  async cleanupSession(roomId) {
-    await this.stopSession(roomId);
+  async cleanupSession() {
+    await this.stopSession();
   }
 
-  /**
-   * Get session info
-   */
-  getSession(roomId) {
-    return this.sessions.get(roomId);
+  getSession() {
+    return this.session;
   }
 
-  /**
-   * Get session statistics
-   */
-  getStats(roomId) {
-    const session = this.sessions.get(roomId);
-    if (!session) return null;
-
+  getStats() {
+    if (!this.session) return null;
+    const session = this.session;
     return {
       ...session.stats,
       uptime: Date.now() - session.stats.startTime,
       url: session.url,
       lastActivity: session.lastActivity
     };
+  }
+
+  updateNetworkConditions(latency, bandwidth) {
   }
 }
 

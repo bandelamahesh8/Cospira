@@ -17,10 +17,10 @@ export const FocusMode = ({ enabled, children }: FocusModeProps) => {
       {!enabled && (
         <motion.div
           initial={{ opacity: 1, scale: 1 }}
-          exit={{ 
-            opacity: 0, 
+          exit={{
+            opacity: 0,
             scale: 0.95,
-            transition: { duration: 0.2 }
+            transition: { duration: 0.2 },
           }}
           animate={{ opacity: 1, scale: 1 }}
         >

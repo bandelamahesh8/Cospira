@@ -11,7 +11,10 @@ class SnakeLadderSounds {
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) this.audioContext = new AudioCtx();
     }
   }
 
@@ -21,16 +24,9 @@ class SnakeLadderSounds {
   playDiceRoll(): void {
     if (this.isMuted || !this.audioContext) return;
 
-    // Soft rolling sound
-    const duration = 0.3;
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
-        this.playTone(
-          180 + Math.random() * 60,
-          0.06,
-          'sine',
-          SNAKELADDER_CONFIG.SOUND.DICE_VOLUME
-        );
+        this.playTone(180 + Math.random() * 60, 0.06, 'sine', SNAKELADDER_CONFIG.SOUND.DICE_VOLUME);
       }, i * 60);
     }
   }
@@ -43,12 +39,8 @@ class SnakeLadderSounds {
 
     // Ascending tones (C - E - G)
     this.playTone(523, 0.2, 'sine', SNAKELADDER_CONFIG.SOUND.LADDER_VOLUME); // C
-    setTimeout(() => 
-      this.playTone(659, 0.2, 'sine', SNAKELADDER_CONFIG.SOUND.LADDER_VOLUME), 200
-    ); // E
-    setTimeout(() => 
-      this.playTone(784, 0.3, 'sine', SNAKELADDER_CONFIG.SOUND.LADDER_VOLUME), 400
-    ); // G
+    setTimeout(() => this.playTone(659, 0.2, 'sine', SNAKELADDER_CONFIG.SOUND.LADDER_VOLUME), 200); // E
+    setTimeout(() => this.playTone(784, 0.3, 'sine', SNAKELADDER_CONFIG.SOUND.LADDER_VOLUME), 400); // G
 
     // Light haptic
     this.vibrate(20);
@@ -62,12 +54,8 @@ class SnakeLadderSounds {
 
     // Gentle descending tones
     this.playTone(400, 0.3, 'sine', SNAKELADDER_CONFIG.SOUND.SNAKE_VOLUME);
-    setTimeout(() => 
-      this.playTone(300, 0.4, 'sine', SNAKELADDER_CONFIG.SOUND.SNAKE_VOLUME), 300
-    );
-    setTimeout(() => 
-      this.playTone(250, 0.3, 'sine', SNAKELADDER_CONFIG.SOUND.SNAKE_VOLUME), 600
-    );
+    setTimeout(() => this.playTone(300, 0.4, 'sine', SNAKELADDER_CONFIG.SOUND.SNAKE_VOLUME), 300);
+    setTimeout(() => this.playTone(250, 0.3, 'sine', SNAKELADDER_CONFIG.SOUND.SNAKE_VOLUME), 600);
 
     // Very light haptic (not punishing)
     this.vibrate(15);
@@ -123,10 +111,7 @@ class SnakeLadderSounds {
     oscillator.type = type;
 
     gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(
-      0.01,
-      this.audioContext.currentTime + duration
-    );
+    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
 
     oscillator.start(this.audioContext.currentTime);
     oscillator.stop(this.audioContext.currentTime + duration);

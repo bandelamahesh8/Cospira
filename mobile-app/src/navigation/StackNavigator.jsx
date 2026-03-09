@@ -10,6 +10,7 @@ import IntelligentRoomScreen from '../screens/rooms/IntelligentRoomScreen';
 import ThreatMapScreen from '../screens/ai-brain/ThreatMapScreen';
 import DecisionEngineScreen from '../screens/ai-brain/DecisionEngineScreen';
 import DataStreamScreen from '../screens/simulation/DataStreamScreen';
+import SimulationHubScreen from '../screens/simulation/SimulationHubScreen.jsx';
 import TrainingModeScreen from '../screens/simulation/TrainingModeScreen';
 import SecurityScreen from '../screens/profile/SecurityScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
@@ -18,9 +19,10 @@ import GlobalConnectScreen from '../screens/connect/GlobalConnectScreen';
 import GlobalVoiceScreen from '../screens/connect/GlobalVoiceScreen';
 import GlobalChatScreen from '../screens/connect/GlobalChatScreen';
 import InnerRoomScreen from '../screens/room/InnerRoomScreen';
-import FriendsScreen from '../screens/friends/FriendsScreen';
+import FriendsScreen from '../screens/friends/FriendsScreen.jsx';
 import TournamentScreen from '../screens/games/TournamentScreen';
 import GameRoomScreen from '../screens/games/GameRoomScreen';
+import RecentActivityScreen from '../screens/command/RecentActivityScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -66,6 +68,7 @@ export const RootNavigator = ({ isAuthenticated }) => {
           <Stack.Screen name="Friends" component={FriendsScreen} />
           <Stack.Screen name="Tournament" component={TournamentScreen} />
           <Stack.Screen name="GameRoom" component={GameRoomScreen} />
+          <Stack.Screen name="RecentActivity" component={RecentActivityScreen} />
         </Stack.Group>
       )}
     </Stack.Navigator>

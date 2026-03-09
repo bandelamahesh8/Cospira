@@ -33,7 +33,7 @@ export class FatigueProtection {
    */
   getAmbientReduction(): number {
     if (!this.isLongSession()) return 1.0;
-    
+
     // Reduce ambient motion by 50% in long sessions
     return 0.5;
   }
@@ -43,7 +43,7 @@ export class FatigueProtection {
    */
   getContrastReduction(): number {
     const duration = this.getSessionDuration();
-    
+
     if (duration < 10) return 1.0;
     if (duration < 20) return 0.9; // 10% reduction
     return 0.8; // 20% reduction for 20+ min

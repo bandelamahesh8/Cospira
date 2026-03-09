@@ -28,17 +28,17 @@ export const SnakeLadderDice = ({ onRoll, disabled }: DiceRollProps) => {
     for (let i = 0; i < steps; i++) {
       // Accelerating delay
       const delay = (i / steps) * (totalDuration / steps) * (1 + i * 0.15);
-      
+
       setTimeout(() => {
         setCurrentFace(Math.floor(Math.random() * 6) + 1);
       }, delay);
     }
 
     // Wait for roll to complete
-    await new Promise(resolve => setTimeout(resolve, totalDuration));
+    await new Promise((resolve) => setTimeout(resolve, totalDuration));
 
     // Brief pause before reveal (suspense)
-    await new Promise(resolve => 
+    await new Promise((resolve) =>
       setTimeout(resolve, SNAKELADDER_CONFIG.TIMING.DICE_REVEAL_PAUSE_MS)
     );
 
@@ -53,15 +53,19 @@ export const SnakeLadderDice = ({ onRoll, disabled }: DiceRollProps) => {
     <motion.button
       onClick={rollDice}
       disabled={disabled || isRolling}
-      className="relative w-20 h-20 bg-white rounded-2xl shadow-lg flex items-center justify-center text-3xl font-bold cursor-pointer"
+      className='relative w-20 h-20 bg-white rounded-2xl shadow-lg flex items-center justify-center text-3xl font-bold cursor-pointer'
       style={{
         opacity: disabled ? 0.4 : 1,
       }}
       // Gentle bounce (not aggressive)
-      animate={isRolling ? {
-        y: [0, -4, 0],
-        rotate: [0, 5, -5, 0],
-      } : {}}
+      animate={
+        isRolling
+          ? {
+              y: [0, -4, 0],
+              rotate: [0, 5, -5, 0],
+            }
+          : {}
+      }
       transition={{
         y: { duration: 0.7, ease: 'easeInOut', repeat: isRolling ? Infinity : 0 },
         rotate: { duration: 0.8, ease: 'easeInOut', repeat: isRolling ? Infinity : 0 },

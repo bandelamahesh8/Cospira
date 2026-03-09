@@ -109,8 +109,8 @@ const SynchronizedYouTubePlayer: React.FC<SynchronizedYouTubePlayerProps> = ({
   return (
     <div className='relative w-full h-full flex flex-col bg-black rounded-xl overflow-hidden border border-white/10 shadow-2xl'>
       {/* Premium Gradient Border Effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-red-500/20 via-transparent to-blue-500/20 pointer-events-none z-10" />
-      
+      <div className='absolute inset-0 bg-gradient-to-br from-red-500/20 via-transparent to-blue-500/20 pointer-events-none z-10' />
+
       {isHost && (
         <div className='absolute top-4 right-4 z-50'>
           <Button
@@ -120,7 +120,7 @@ const SynchronizedYouTubePlayer: React.FC<SynchronizedYouTubePlayerProps> = ({
             className='flex items-center gap-2 bg-red-600/90 hover:bg-red-700 backdrop-blur-sm shadow-lg border border-red-500/50 transition-all hover:scale-105'
           >
             <X className='h-4 w-4' />
-            <span className="font-medium">Close Player</span>
+            <span className='font-medium'>Close Player</span>
           </Button>
         </div>
       )}

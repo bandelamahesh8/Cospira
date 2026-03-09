@@ -1,7 +1,21 @@
 import { io, Socket } from 'socket.io-client';
-import { User, Message, FileData, RoomJoinedData, GameState, RoomStatus, RoomInfo } from '@/types/websocket';
+import {
+  User,
+  Message,
+  FileData,
+  RoomJoinedData,
+  GameState,
+  RoomStatus,
+  RoomInfo,
+} from '@/types/websocket';
 import { logger } from '@/utils/logger';
 import { RoomModeConfig } from '@/services/RoomIntelligence';
+
+declare global {
+  interface Window {
+    __cospiraSignaling?: Socket | null;
+  }
+}
 
 export type SignalingEvents = {
   'room-joined': (data: RoomJoinedData) => void;
@@ -28,19 +42,31 @@ export type SignalingEvents = {
   'youtube-played': (data: { time: number }) => void;
   'youtube-paused': (data: { time: number }) => void;
   'youtube-seeked': (data: { time: number }) => void;
-  'room-settings-updated': (data: { roomName?: string; hasWaitingRoom?: boolean; accessType?: 'public' | 'password' | 'invite' | 'organization'; inviteToken?: string | null }) => void;
+  'room-settings-updated': (data: {
+    roomName?: string;
+    hasWaitingRoom?: boolean;
+    accessType?: 'public' | 'password' | 'invite' | 'organization';
+    inviteToken?: string | null;
+  }) => void;
   'room-settings-update-success': () => void;
   error: (error: string) => void;
   connect: () => void;
   disconnect: (reason: string) => void;
-  'connect_error': (error: Error & { type?: string; description?: string; context?: unknown }) => void;
+  connect_error: (
+    error: Error & { type?: string; description?: string; context?: unknown }
+  ) => void;
   reconnect_attempt: (attempt: number) => void;
   reconnect: (attempt: number) => void;
   reconnect_failed: () => void;
   'waiting-user-joined': (user: User) => void;
   'waiting-user-removed': (userId: string) => void;
   'join-denied': () => void;
-  'sfu:newProducer': (data: { producerId: string; socketId: string; userId: string; kind: string }) => void;
+  'sfu:newProducer': (data: {
+    producerId: string;
+    socketId: string;
+    userId: string;
+    kind: string;
+  }) => void;
   'create-success': (data: { roomId: string }) => void;
   'recent-rooms': (rooms: unknown[]) => void;
   'room-created': () => void;
@@ -49,27 +75,46 @@ export type SignalingEvents = {
   'game-move': (gameState: GameState) => void;
   'game-strike': (data: { player: string; strikes: number; gameState: GameState }) => void;
   'game-ended': (gameState: GameState) => void;
-  'force_logout': (data: { reason?: string }) => void;
+  force_logout: (data: { reason?: string }) => void;
   'browser-started': (data: { url: string }) => void;
   'browser-url-updated': (data: { url: string }) => void;
   'browser-closed': () => void;
-  'system:announcement': (data: { type: 'success' | 'warning' | 'danger' | 'info'; message: string }) => void;
+  'system:announcement': (data: {
+    type: 'success' | 'warning' | 'danger' | 'info';
+    message: string;
+  }) => void;
   'admin:force-sync': () => void;
   'force-disconnect': (data: { reason: string }) => void;
   'user:status-change': (data: { userId: string; status: 'online' | 'away' }) => void;
   'user:audio-change': (data: { userId: string; enabled: boolean }) => void;
   'user:video-change': (data: { userId: string; enabled: boolean }) => void;
-  'ai:transcript': (data: { userId: string; text: string; timestamp: number; isFinal: boolean }) => void;
+  'user:media-state': (data: { userId: string; audio?: boolean; video?: boolean }) => void;
+  'ai:transcript': (data: {
+    userId: string;
+    text: string;
+    timestamp: number;
+    isFinal: boolean;
+  }) => void;
   'assistant:response': (data: { content: string; type: string; action?: string }) => void;
   'room:timer-started': (data: { duration: number; startedAt: number; label: string }) => void;
-  'room:poll-created': (data: { id: string; question: string; options: string[]; expiresAt: number }) => void;
+  'room:poll-created': (data: {
+    id: string;
+    question: string;
+    options: string[];
+    expiresAt: number;
+  }) => void;
   'late-join-summary': (data: { summary: string; bullets: string[]; duration: number }) => void;
   'moderation:alert': (data: { severity: string; action: string; reason: string }) => void;
   'summary-generated': (data: unknown) => void;
   'room:mode-changed': (data: { mode: string; config: RoomModeConfig }) => void;
-  'browser-command-result': (data: { command: string; action: unknown; result: { success: boolean; message?: string } }) => void;
+  'browser-command-result': (data: {
+    command: string;
+    action: unknown;
+    result: { success: boolean; message?: string };
+  }) => void;
   'update-rooms': (rooms: RoomInfo[]) => void;
   'global-chat-message': (data: { sender: string; content: string; timestamp: string }) => void;
+  'lobby:approved': (data: { roomId: string }) => void;
   'room:status-changed': (status: RoomStatus) => void;
 };
 
@@ -77,7 +122,7 @@ export class SignalingService {
   private socket: Socket | null = null;
   private listeners: Map<string, ((...args: unknown[]) => void)[]> = new Map();
 
-  constructor(private url: string) { }
+  constructor(private url: string) {}
 
   private dispatch(event: string, ...args: unknown[]) {
     const handlers = this.listeners.get(event);
@@ -92,7 +137,7 @@ export class SignalingService {
     logger.info('SignalingService: Connecting to', this.url);
     // Convert ws:// to http:// and wss:// to https:// for Socket.IO
     let socketUrl = this.url.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:');
-    
+
     // Ensure we have a proper URL (add http:// if missing)
     if (!socketUrl.startsWith('http://') && !socketUrl.startsWith('https://')) {
       socketUrl = `http://${socketUrl}`;
@@ -104,7 +149,7 @@ export class SignalingService {
     logger.debug('SignalingService: Normalized URL:', socketUrl);
 
     // Verify server is reachable before attempting connection (non-blocking)
-    this.verifyServerReachability(socketUrl).catch(err => {
+    this.verifyServerReachability(socketUrl).catch((err) => {
       logger.warn('Server reachability check failed (will attempt connection anyway):', err);
     });
 
@@ -129,23 +174,38 @@ export class SignalingService {
     });
 
     this.socket.on('connect', () => {
-      logger.info('SignalingService: Connected', this.socket?.id, 'Transport:', this.socket?.io?.engine?.transport?.name);
+      logger.info(
+        'SignalingService: Connected',
+        this.socket?.id,
+        'Transport:',
+        this.socket?.io?.engine?.transport?.name
+      );
+
+      // Expose to window for BreakoutContext AI insight bindings
+      window.__cospiraSignaling = this.socket;
+
       this.dispatch('connect');
     });
 
-    this.socket.on('connect_error', (err: Error & { type?: string; description?: string; context?: unknown }) => {
-      logger.error('SignalingService: Connection error', {
-        message: err.message,
-        type: err.type,
-        description: err.description,
-        context: err.context,
-        url: socketUrl
-      });
-      this.dispatch('connect_error', err);
-    });
+    this.socket.on(
+      'connect_error',
+      (err: Error & { type?: string; description?: string; context?: unknown }) => {
+        logger.error('SignalingService: Connection error', {
+          message: err.message,
+          type: err.type,
+          description: err.description,
+          context: err.context,
+          url: socketUrl,
+        });
+        this.dispatch('connect_error', err);
+      }
+    );
 
     this.socket.on('disconnect', (reason) => {
       logger.warn('SignalingService: Disconnected', reason);
+      if (window.__cospiraSignaling === this.socket) {
+        delete window.__cospiraSignaling;
+      }
       this.dispatch('disconnect', reason);
     });
 
@@ -164,6 +224,9 @@ export class SignalingService {
 
   disconnect() {
     if (this.socket) {
+      if (window.__cospiraSignaling === this.socket) {
+        delete window.__cospiraSignaling;
+      }
       this.socket.disconnect();
       this.socket = null;
     }
@@ -208,9 +271,9 @@ export class SignalingService {
   private async verifyServerReachability(url: string): Promise<void> {
     try {
       const healthUrl = `${url}/health`;
-      const response = await fetch(healthUrl, { 
+      const response = await fetch(healthUrl, {
         method: 'GET',
-        signal: AbortSignal.timeout(3000) // 3 second timeout
+        signal: AbortSignal.timeout(3000), // 3 second timeout
       });
       if (response.ok) {
         logger.debug('Server health check passed');

@@ -94,9 +94,47 @@ export async function syncCreateRoom(roomData, hostName = null) {
     } else {
        logger.info(`Room ${id} synced to Supabase`);
     }
+
+    // Sync advanced settings
+    if (roomData.settings) {
+        await syncRoomSettings(id, roomData.settings);
+    }
   } catch (err) {
     logger.error('Supabase Sync Exception:', err);
   }
+}
+
+/**
+ * Sync Room Settings to Supabase
+ */
+export async function syncRoomSettings(roomId, settings) {
+    if (!supabase) return;
+    try {
+        const settingsPayload = {
+            room_id: roomId,
+            invite_only: settings.invite_only ?? false,
+            join_by_link: settings.join_by_link ?? true,
+            join_by_code: settings.join_by_code ?? true,
+            host_only_code_visibility: settings.host_only_code_visibility ?? false,
+            waiting_lobby: settings.waiting_lobby ?? false,
+            organization_only: settings.organization_only ?? false,
+            host_controlled_speaking: settings.host_controlled_speaking ?? false,
+            chat_permission: settings.chat_permission ?? 'everyone',
+            encryption_enabled: settings.encryption_enabled ?? false,
+            ai_moderation_level: settings.ai_moderation_level ?? 'off',
+            auto_close_minutes: settings.auto_close_minutes ?? 0,
+            hidden_room: settings.hidden_room ?? false
+        };
+
+        const { error } = await supabase
+            .from('room_settings')
+            .upsert(settingsPayload, { onConflict: 'room_id' });
+
+        if (error) logger.warn('Supabase Room Settings Sync Error:', error.message);
+        else logger.info(`Room settings for ${roomId} synced to Supabase`);
+    } catch (err) {
+        logger.error('Supabase Room Settings Sync Exception:', err);
+    }
 }
 
 /**
@@ -235,6 +273,11 @@ export async function syncUpdateRoom(roomId, updates) {
 
         if (error) logger.warn('Supabase Room Update Error:', error.message);
         else logger.info(`Room ${roomId} updated in Supabase`);
+
+        // Sync advanced settings if provided
+        if (updates.settings) {
+            await syncRoomSettings(roomId, updates.settings);
+        }
     } catch (err) {
         logger.error('Supabase Update Exception:', err);
     }

@@ -12,16 +12,21 @@ type Board = CellValue[];
 
 /**
  * Tic-Tac-Toe Game Engine
- * 
+ *
  * Implements the universal GameEngine interface for Tic-Tac-Toe.
  * Supports standard 3x3 board with win detection.
  */
 export class TicTacToeEngine extends BaseGameEngine {
   private readonly BOARD_SIZE = 9;
   private readonly WIN_PATTERNS = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-    [0, 4, 8], [2, 4, 6],            // Diagonals
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8], // Rows
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8], // Columns
+    [0, 4, 8],
+    [2, 4, 6], // Diagonals
   ];
 
   initGame(players: Player[]): GameState {
@@ -56,9 +61,9 @@ export class TicTacToeEngine extends BaseGameEngine {
 
   // Method to enable Time Attack (would be called during setup)
   enableTimeAttack(state: GameState): GameState {
-      state.metadata.isTimeAttack = true;
-      state.metadata.turnStartTime = Date.now();
-      return state;
+    state.metadata.isTimeAttack = true;
+    state.metadata.turnStartTime = Date.now();
+    return state;
   }
 
   validateMove(move: Move, state: GameState): ValidationResult {
@@ -86,22 +91,21 @@ export class TicTacToeEngine extends BaseGameEngine {
     }
 
     // Check for Time Attack Timeout
-    // NOTE: We only enforce this if explicitly set. 
+    // NOTE: We only enforce this if explicitly set.
     // Usually the client enforces visuals, but server can reject late moves.
     // We'll increase grace period to 30s for normal play or respect specific timeAttack value.
     if (state.metadata.isTimeAttack && state.metadata.turnStartTime) {
-        const elapsed = Date.now() - state.metadata.turnStartTime;
-        const limit = 30000; // 30 seconds
-        if (elapsed > limit) { 
-             // Ideally we should auto-pass or lose, but returning false blocks the game state (stuck).
-             // Better to return valid but maybe trigger a timeout action elsewhere?
-             // For this engine validation, let's allow "late" moves if they are physically valid, 
-             // but maybe the calling controller should check time.
-             // OR, if strict:
-             // return { valid: false, reason: 'Time limit exceeded!' };
-             
-             // Relaxing strict check for now to prevent "unable to play" if clocks drift
-        }
+      const elapsed = Date.now() - state.metadata.turnStartTime;
+      const limit = 30000; // 30 seconds
+      if (elapsed > limit) {
+        // Ideally we should auto-pass or lose, but returning false blocks the game state (stuck).
+        // Better to return valid but maybe trigger a timeout action elsewhere?
+        // For this engine validation, let's allow "late" moves if they are physically valid,
+        // but maybe the calling controller should check time.
+        // OR, if strict:
+        // return { valid: false, reason: 'Time limit exceeded!' };
+        // Relaxing strict check for now to prevent "unable to play" if clocks drift
+      }
     }
 
     return { valid: true };
@@ -185,7 +189,7 @@ export class TicTacToeEngine extends BaseGameEngine {
    */
   getAIMove(state: GameState, difficulty: 'easy' | 'medium' | 'hard'): Move | null {
     const validMoves = this.getValidMoves(state);
-    
+
     if (validMoves.length === 0) return null;
 
     // For now, return random move (implement minimax later)

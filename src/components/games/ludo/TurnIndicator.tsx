@@ -15,7 +15,7 @@ export const TurnIndicator = ({ activePlayerColor, isActive }: TurnIndicatorProp
 
   return (
     <motion.div
-      className="fixed inset-0 pointer-events-none z-10"
+      className='fixed inset-0 pointer-events-none z-10'
       animate={{
         boxShadow: [
           `inset 0 0 0px ${activePlayerColor}`,

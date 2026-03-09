@@ -5,13 +5,13 @@
 
 // Shared system messages
 export const GAME_MESSAGES = {
-  YOUR_TURN: "Your Turn",
-  WAITING: "Waiting for opponent...",
-  GAME_OVER: "Game Over",
-  CONNECTING: "Connecting...",
-  RECONNECTING: "Reconnecting...",
-  CONNECTION_LOST: "Connection Lost",
-  OPPONENT_LEFT: "Opponent Left",
+  YOUR_TURN: 'Your Turn',
+  WAITING: 'Waiting for opponent...',
+  GAME_OVER: 'Game Over',
+  CONNECTING: 'Connecting...',
+  RECONNECTING: 'Reconnecting...',
+  CONNECTION_LOST: 'Connection Lost',
+  OPPONENT_LEFT: 'Opponent Left',
 } as const;
 
 // Shared animation easing (scaled for each game)

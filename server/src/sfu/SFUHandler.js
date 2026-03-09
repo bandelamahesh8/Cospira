@@ -102,7 +102,7 @@ class SFUHandler {
                 }
 
                 const transportParams = await roomRouter.createWebRtcTransport(socket.id, { 
-                    forceTcp: true, // Force TCP for maximum reliability
+                    forceTcp: forceTcp === true, // Respect client preference, fallback to UDP
                     announcedIp: suggestedAnnouncedIp
                 });
 
@@ -198,6 +198,20 @@ class SFUHandler {
                 logger.info(`[SFU] getProducers: ${socket.id} -> room ${roomId}`);
                 
                 const producers = await this.getExistingProducers(roomId);
+                
+                // Auto-recover virtual browser stream if session exists but router was recreated
+                const hasVbProducer = producers.some(p => String(p.userId) === 'virtual-browser');
+                if (!hasVbProducer) {
+                    const { getBrowserManager } = await import('../sockets/browser.socket.js');
+                    const manager = getBrowserManager(roomId);
+                    if (manager && manager.session) {
+                        logger.info(`[SFU] Auto-recovering Virtual Browser stream for room ${roomId}`);
+                        manager.startWebRTCStream(manager.session).catch(e => {
+                            logger.error(`[SFU] Failed to restart Virtual Browser stream:`, e);
+                        });
+                    }
+                }
+                
                 callback(producers);
                 
                 logger.info(`[SFU] Sent ${producers.length} producers to ${socket.id}`);
@@ -337,11 +351,15 @@ class SFUHandler {
                     peerState.producerIds.delete(producerId);
                 }
 
-                callback({ success: true });
+                if (typeof callback === 'function') {
+                    callback({ success: true });
+                }
                 logger.info(`[SFU] Producer closed: ${producerId}`);
             } catch (error) {
                 logger.error(`[SFU] closeProducer error for ${socket.id}:`, error);
-                callback({ error: error.message });
+                if (typeof callback === 'function') {
+                    callback({ error: error.message });
+                }
             }
         });
 
@@ -361,11 +379,15 @@ class SFUHandler {
                     peerState.consumerIds.delete(consumerId);
                 }
 
-                callback({ success: true });
+                if (typeof callback === 'function') {
+                    callback({ success: true });
+                }
                 logger.info(`[SFU] Consumer closed: ${consumerId}`);
             } catch (error) {
                 logger.error(`[SFU] closeConsumer error for ${socket.id}:`, error);
-                callback({ error: error.message });
+                if (typeof callback === 'function') {
+                    callback({ error: error.message });
+                }
             }
         });
 
@@ -501,7 +523,10 @@ class SFUHandler {
         
         roomRouter.addPeerResource(socketId, 'transports', transportId);
         
-        const { id } = await roomRouter.produce(socketId, transportId, kind, rtpParameters, appData);
+        const { id } = await roomRouter.produce(socketId, transportId, kind, rtpParameters, { 
+            ...appData,
+            userId: 'virtual-browser' 
+        });
         
         // Notify others
         this.io.to(roomId).emit('sfu:newProducer', {

@@ -1,60 +1,55 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import {
-  PlayerProfile,
-  GameStats,
-  GameType,
-  MatchMode,
-} from '@/types/player';
+import { PlayerProfile, GameStats, GameType, MatchMode } from '@/types/player';
 import { GameState, GameEngine } from '@/game-engine/core/GameEngine.interface';
 import { createGameEngine } from '@/game-engine';
 
 /**
  * Game Store Interface
- * 
+ *
  * Centralized state management for the gaming ecosystem
  */
 interface GameStore {
   // Player State
   playerProfile: PlayerProfile | null;
   gameStats: Record<GameType, GameStats>;
-  
+
   // Active Game
   activeGame: GameState | null;
   gameEngine: GameEngine | null;
-  
+
   // Matchmaking
   isSearching: boolean;
   matchmakingGameType: GameType | null;
   matchmakingMode: MatchMode | null;
   queueStartTime: number | null;
   estimatedWaitTime: number;
-  
+
   // UI State
   showGameSelector: boolean;
   showLeaderboard: boolean;
   showProfile: boolean;
-  
+
   // Actions - Player
   setPlayerProfile: (profile: PlayerProfile | null) => void;
   updateGameStats: (gameType: GameType, stats: Partial<GameStats>) => void;
-  
+
   // Actions - Game
   startGame: (gameType: GameType, gameState: GameState) => void;
   endGame: () => void;
   updateGameState: (state: GameState) => void;
-  
+
   // Actions - Matchmaking
   startMatchmaking: (gameType: GameType, mode: MatchMode) => void;
   stopMatchmaking: () => void;
   updateWaitTime: (seconds: number) => void;
-  
+
   // Actions - UI
   toggleGameSelector: () => void;
   toggleLeaderboard: () => void;
   toggleProfile: () => void;
-  
+
   // Reset
   reset: () => void;
 }
@@ -76,7 +71,7 @@ const initialState = {
 
 /**
  * Game Store
- * 
+ *
  * Uses Zustand with immer for immutable state updates,
  * devtools for debugging, and persistence for offline support.
  */

@@ -1,4 +1,4 @@
-import OptimizedCloudBrowserManager from './OptimizedCloudBrowserManager.js';
+import WebRTCBrowserManager from './WebRTCBrowserManager.js';
 import logger from '../logger.js';
 
 class BrowserPool {
@@ -51,6 +51,7 @@ class BrowserPool {
   }
 
   // Create new browser session
+  // Note: We modified this to integrate Universal WebRTC Manager
   async createSession(userId, sessionId, options = {}) {
     // Check rate limit
     if (!this.checkRateLimit(userId)) {
@@ -70,10 +71,12 @@ class BrowserPool {
       throw new Error(`Maximum ${this.maxSessionsPerUser} sessions per user.`);
     }
 
-    // Create browser manager
-    const browserManager = new OptimizedCloudBrowserManager(sessionId, options);
-    await browserManager.initialize();
-
+    // Pass global io and sfuHandler from options if available, else they will be attached later
+    const browserManager = new WebRTCBrowserManager(options.io || global.io, options.sfuHandler || global.sfuHandler);
+    
+    // WebRTCBrowserManager startSession logic happens in browser.socket.js
+    // This just allocates the instance to the pool.
+    
     // Track session
     this.activeSessions.set(sessionId, browserManager);
     userSessionSet.add(sessionId);
@@ -82,6 +85,7 @@ class BrowserPool {
 
     logger.info(`[Pool] Session ${sessionId} created for user ${userId}. Active: ${this.activeSessions.size}`);
 
+    // Return the uninitialized manager, it will be started by the caller
     return browserManager;
   }
 
@@ -95,7 +99,7 @@ class BrowserPool {
     const browserManager = this.activeSessions.get(sessionId);
     if (!browserManager) return;
 
-    await browserManager.cleanup();
+    await browserManager.cleanupSession(sessionId);
     this.activeSessions.delete(sessionId);
 
     const userSessionSet = this.userSessions.get(userId);
@@ -143,7 +147,7 @@ class BrowserPool {
     const cleanupPromises = [];
     
     for (const [sessionId, manager] of this.activeSessions) {
-      cleanupPromises.push(manager.cleanup());
+      cleanupPromises.push(manager.cleanupSession(sessionId));
     }
 
     await Promise.all(cleanupPromises);

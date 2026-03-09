@@ -24,15 +24,15 @@
     grid-template-columns: repeat(3, 1fr);
   }
   .grid-4 {
-      grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
 /* Spacer Utility */
 .spacer {
-    height: var(--sp-3);
+  height: var(--sp-3);
 }
 
 .section {
-    padding-block: var(--sp-3);
+  padding-block: var(--sp-3);
 }

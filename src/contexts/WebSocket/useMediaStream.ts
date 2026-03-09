@@ -2,7 +2,7 @@ import { useCallback, useRef, useEffect } from 'react';
 import type { SFUManager } from '@/services/SFUManager';
 import { logger } from '@/utils/logger';
 import NoiseProcessor from '@/services/audio/NoiseProcessor';
-import VideoProcessor from '@/services/video/VideoProcessor'; 
+import VideoProcessor from '@/services/video/VideoProcessor';
 import { SignalingService } from '@/services/SignalingService';
 import { WebSocketState } from '@/contexts/WebSocketContext';
 
@@ -44,7 +44,7 @@ export function useMediaStream({
   const audioTrackRef = useRef<MediaStreamTrack | null>(null);
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
-  
+
   // Refs to track current state without triggering re-renders in internal logic
   const isAudioEnabledRef = useRef(false);
   const isVideoEnabledRef = useRef(false);
@@ -57,7 +57,7 @@ export function useMediaStream({
     const tracks: MediaStreamTrack[] = [];
     if (audioTrackRef.current) tracks.push(audioTrackRef.current);
     if (videoTrackRef.current) tracks.push(videoTrackRef.current);
-    
+
     if (tracks.length > 0) {
       setLocalStream(new MediaStream(tracks));
     } else {
@@ -86,9 +86,9 @@ export function useMediaStream({
       // 1. Get User Media
       const constraints = {
         audio: selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true,
-        video: false
+        video: false,
       };
-      
+
       let stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       // 2. Process Audio (NS)
@@ -113,16 +113,15 @@ export function useMediaStream({
         await sfu.replaceTrack(track, AUDIO_SOURCE);
         await sfu.resumeProducer(AUDIO_SOURCE);
       }
-      
+
       // 5. Sync State
       if (signalingRef.current && stateRef.current.roomId) {
         signalingRef.current.emit('user:media-state', {
-            roomId: stateRef.current.roomId,
-            audio: true,
-            video: isVideoEnabledRef.current
+          roomId: stateRef.current.roomId,
+          audio: true,
+          video: isVideoEnabledRef.current,
         });
       }
-
     } catch (err) {
       logger.error('[useMediaStream] Failed to enable audio', err);
       stopTrack('audio');
@@ -131,7 +130,15 @@ export function useMediaStream({
     } finally {
       setIsMediaLoading(false);
     }
-  }, [selectedAudioDeviceId, setIsAudioEnabled, setIsMediaLoading, updateLocalStream, sfuManagerRef, signalingRef, stateRef]);
+  }, [
+    selectedAudioDeviceId,
+    setIsAudioEnabled,
+    setIsMediaLoading,
+    updateLocalStream,
+    sfuManagerRef,
+    signalingRef,
+    stateRef,
+  ]);
 
   // --- API: Disable Audio ---
   const disableAudio = useCallback(async () => {
@@ -154,11 +161,11 @@ export function useMediaStream({
 
     // 4. Sync State
     if (signalingRef.current && stateRef.current.roomId) {
-        signalingRef.current.emit('user:media-state', {
-            roomId: stateRef.current.roomId,
-            audio: false,
-            video: isVideoEnabledRef.current
-        });
+      signalingRef.current.emit('user:media-state', {
+        roomId: stateRef.current.roomId,
+        audio: false,
+        video: isVideoEnabledRef.current,
+      });
     }
   }, [setIsAudioEnabled, updateLocalStream, sfuManagerRef, signalingRef, stateRef]);
 
@@ -182,13 +189,13 @@ export function useMediaStream({
       const constraints = {
         audio: false,
         video: {
-            deviceId: selectedVideoDeviceId ? { exact: selectedVideoDeviceId } : undefined,
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30 },
-        }
+          deviceId: selectedVideoDeviceId ? { exact: selectedVideoDeviceId } : undefined,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
+        },
       };
-      
+
       let stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       // 2. Process Video (AutoFraming)
@@ -216,12 +223,11 @@ export function useMediaStream({
       // 5. Sync State
       if (signalingRef.current && stateRef.current.roomId) {
         signalingRef.current.emit('user:media-state', {
-            roomId: stateRef.current.roomId,
-            audio: isAudioEnabledRef.current,
-            video: true
+          roomId: stateRef.current.roomId,
+          audio: isAudioEnabledRef.current,
+          video: true,
         });
       }
-
     } catch (err) {
       logger.error('[useMediaStream] Failed to enable video', err);
       stopTrack('video');
@@ -230,7 +236,15 @@ export function useMediaStream({
     } finally {
       setIsMediaLoading(false);
     }
-  }, [selectedVideoDeviceId, setIsVideoEnabled, setIsMediaLoading, updateLocalStream, sfuManagerRef, signalingRef, stateRef]);
+  }, [
+    selectedVideoDeviceId,
+    setIsVideoEnabled,
+    setIsMediaLoading,
+    updateLocalStream,
+    sfuManagerRef,
+    signalingRef,
+    stateRef,
+  ]);
 
   // --- API: Disable Video ---
   const disableVideo = useCallback(async () => {
@@ -254,9 +268,9 @@ export function useMediaStream({
     // 4. Sync State
     if (signalingRef.current && stateRef.current.roomId) {
       signalingRef.current.emit('user:media-state', {
-          roomId: stateRef.current.roomId,
-          audio: isAudioEnabledRef.current,
-          video: false
+        roomId: stateRef.current.roomId,
+        audio: isAudioEnabledRef.current,
+        video: false,
       });
     }
   }, [setIsVideoEnabled, updateLocalStream, sfuManagerRef, signalingRef, stateRef]);
@@ -270,27 +284,28 @@ export function useMediaStream({
     }
   }, [disableVideo, enableVideo]);
 
-
   // --- API: Initial Enable (Consolidated) ---
   // Mostly used for "Join with Mic/Cam on" preferences
-  const enableMedia = useCallback(async (startAudio = false, startVideo = false) => {
+  const enableMedia = useCallback(
+    async (startAudio = false, startVideo = false) => {
       logger.info(`[useMediaStream] Initializing media: Audio=${startAudio}, Video=${startVideo}`);
-      
+
       const promises = [];
       if (startAudio) promises.push(enableAudio());
       if (startVideo) promises.push(enableVideo());
-      
-      await Promise.all(promises);
-  }, [enableAudio, enableVideo]);
 
+      await Promise.all(promises);
+    },
+    [enableAudio, enableVideo]
+  );
 
   // --- API: Disable All (Cleanup) ---
   const disableMedia = useCallback(() => {
-      logger.info('[useMediaStream] Disabling ALL media');
-      disableAudio();
-      disableVideo();
-      // Also stop screen share
-      stopScreenShare();
+    logger.info('[useMediaStream] Disabling ALL media');
+    disableAudio();
+    disableVideo();
+    // Also stop screen share
+    stopScreenShare();
   }, [disableAudio, disableVideo]); // stopScreenShare below needs to be circular-dep safe, likely hoisted or used from ref
 
   // --- Features: Noise Suppression ---
@@ -300,9 +315,9 @@ export function useMediaStream({
     setIsNoiseSuppressionEnabled(newState);
 
     if (isAudioEnabledRef.current) {
-        // Restart audio to apply processor
-        await disableAudio();
-        await enableAudio();
+      // Restart audio to apply processor
+      await disableAudio();
+      await enableAudio();
     }
   }, [setIsNoiseSuppressionEnabled, disableAudio, enableAudio]);
 
@@ -313,12 +328,11 @@ export function useMediaStream({
     setIsAutoFramingEnabled(newState);
 
     if (isVideoEnabledRef.current) {
-        // Restart video to apply processor
-        await disableVideo();
-        await enableVideo();
+      // Restart video to apply processor
+      await disableVideo();
+      await enableVideo();
     }
   }, [setIsAutoFramingEnabled, disableVideo, enableVideo]);
-
 
   // --- Screen Share ---
   const stopScreenShare = useCallback(() => {
@@ -329,17 +343,17 @@ export function useMediaStream({
       screenStreamRef.current.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
     }
-    
+
     setLocalScreenStream(null);
     setIsScreenSharing(false);
     isScreenSharingRef.current = false;
-    
+
     if (sfu) {
-        sfu.closeProducer(SCREEN_SOURCE);
+      sfu.closeProducer(SCREEN_SOURCE);
     }
 
     if (signalingRef.current && stateRef.current.roomId) {
-        signalingRef.current.emit('stop-screen-share', { roomId: stateRef.current.roomId });
+      signalingRef.current.emit('stop-screen-share', { roomId: stateRef.current.roomId });
     }
   }, [sfuManagerRef, setLocalScreenStream, setIsScreenSharing, signalingRef, stateRef]);
 
@@ -349,7 +363,10 @@ export function useMediaStream({
     if (!sfu) return;
 
     try {
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
       screenStreamRef.current = displayStream;
       setLocalScreenStream(displayStream);
       setIsScreenSharing(true);
@@ -359,9 +376,10 @@ export function useMediaStream({
       if (videoTrack) {
         await sfu.replaceTrack(videoTrack, SCREEN_SOURCE);
       }
-      
-      videoTrack.onended = () => { stopScreenShare(); };
 
+      videoTrack.onended = () => {
+        stopScreenShare();
+      };
     } catch (err) {
       logger.error('[useMediaStream] Failed to start screen share', err);
       stopScreenShare(); // Cleanup
@@ -375,7 +393,7 @@ export function useMediaStream({
       stopTrack('audio');
       stopTrack('video');
       if (screenStreamRef.current) {
-         screenStreamRef.current.getTracks().forEach(t => t.stop());
+        screenStreamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
   }, []);

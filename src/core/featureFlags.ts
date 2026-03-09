@@ -7,7 +7,7 @@ export const features = {
   },
   web: {
     enabled: true,
-  }
+  },
 };
 
 export const isDesktop = features.desktop.enabled;

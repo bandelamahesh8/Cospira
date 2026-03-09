@@ -1,0 +1,228 @@
+02-24 20:07:01.716  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:08:01.696  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:09:01.819  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:10:01.721  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:11:01.698  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:12:01.693  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:13:01.698  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:14:01.707  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:15:02.026  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:16:01.738  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:17:01.759  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:18:01.699  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:19:01.735  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:20:01.817  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:21:01.733  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:22:01.715  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:23:01.699  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:24:02.009  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:25:01.704  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:26:01.701  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:27:01.711  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:28:01.716  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:29:03.749  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:30:01.706  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:31:01.718  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:32:01.706  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:33:01.693  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:34:01.763  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:35:01.698  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:36:01.694  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:37:01.708  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:38:01.699  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:39:01.888  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:40:01.734  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:41:01.704  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:42:02.000  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:43:01.744  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:44:01.723  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:45:01.692  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:46:01.754  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:47:01.707  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:48:01.698  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:49:01.868  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:50:01.730  7093  7281 I ReactNativeJS: '[Dashboard] Activities fetched:', 5
+02-24 20:50:21.396  7093  9500 I ReactNativeJS: '[Polyfill] WebRTC native module registered. RTCView available:', true
+02-24 20:50:21.400  7093  9500 I ReactNativeJS: [Index] Registering main component
+02-24 20:50:21.420  7093  9500 I ReactNativeJS: Running "main" with {"rootTag":21}
+02-24 20:50:21.787  7093  9500 I ReactNativeJS: '[App] Mounting, authentication state:', false
+02-24 20:50:21.793  7093  9500 I ReactNativeJS: '[App] Initial theme state:', { isDark: false, activeTheme: 'light' }
+02-24 20:50:21.797  7093  9500 I ReactNativeJS: [AuthStore] Initializing session from storage...
+02-24 20:50:21.837  7093  9500 W ReactNativeJS: The app is running using the Legacy Architecture. The Legacy Architecture is deprecated and will be removed in a future version of React Native. Please consider migrating to the New Architecture. For more information, please see https://reactnative.dev/blog/2024/10/23/the-new-architecture-is-here
+02-24 20:50:21.962  7093  9500 I ReactNativeJS: [ThemeStore] No saved theme, using system default
+02-24 20:50:21.977  7093  9500 I ReactNativeJS: [AuthStore] Session found. Checking refresh requirements...
+02-24 20:50:21.991  7093  9500 I ReactNativeJS: [API] POST http://192.168.1.5:3001/api/auth/refresh
+02-24 20:50:22.210  7093  9500 I ReactNativeJS: '[AnimatedSplashScreen] Mount, background:', '#FFFFFF', 'isDark:', false
+02-24 20:50:22.762  7093  9500 I ReactNativeJS: '[AnimatedSplashScreen] Mount, background:', '#FFFFFF', 'isDark:', false
+02-24 20:50:23.262  7093  9500 I ReactNativeJS: '[AnimatedSplashScreen] Mount, background:', '#FFFFFF', 'isDark:', false
+02-24 20:50:23.763  7093  9500 I ReactNativeJS: '[AnimatedSplashScreen] Mount, background:', '#FFFFFF', 'isDark:', false
+02-24 20:50:24.027  7093  9500 W ReactNativeJS: [API] Session invalid: Invalid refresh token. Clearing token.
+02-24 20:50:24.030  7093  9500 E ReactNativeJS: '[API Error] /auth/refresh:', 'Invalid refresh token'
+02-24 20:50:24.044  7093  9500 E ReactNativeJS: '[AuthStore] Refresh session failed:', 'Invalid refresh token'
+02-24 20:50:24.045  7093  9500 E ReactNativeJS: '[AuthStore] Initial refresh failed:', 'Invalid refresh token'
+02-24 20:50:24.067  7093  9500 I ReactNativeJS: '[App] Auth state changed:', true
+02-24 20:50:24.070  7093  9500 I ReactNativeJS: '[AnimatedSplashScreen] Mount, background:', '#FFFFFF', 'isDark:', false
+02-24 20:50:24.119  7093  9500 I ReactNativeJS: [DataSyncService] Initialized successfully
+02-24 20:50:24.120  7093  9500 I ReactNativeJS: [App] All services initialized successfully
+02-24 20:50:24.261  7093  9500 I ReactNativeJS: '[AnimatedSplashScreen] Mount, background:', '#FFFFFF', 'isDark:', false
+02-24 20:50:24.761  7093  9500 I ReactNativeJS: '[AnimatedSplashScreen] Mount, background:', '#FFFFFF', 'isDark:', false
+02-24 20:50:25.160  7093  9500 I ReactNativeJS: [AnimatedSplashScreen] Timer finished, fading out...
+02-24 20:50:25.262  7093  9500 I ReactNativeJS: '[AnimatedSplashScreen] Mount, background:', '#FFFFFF', 'isDark:', false
+02-24 20:50:25.677  7093  9500 I ReactNativeJS: [AnimatedSplashScreen] Fade out finished, calling onFinish
+02-24 20:50:25.677  7093  9500 I ReactNativeJS: [App] Splash finished
+02-24 20:50:25.802  7093  9500 I ReactNativeJS: '[ParticipantTile] RTCView loaded from react-native-webrtc:', true, 'string'
+02-24 20:50:26.551  7093  9500 I ReactNativeJS: [Socket] Attempt 1: Connecting to http://192.168.1.5:3001...
+02-24 20:50:26.552  7093  9500 I ReactNativeJS: '[Socket] Auth:', 'With token'
+02-24 20:50:26.589  7093  9500 I ReactNativeJS: [Socket] Connection already in progress
+02-24 20:50:26.694  7093  9500 I ReactNativeJS: [Socket] ✅ Connected successfully to server
+02-24 20:50:26.696  7093  9500 I ReactNativeJS: '[Socket] Socket ID:', 'myzS68ACyJIHuItwAAAR'
+02-24 20:50:26.711  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 20:50:36.523  7093  9500 I ReactNativeJS: [Socket] Already connected
+02-24 20:50:36.544  7093  9500 I ReactNativeJS: [MobileSFU] Initialized Mediasoup Device
+02-24 20:50:36.548  7093  9500 I ReactNativeJS: '[Room] Active User ID:', 'c98f47ac-1fa1-4fdf-8ec8-f721d3697267'
+02-24 20:50:36.599  7093  9500 I ReactNativeJS: '[ParticipantTile][LOCAL] Render State:', { hasStream: false,
+02-24 20:50:36.599  7093  9500 I ReactNativeJS:   streamURL: 'N/A',
+02-24 20:50:36.599  7093  9500 I ReactNativeJS:   sfuVideoEnabled: false,
+02-24 20:50:36.599  7093  9500 I ReactNativeJS:   hasVideo: false,
+02-24 20:50:36.599  7093  9500 I ReactNativeJS:   hasNativeWebRTC: true,
+02-24 20:50:36.599  7093  9500 I ReactNativeJS:   hasNativeRTCView: true,
+02-24 20:50:36.599  7093  9500 I ReactNativeJS:   videoTracks: 0,
+02-24 20:50:36.599  7093  9500 I ReactNativeJS:   audioTracks: 0 }
+02-24 20:50:36.659  7093  9500 I ReactNativeJS: '[MobileSFU] User ID set:', 'c98f47ac-1fa1-4fdf-8ec8-f721d3697267'
+02-24 20:50:36.818  7093  9500 I ReactNativeJS: [MobileSFU] Joining room: OQAFM8
+02-24 20:50:37.009  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 0 ctor +0ms
+02-24 20:50:37.013  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 0 addTransceiver +4ms
+02-24 20:50:37.057  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 0 addTransceiver +44ms
+02-24 20:50:37.069  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 0 createOffer +12ms
+02-24 20:50:37.111  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 0 createOffer OK +42ms
+02-24 20:50:37.112  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 0 close +2ms
+02-24 20:50:37.134  7093  9500 I ReactNativeJS: '[MobileSFU] Device loaded:', 'ReactNative106'
+02-24 20:50:37.209  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 ctor +95ms
+02-24 20:50:37.214  7093  9500 I ReactNativeJS: [MobileSFU] Send Transport created
+02-24 20:50:37.227  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 2 ctor +20ms
+02-24 20:50:37.228  7093  9500 I ReactNativeJS: [MobileSFU] Recv Transport created
+02-24 20:50:37.228  7093  9500 I ReactNativeJS: [MobileSFU] Room joined, transports ready
+02-24 20:50:37.234  7093  9500 I ReactNativeJS: [MobileSFU] Found 0 existing producers
+02-24 20:50:49.079  7093  9500 E ReactNativeJS: '[useWebSocket] Screen share error:', { name: 'Error',
+02-24 20:50:49.079  7093  9500 E ReactNativeJS:   message: 'NotAllowedError',
+02-24 20:50:49.079  7093  9500 E ReactNativeJS:   constraintName: undefined }
+02-24 20:51:27.105  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 20:51:37.869  7093  9500 I ReactNativeJS: '[ParticipantTile][REMOTE:91b70e] Render State:', { hasStream: false,
+02-24 20:51:37.869  7093  9500 I ReactNativeJS:   streamURL: 'N/A',
+02-24 20:51:37.869  7093  9500 I ReactNativeJS:   hasVideo: false,
+02-24 20:51:37.869  7093  9500 I ReactNativeJS:   videoTracks: 0,
+02-24 20:51:37.869  7093  9500 I ReactNativeJS:   audioTracks: 0 }
+02-24 20:52:11.982  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 addTransceiver +2m
+02-24 20:52:12.027  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 createOffer +50ms
+02-24 20:52:12.066  7093  9500 I ReactNativeJS: '[ParticipantTile][LOCAL] Render State:', { hasStream: false,
+02-24 20:52:12.066  7093  9500 I ReactNativeJS:   streamURL: 'N/A',
+02-24 20:52:12.066  7093  9500 I ReactNativeJS:   sfuVideoEnabled: false,
+02-24 20:52:12.066  7093  9500 I ReactNativeJS:   hasVideo: false,
+02-24 20:52:12.066  7093  9500 I ReactNativeJS:   hasNativeWebRTC: true,
+02-24 20:52:12.066  7093  9500 I ReactNativeJS:   hasNativeRTCView: true,
+02-24 20:52:12.066  7093  9500 I ReactNativeJS:   videoTracks: 0,
+02-24 20:52:12.066  7093  9500 I ReactNativeJS:   audioTracks: 0 }
+02-24 20:52:12.071  7093  9500 I ReactNativeJS: '[ParticipantTile][REMOTE:91b70e] Render State:', { hasStream: false,
+02-24 20:52:12.071  7093  9500 I ReactNativeJS:   streamURL: 'N/A',
+02-24 20:52:12.071  7093  9500 I ReactNativeJS:   hasVideo: false,
+02-24 20:52:12.071  7093  9500 I ReactNativeJS:   videoTracks: 0,
+02-24 20:52:12.071  7093  9500 I ReactNativeJS:   audioTracks: 0 }
+02-24 20:52:12.152  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 createOffer OK +124ms
+02-24 20:52:12.243  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 setLocalDescription +92ms
+02-24 20:52:12.604  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 setLocalDescription OK +361ms
+02-24 20:52:12.671  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 setRemoteDescription +67ms
+02-24 20:52:13.511  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 setRemoteDescription OK +817ms
+02-24 20:52:13.585  7093  9500 I ReactNativeJS: [MobileSFU] Send Transport state: connecting
+02-24 20:52:13.645  7093  9500 I ReactNativeJS: [MobileSFU] Send Transport state: connected
+02-24 20:52:13.774  7093  9500 I ReactNativeJS: [MobileSFU] Producing screen (video) - ID: 66f38c45-bbb3-4a82-a3f5-5bfc07d638ba
+02-24 20:52:27.681  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 20:52:37.727  7093  9500 I ReactNativeJS: '[Socket] Disconnected. Reason:', 'transport error'
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: Cannot connect to Metro.
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: 
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: Try the following to fix the issue:
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: - Ensure that Metro is running and available on the same network
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: - Ensure that your device/emulator is connected to your machine and has USB debugging enabled - run 'adb devices' to see a list of connected devices
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: - If you're on a physical device connected to the same machine, run 'adb reverse tcp:8081 tcp:8081' to forward requests from your device
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: - If your device is on the same Wi-Fi network, set 'Debug server host & port for device' in 'Dev settings' to your machine's IP address and the port of the local dev server - e.g. 10.0.1.1:8081
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: 
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: URL: 10.0.2.2:8081
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: 
+02-24 20:52:37.736  7093  9500 W ReactNativeJS: Error: undefined
+02-24 20:52:43.904  7093  9500 I ReactNativeJS: [MobileSFU] Send Transport state: disconnected
+02-24 20:52:43.933  7093  9500 I ReactNativeJS: [MobileSFU] Restarting ICE for send transport...
+02-24 20:52:44.767  7093  9500 E ReactNativeJS: '[MobileSFU] ICE restart failed for send:', [TypeError: missing iceParameters]
+02-24 20:52:53.801  7093  9500 I ReactNativeJS: [MobileSFU] Send Transport state: failed
+02-24 20:52:53.802  7093  9500 I ReactNativeJS: [MobileSFU] Restarting ICE for send transport...
+02-24 20:52:53.818  7093  9500 E ReactNativeJS: '[MobileSFU] ICE restart failed for send:', [TypeError: missing iceParameters]
+02-24 20:52:55.880  7093  9500 I ReactNativeJS: '[Socket] Disconnected. Reason:', 'transport error'
+02-24 20:53:27.069  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 20:54:27.230  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 20:54:37.182  7093  9500 I ReactNativeJS: [MobileSFU] Closing all
+02-24 20:54:37.393  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 removeTrack +2m
+02-24 20:54:37.469  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 createOffer +170ms
+02-24 20:54:37.568  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 close +87ms
+02-24 20:54:37.585  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 2 close +20ms
+02-24 20:54:37.596  7093  9500 I ReactNativeJS: [useWebSocket] Stopping screen share track on exit
+02-24 20:54:37.608  7093  9500 I ReactNativeJS: [InnerRoomScreen] Final unmount cleanup
+02-24 20:54:37.722  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 createOffer OK +146ms
+02-24 20:54:37.726  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 1 setLocalDescription +5ms
+02-24 20:54:52.497  7093  9500 I ReactNativeJS: [Socket] Already connected
+02-24 20:54:52.508  7093  9500 I ReactNativeJS: [MobileSFU] Initialized Mediasoup Device
+02-24 20:54:52.531  7093  9500 I ReactNativeJS: '[Room] Active User ID:', 'c98f47ac-1fa1-4fdf-8ec8-f721d3697267'
+02-24 20:54:53.264  7093  9500 I ReactNativeJS: '[ParticipantTile][LOCAL] Render State:', { hasStream: false,
+02-24 20:54:53.264  7093  9500 I ReactNativeJS:   streamURL: 'N/A',
+02-24 20:54:53.264  7093  9500 I ReactNativeJS:   sfuVideoEnabled: false,
+02-24 20:54:53.264  7093  9500 I ReactNativeJS:   hasVideo: false,
+02-24 20:54:53.264  7093  9500 I ReactNativeJS:   hasNativeWebRTC: true,
+02-24 20:54:53.264  7093  9500 I ReactNativeJS:   hasNativeRTCView: true,
+02-24 20:54:53.264  7093  9500 I ReactNativeJS:   videoTracks: 0,
+02-24 20:54:53.264  7093  9500 I ReactNativeJS:   audioTracks: 0 }
+02-24 20:54:53.915  7093  9500 I ReactNativeJS: '[MobileSFU] User ID set:', 'c98f47ac-1fa1-4fdf-8ec8-f721d3697267'
+02-24 20:54:55.220  7093  9500 I ReactNativeJS: [MobileSFU] Joining room: CIYHN5
+02-24 20:54:55.805  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 3 ctor +18s
+02-24 20:54:55.815  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 3 addTransceiver +9ms
+02-24 20:54:55.855  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 3 addTransceiver +46ms
+02-24 20:54:55.899  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 3 createOffer +43ms
+02-24 20:54:55.966  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 3 createOffer OK +68ms
+02-24 20:54:55.967  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 3 close +1ms
+02-24 20:54:55.982  7093  9500 I ReactNativeJS: '[MobileSFU] Device loaded:', 'ReactNative106'
+02-24 20:54:56.063  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 4 ctor +95ms
+02-24 20:54:56.081  7093  9500 I ReactNativeJS: [MobileSFU] Send Transport created
+02-24 20:54:56.193  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 5 ctor +130ms
+02-24 20:54:56.201  7093  9500 I ReactNativeJS: [MobileSFU] Recv Transport created
+02-24 20:54:56.205  7093  9500 I ReactNativeJS: [MobileSFU] Room joined, transports ready
+02-24 20:54:56.235  7093  9500 I ReactNativeJS: [MobileSFU] Found 0 existing producers
+02-24 20:55:17.883  7093  9500 I ReactNativeJS: '[ParticipantTile][REMOTE:91b70e] Render State:', { hasStream: false,
+02-24 20:55:17.883  7093  9500 I ReactNativeJS:   streamURL: 'N/A',
+02-24 20:55:17.883  7093  9500 I ReactNativeJS:   hasVideo: false,
+02-24 20:55:17.883  7093  9500 I ReactNativeJS:   videoTracks: 0,
+02-24 20:55:17.883  7093  9500 I ReactNativeJS:   audioTracks: 0 }
+02-24 20:55:27.962  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 20:55:38.685  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 4 addTransceiver +42s
+02-24 20:55:38.729  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 4 createOffer +45ms
+02-24 20:55:38.750  7093  9500 I ReactNativeJS: '[ParticipantTile][LOCAL] Render State:', { hasStream: false,
+02-24 20:55:38.750  7093  9500 I ReactNativeJS:   streamURL: 'N/A',
+02-24 20:55:38.750  7093  9500 I ReactNativeJS:   sfuVideoEnabled: false,
+02-24 20:55:38.750  7093  9500 I ReactNativeJS:   hasVideo: false,
+02-24 20:55:38.750  7093  9500 I ReactNativeJS:   hasNativeWebRTC: true,
+02-24 20:55:38.750  7093  9500 I ReactNativeJS:   hasNativeRTCView: true,
+02-24 20:55:38.750  7093  9500 I ReactNativeJS:   videoTracks: 0,
+02-24 20:55:38.750  7093  9500 I ReactNativeJS:   audioTracks: 0 }
+02-24 20:55:38.758  7093  9500 I ReactNativeJS: '[ParticipantTile][REMOTE:91b70e] Render State:', { hasStream: false,
+02-24 20:55:38.758  7093  9500 I ReactNativeJS:   streamURL: 'N/A',
+02-24 20:55:38.758  7093  9500 I ReactNativeJS:   hasVideo: false,
+02-24 20:55:38.758  7093  9500 I ReactNativeJS:   videoTracks: 0,
+02-24 20:55:38.758  7093  9500 I ReactNativeJS:   audioTracks: 0 }
+02-24 20:55:38.844  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 4 createOffer OK +124ms
+02-24 20:55:38.943  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 4 setLocalDescription +99ms
+02-24 20:55:39.112  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 4 setLocalDescription OK +169ms
+02-24 20:55:39.138  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 4 setRemoteDescription +20ms
+02-24 20:55:39.282  7093  9500 I ReactNativeJS: rn-webrtc:pc:DEBUG 4 setRemoteDescription OK +141ms
+02-24 20:55:39.323  7093  9500 I ReactNativeJS: [MobileSFU] Send Transport state: connecting
+02-24 20:55:39.343  7093  9500 I ReactNativeJS: [MobileSFU] Send Transport state: connected
+02-24 20:55:39.378  7093  9500 I ReactNativeJS: [MobileSFU] Producing screen (video) - ID: c940b187-1f6e-4598-8d6e-c254db80c83e
+02-24 20:56:27.259  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 20:57:27.108  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 20:58:27.104  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 20:59:27.118  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'
+02-24 21:00:27.105  7093  9500 I ReactNativeJS: '[Dashboard] Activity fetch failed:', 'Authentication required'

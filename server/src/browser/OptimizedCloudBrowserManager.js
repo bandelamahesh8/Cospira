@@ -20,9 +20,9 @@ class OptimizedCloudBrowserManager extends EventEmitter {
     
     // Configuration
     this.config = {
-      viewport: options.viewport || { width: 390, height: 844 }, // iPhone-ish
-      frameRate: options.frameRate || 15, // Smooth but not overwhelming
-      quality: options.quality || 60, // Balance image quality/size
+      viewport: options.viewport || { width: 1920, height: 1080 }, // Desktop High-Res
+      frameRate: options.frameRate || 60, // 60 FPS targeting
+      quality: options.quality || 100, // Maximum visual fidelity
       maxIdleTime: options.maxIdleTime || 10 * 60 * 1000, // 10 minutes
       enableAudio: options.enableAudio || false,
       ...options
@@ -74,6 +74,8 @@ class OptimizedCloudBrowserManager extends EventEmitter {
           // ✅ ENABLE AUDIO
           '--autoplay-policy=no-user-gesture-required',
           '--no-first-run',
+          '--disable-web-security',
+          '--allow-running-insecure-content',
         ],
         executablePath: process.env.CHROMIUM_PATH || undefined,
       };
@@ -92,12 +94,17 @@ class OptimizedCloudBrowserManager extends EventEmitter {
       }
 
       this.browser = await chromium.launch(launchOptions);
+      const isMobileView = this.config.viewport.width < 1024;
+      
       this.context = await this.browser.newContext({
         viewport: this.config.viewport,
-        deviceScaleFactor: 2,
-        hasTouch: true,
-        isMobile: true,
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1',
+        deviceScaleFactor: 1, // 1 is faster for 1080p streaming
+        hasTouch: isMobileView,
+        isMobile: isMobileView,
+        userAgent: isMobileView 
+          ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1'
+          : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        colorScheme: 'dark', // Native dark mode feel
       });
 
       this.page = await this.context.newPage();
@@ -172,7 +179,7 @@ class OptimizedCloudBrowserManager extends EventEmitter {
 
             const recorder = new MediaRecorder(destination.stream, {
               mimeType: 'audio/webm;codecs=opus',
-              audioBitsPerSecond: 64000
+              audioBitsPerSecond: 128000
             });
             recorder.ondataavailable = (event) => {
               if (event.data.size > 0) {
@@ -184,14 +191,19 @@ class OptimizedCloudBrowserManager extends EventEmitter {
                 reader.readAsDataURL(event.data);
               }
             };
-            recorder.start(200);
+            recorder.start(1000); 
+
+            // Auto-resume context on any backend activity if it's suspended
+            setInterval(() => {
+              if (audioCtx.state === 'suspended') audioCtx.resume();
+            }, 3000);
           } catch (e) {}
         }
 
-        window.addEventListener('load', initCospiraAudio);
-        window.addEventListener('click', initCospiraAudio, { once: true });
-        window.addEventListener('touchstart', initCospiraAudio, { once: true });
-        if (document.readyState === 'complete') initCospiraAudio();
+        window.addEventListener('load', () => setTimeout(initCospiraAudio, 500));
+        window.addEventListener('click', () => setTimeout(initCospiraAudio, 500), { once: true });
+        window.addEventListener('touchstart', () => setTimeout(initCospiraAudio, 500), { once: true });
+        if (document.readyState === 'complete') setTimeout(initCospiraAudio, 500);
       });
       
       // ✅ Enable audio capture (UI Side)
@@ -244,7 +256,11 @@ class OptimizedCloudBrowserManager extends EventEmitter {
         this.frameSkipCount++;
         this.stats.duplicateFrames++;
         
-        if (this.frameSkipCount > 10) { // More aggressive skip if idle
+        // Force a keyframe every 30 skipped frames (~2 seconds) so late clients don't get stuck forever
+        if (this.frameSkipCount > 30) {
+          this.frameSkipCount = 0; // reset
+          // return normal frame to wake up clients
+        } else if (this.frameSkipCount > 10) { 
           this.isProcessingFrame = false;
           return { skipped: true, reason: 'duplicate' };
         }
@@ -258,6 +274,7 @@ class OptimizedCloudBrowserManager extends EventEmitter {
       this.stats.framesSent++;
       this.stats.bytesTransferred += base64Frame.length;
       this.isProcessingFrame = false;
+      this.consecutiveErrors = 0; // reset on success
 
       return {
         sessionId: this.sessionId,
@@ -272,7 +289,14 @@ class OptimizedCloudBrowserManager extends EventEmitter {
       };
     } catch (error) {
       this.isProcessingFrame = false;
-      // logger.error(`[Browser ${this.sessionId}] Capture error: ${error.message}`);
+      this.consecutiveErrors = (this.consecutiveErrors || 0) + 1;
+      
+      if (this.consecutiveErrors > 15) {
+        logger.error(`[Browser ${this.sessionId}] Frame capture failed 15 times cleanly. Emitting crash.`);
+        this.emit('crash', error);
+      } else if (!error.message?.includes('Target closed') && !error.message?.includes('Session closed')) {
+        // logger.error(`[Browser ${this.sessionId}] Capture error: ${error.message}`);
+      }
       return null;
     }
   }
@@ -344,6 +368,10 @@ class OptimizedCloudBrowserManager extends EventEmitter {
   async handleInput(event) {
     if (!this.page) {
       logger.warn(`[Browser ${this.sessionId}] handleInput called but page is null`);
+      return;
+    }
+
+    if (!event || !event.type) {
       return;
     }
     
@@ -429,6 +457,7 @@ class OptimizedCloudBrowserManager extends EventEmitter {
     
     try {
       const validUrl = url.startsWith('http') ? url : `https://${url}`;
+      this.currentUrl = validUrl;
       await this.page.goto(validUrl, {
         waitUntil: 'domcontentloaded',
         timeout: 45000,

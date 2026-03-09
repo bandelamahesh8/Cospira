@@ -12,11 +12,7 @@ interface CooldownOverlayProps {
   duration?: number; // seconds
 }
 
-export const CooldownOverlay = ({ 
-  show, 
-  onComplete, 
-  duration = 3 
-}: CooldownOverlayProps) => {
+export const CooldownOverlay = ({ show, onComplete, duration = 3 }: CooldownOverlayProps) => {
   const [countdown, setCountdown] = useState(duration);
 
   useEffect(() => {
@@ -26,7 +22,7 @@ export const CooldownOverlay = ({
     }
 
     const interval = setInterval(() => {
-      setCountdown(prev => {
+      setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
           onComplete();
@@ -46,32 +42,32 @@ export const CooldownOverlay = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-center justify-center rounded-[4rem]"
+      className='absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-center justify-center rounded-[4rem]'
     >
-      <div className="text-center space-y-6">
-        <motion.p 
+      <div className='text-center space-y-6'>
+        <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-slate-400 text-sm font-medium"
+          className='text-slate-400 text-sm font-medium'
         >
           Take a breath...
         </motion.p>
-        
+
         <motion.div
           key={countdown}
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 15 }}
-          className="text-8xl font-black text-white"
+          transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+          className='text-8xl font-black text-white'
         >
           {countdown}
         </motion.div>
-        
+
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-slate-500 text-xs"
+          className='text-slate-500 text-xs'
         >
           Rematch available in {countdown}s
         </motion.p>

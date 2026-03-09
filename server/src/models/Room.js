@@ -1,5 +1,43 @@
 import mongoose from 'mongoose';
 
+// ─── Policy Engine sub-schema ───────────────────────────────────────────────
+const conditionSchema = new mongoose.Schema({
+  field:    { type: String, required: true }, // e.g. 'participants', 'user.role'
+  operator: { type: String, required: true }, // '>', '<', '==', '!=', etc.
+  value:    { type: mongoose.Schema.Types.Mixed, required: true },
+}, { _id: false });
+
+const policySchema = new mongoose.Schema({
+  policyId:   { type: String, required: true },
+  name:       { type: String, default: 'Unnamed Policy' },
+  condition:  { type: conditionSchema, required: true },
+  action:     { type: String, required: true }, // POLICY_ACTIONS enum value
+  priority:   { type: Number, default: 50 },
+  enabled:    { type: Boolean, default: true },
+  createdBy:  { type: String },
+  createdAt:  { type: Date, default: Date.now },
+  // Optional extras for suggest_ai action
+  suggestionMessage: { type: String },
+  suggestedAction:   { type: String },
+  alertMessage:      { type: String },
+}, { _id: false });
+
+// ─── Authority Engine sub-schema ────────────────────────────────────────────
+const authorityRoleSchema = new mongoose.Schema({
+  userId:    { type: String, required: true },
+  role:      { type: String, enum: ['HOST', 'COHOST', 'MODERATOR', 'SPEAKER', 'LISTENER'], required: true },
+  grantedBy: { type: String },
+  grantedAt: { type: Date, default: Date.now },
+}, { _id: false });
+
+// ─── State History sub-schema ───────────────────────────────────────────────
+const stateHistorySchema = new mongoose.Schema({
+  from:        { type: String },
+  to:          { type: String },
+  at:          { type: Date, default: Date.now },
+  triggeredBy: { type: String },
+}, { _id: false });
+
 const memberSchema = new mongoose.Schema({
   userId: {
     type: String,
@@ -45,6 +83,56 @@ const roomSettingsSchema = new mongoose.Schema({
     max: 100
   },
   recordSessions: {
+    type: Boolean,
+    default: false
+  },
+  invite_only: {
+    type: Boolean,
+    default: false
+  },
+  join_by_link: {
+    type: Boolean,
+    default: true
+  },
+  join_by_code: {
+    type: Boolean,
+    default: true
+  },
+  host_only_code_visibility: {
+    type: Boolean,
+    default: false
+  },
+  waiting_lobby: {
+    type: Boolean,
+    default: false
+  },
+  organization_only: {
+    type: Boolean,
+    default: false
+  },
+  host_controlled_speaking: {
+    type: Boolean,
+    default: false
+  },
+  chat_permission: {
+    type: String,
+    enum: ['everyone', 'host_only', 'none'],
+    default: 'everyone'
+  },
+  encryption_enabled: {
+    type: Boolean,
+    default: false
+  },
+  ai_moderation_level: {
+    type: String,
+    enum: ['off', 'passive', 'active'],
+    default: 'off'
+  },
+  auto_close_minutes: {
+    type: Number,
+    default: 0
+  },
+  hidden_room: {
     type: Boolean,
     default: false
   }
@@ -147,7 +235,27 @@ const roomSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     }
-  }
+  },
+
+  // ── Room State Machine ──────────────────────────────────────────────────
+  state: {
+    type: String,
+    enum: ['CREATED', 'WAITING', 'LIVE', 'PRESENTATION', 'DISCUSSION', 'LOCKED', 'ENDED'],
+    default: 'LIVE',
+    index: true,
+  },
+  stateHistory: [stateHistorySchema],
+
+  // ── Policy Engine ───────────────────────────────────────────────────────
+  policies: [policySchema],
+
+  // ── Authority Engine ────────────────────────────────────────────────────
+  authorityRoles: [authorityRoleSchema],
+
+  // ── Command Network ─────────────────────────────────────────────────────
+  parentRoomId:  { type: String, default: null, index: true },
+  isCommandRoom: { type: Boolean, default: false, index: true },
+
 }, {
   timestamps: true // Adds createdAt and updatedAt
 });

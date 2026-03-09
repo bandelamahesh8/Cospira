@@ -8,6 +8,7 @@ class VirtualBrowserManager {
   constructor(io) {
     this.io = io;
     this.sessions = new Map(); // roomId -> { browser, session, page, lastActivity }
+    this.navDebounceTimers = new Map(); // roomId -> timeout handle (debounce navigation)
   }
 
   async startSession(roomId, initialUrl = 'https://www.google.com') {
@@ -137,6 +138,20 @@ class VirtualBrowserManager {
   }
 
   async navigate(roomId, url) {
+    // Debounce navigation to prevent ERR_ABORTED from rapid calls (300ms window)
+    if (this.navDebounceTimers.has(roomId)) {
+      clearTimeout(this.navDebounceTimers.get(roomId));
+    }
+    return new Promise((resolve) => {
+      this.navDebounceTimers.set(roomId, setTimeout(async () => {
+        this.navDebounceTimers.delete(roomId);
+        await this._doNavigate(roomId, url);
+        resolve();
+      }, 300));
+    });
+  }
+
+  async _doNavigate(roomId, url) {
     const session = this.sessions.get(roomId);
     if (!session || !session.page) return;
     const page = session.page;
@@ -155,7 +170,7 @@ class VirtualBrowserManager {
         return;
       }
       if (url === 'reload') {
-        await page.reload();
+        await page.reload().catch(() => {});
         return;
       }
 
@@ -256,6 +271,10 @@ class VirtualBrowserManager {
                 nativeVirtualKeyCode: input.keyCode,
             });
             break;
+        case 'navigate':
+             // Back / Forward / Reload from toolbar buttons
+             await this.navigate(roomId, input.url);
+             break;
         case 'char':
              // Only if explicitly sent as char, otherwise keydown handles text
              if (input.char) {
@@ -265,6 +284,9 @@ class VirtualBrowserManager {
                     unmodifiedText: input.char
                 });
              }
+             break;
+        default:
+             logger.warn(`[Browser ${roomId}] Unknown event type: ${input.type}`);
              break;
       }
     } catch (e) {

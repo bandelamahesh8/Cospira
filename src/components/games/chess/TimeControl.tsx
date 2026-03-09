@@ -76,8 +76,8 @@ export function TimeControl({
           : 'bg-slate-900 border-slate-700'
       )}
     >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className='flex items-center justify-between gap-4'>
+        <div className='flex items-center gap-3'>
           <Clock
             className={cn(
               'w-5 h-5',
@@ -85,7 +85,7 @@ export function TimeControl({
             )}
           />
           <div>
-            <p className="text-xs text-slate-400 uppercase tracking-wider">
+            <p className='text-xs text-slate-400 uppercase tracking-wider'>
               {isMyTurn ? 'Your Time' : 'Opponent Time'}
             </p>
             <p className={cn('text-3xl font-mono font-bold', getTimeColor())}>
@@ -95,19 +95,17 @@ export function TimeControl({
         </div>
 
         {increment > 0 && (
-          <div className="text-right">
-            <p className="text-xs text-slate-400">Increment</p>
-            <p className="text-sm font-bold text-white">+{increment}s</p>
+          <div className='text-right'>
+            <p className='text-xs text-slate-400'>Increment</p>
+            <p className='text-sm font-bold text-white'>+{increment}s</p>
           </div>
         )}
       </div>
 
       {/* Low time warning */}
       {timeLeft <= 10 && isMyTurn && isActive && (
-        <div className="mt-2 px-3 py-1 bg-red-500/20 border border-red-500 rounded-lg">
-          <p className="text-xs font-bold text-red-400 text-center animate-pulse">
-            ⚠️ LOW TIME!
-          </p>
+        <div className='mt-2 px-3 py-1 bg-red-500/20 border border-red-500 rounded-lg'>
+          <p className='text-xs font-bold text-red-400 text-center animate-pulse'>⚠️ LOW TIME!</p>
         </div>
       )}
     </Card>

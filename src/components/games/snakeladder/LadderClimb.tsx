@@ -18,13 +18,13 @@ export const LadderClimb = ({ from, to, onComplete }: LadderClimbProps) => {
 
   return (
     <motion.div
-      className="absolute w-10 h-10 rounded-full bg-blue-500 z-10"
+      className='absolute w-10 h-10 rounded-full bg-blue-500 z-10'
       style={{ left: from.x, top: from.y }}
       initial={{ y: 0 }}
       animate={{ y: to.y - from.y }}
-      transition={{ 
-        duration, 
-        ease: 'easeOut' // Smooth upward motion
+      transition={{
+        duration,
+        ease: 'easeOut', // Smooth upward motion
       }}
       onAnimationStart={() => {
         snakeLadderSounds.playLadderClimb();
@@ -36,9 +36,9 @@ export const LadderClimb = ({ from, to, onComplete }: LadderClimbProps) => {
     >
       {/* Glow trail */}
       <motion.div
-        className="absolute inset-0 rounded-full"
+        className='absolute inset-0 rounded-full'
         initial={{ opacity: 0, scale: 1 }}
-        animate={{ 
+        animate={{
           opacity: [0, 0.6, 0],
           scale: [1, 1.5, 1],
         }}

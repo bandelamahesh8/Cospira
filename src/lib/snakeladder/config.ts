@@ -1,4 +1,3 @@
-
 export const SNAKELADDER_CONFIG = {
   // Feature Toggles
   FEATURES: {
@@ -9,7 +8,7 @@ export const SNAKELADDER_CONFIG = {
     EMOTIONAL_RESET: true,
     COMFORT_SCALING: true,
   },
-  
+
   // Timing (Gentle, Patient)
   TIMING: {
     DICE_ROLL_MS: 800, // Slower than Ludo
@@ -21,7 +20,7 @@ export const SNAKELADDER_CONFIG = {
     BREATHING_ROOM_MS: 200, // After major events
     TURN_TRANSITION_MS: 300, // Clean slate
   },
-  
+
   // Emotion Engineering (Soft, Kind)
   EMOTION: {
     INTENSITY: 'GENTLE' as 'GENTLE' | 'SOFT' | 'CALM',
@@ -30,7 +29,7 @@ export const SNAKELADDER_CONFIG = {
     AMBIENT_MOTION_INTERVAL_MS: 8000, // Snakes breathe every 8s
     LADDER_SHIMMER_INTERVAL_MS: 10000, // Ladders shimmer every 10s
   },
-  
+
   // Sound (Storybook Tone - NO SHARP SOUNDS)
   SOUND: {
     DICE_VOLUME: 0.15, // Soft
@@ -39,7 +38,7 @@ export const SNAKELADDER_CONFIG = {
     WIN_VOLUME: 0.25, // Calm celebration
     MAX_VOLUME: 0.3, // Never loud
   },
-  
+
   // Visual (Soft, Readable)
   VISUAL: {
     SNAKE_HEAD_SCALE: 1.3, // Larger than body
@@ -47,7 +46,7 @@ export const SNAKELADDER_CONFIG = {
     TURN_HALO_OPACITY: 0.4, // Soft, not bright
     BOARD_FADE_ON_EVENT: 0.8, // Dim others during event
   },
-  
+
   // Comfort Features
   COMFORT: {
     NIGHT_MODE_AUTO: true,

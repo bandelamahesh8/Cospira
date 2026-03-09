@@ -94,9 +94,7 @@ const RoomDemo = () => {
                     <Monitor className='w-12 h-12 text-background' />
                   </div>
                   <h3 className='text-2xl font-semibold mb-2'>Secure Video Call</h3>
-                  <p className='text-muted-foreground'>
-                    High-definition video processing
-                  </p>
+                  <p className='text-muted-foreground'>High-definition video processing</p>
                 </div>
               </div>
 

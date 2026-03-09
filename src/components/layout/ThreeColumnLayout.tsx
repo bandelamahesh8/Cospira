@@ -17,20 +17,23 @@ export const ThreeColumnLayout = ({
   bottomNav,
   isSidebarCollapsed = false,
   isIntelligenceCollapsed = false,
-}: ThreeColumnLayoutProps & { isSidebarCollapsed?: boolean; isIntelligenceCollapsed?: boolean }) => {
+}: ThreeColumnLayoutProps & {
+  isSidebarCollapsed?: boolean;
+  isIntelligenceCollapsed?: boolean;
+}) => {
   return (
-    <div className="h-screen bg-[#0b0f14] flex flex-col overflow-hidden">
+    <div className='h-screen bg-[#0b0f14] flex flex-col overflow-hidden'>
       {/* TOP BAR - Command Center */}
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 h-16 bg-[rgba(10,15,25,0.6)] backdrop-blur-[16px] border-b border-white/5"
+        className='fixed top-0 left-0 right-0 z-50 h-16 bg-[rgba(10,15,25,0.6)] backdrop-blur-[16px] border-b border-white/5'
       >
         {topBar}
       </motion.div>
 
       {/* MAIN LAYOUT - 3 Columns */}
-      <div className="flex flex-1 pt-16 overflow-hidden">
+      <div className='flex flex-1 pt-16 overflow-hidden'>
         {/* LEFT SIDEBAR - Navigation */}
         <motion.aside
           initial={{ x: -20, opacity: 0 }}
@@ -46,7 +49,7 @@ export const ThreeColumnLayout = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="flex-1 overflow-y-auto pb-24 lg:pb-0 custom-scrollbar"
+          className='flex-1 overflow-y-auto pb-24 lg:pb-0 custom-scrollbar'
         >
           {mainContent}
         </motion.main>

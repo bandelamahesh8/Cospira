@@ -3,25 +3,21 @@
  * Features: Faster animations in late game
  */
 
-import { LUDO_CONFIG } from './config';
-
 export class EndgameAccelerator {
   /**
    * Get animation speed multiplier based on game progress
    */
-  getEndgameSpeed(tokensInHome: number, totalTokens: number = 4): number {
-    const homePercent = tokensInHome / totalTokens;
-    
+  getEndgameSpeed(tokensInHome: number, _totalTokens: number = 4): number {
     // 3+ tokens home = 40% faster
     if (tokensInHome >= 3) {
       return 0.6;
     }
-    
+
     // 2 tokens home = 20% faster
     if (tokensInHome >= 2) {
       return 0.8;
     }
-    
+
     return 1.0; // Normal speed
   }
 

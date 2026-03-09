@@ -10,11 +10,7 @@ const IV_LEN = 12;
 const TAG_LEN = 128;
 
 export async function generateKey(): Promise<CryptoKey> {
-  return crypto.subtle.generateKey(
-    { name: ALG, length: KEY_LEN },
-    true,
-    ['encrypt', 'decrypt']
-  );
+  return crypto.subtle.generateKey({ name: ALG, length: KEY_LEN }, true, ['encrypt', 'decrypt']);
 }
 
 export async function exportKey(key: CryptoKey): Promise<string> {
@@ -24,10 +20,16 @@ export async function exportKey(key: CryptoKey): Promise<string> {
 
 export async function importKey(base64: string): Promise<CryptoKey> {
   const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  return crypto.subtle.importKey('raw', bin, { name: ALG, length: KEY_LEN }, true, ['encrypt', 'decrypt']);
+  return crypto.subtle.importKey('raw', bin, { name: ALG, length: KEY_LEN }, true, [
+    'encrypt',
+    'decrypt',
+  ]);
 }
 
-export async function encrypt(plaintext: string, key: CryptoKey): Promise<{ iv: string; cipher: string }> {
+export async function encrypt(
+  plaintext: string,
+  key: CryptoKey
+): Promise<{ iv: string; cipher: string }> {
   const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
   const enc = await crypto.subtle.encrypt(
     { name: ALG, iv, tagLength: TAG_LEN },
@@ -40,14 +42,14 @@ export async function encrypt(plaintext: string, key: CryptoKey): Promise<{ iv: 
   };
 }
 
-export async function decrypt(ivBase64: string, cipherBase64: string, key: CryptoKey): Promise<string> {
+export async function decrypt(
+  ivBase64: string,
+  cipherBase64: string,
+  key: CryptoKey
+): Promise<string> {
   const iv = Uint8Array.from(atob(ivBase64), (c) => c.charCodeAt(0));
   const cipher = Uint8Array.from(atob(cipherBase64), (c) => c.charCodeAt(0));
-  const dec = await crypto.subtle.decrypt(
-    { name: ALG, iv, tagLength: TAG_LEN },
-    key,
-    cipher
-  );
+  const dec = await crypto.subtle.decrypt({ name: ALG, iv, tagLength: TAG_LEN }, key, cipher);
   return new TextDecoder().decode(dec);
 }
 

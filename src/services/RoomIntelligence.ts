@@ -30,7 +30,6 @@ export interface RoomModeConfig {
   };
 }
 
-
 export interface RoomSuggestion {
   suggestedMode: RoomMode;
   confidence: number;
@@ -57,8 +56,8 @@ export const ROOM_MODE_CONFIGS: Record<RoomMode, RoomModeConfig> = {
     uiConfig: {
       theme: 'fun',
       layout: 'dynamic',
-      gameOverlay: true
-    }
+      gameOverlay: true,
+    },
   },
   professional: {
     label: 'Professional',
@@ -78,8 +77,8 @@ export const ROOM_MODE_CONFIGS: Record<RoomMode, RoomModeConfig> = {
     uiConfig: {
       theme: 'professional',
       layout: 'grid',
-      showTimer: true
-    }
+      showTimer: true,
+    },
   },
   ultra: {
     label: 'Ultra Security',
@@ -93,15 +92,15 @@ export const ROOM_MODE_CONFIGS: Record<RoomMode, RoomModeConfig> = {
       games: false, // Professional standard
       virtualBrowser: false, // Limit external vectors
       screenShare: false, // User Req: No outgoing screen share
-      transcription: true, 
+      transcription: true,
       summary: true, // "Complete high professional" implies minutes needed.
     },
     uiConfig: {
       theme: 'ultra',
       layout: 'focused',
       securityHud: true,
-      watermark: true
-    }
+      watermark: true,
+    },
   },
   mixed: {
     label: 'Mixed Mode',
@@ -121,9 +120,9 @@ export const ROOM_MODE_CONFIGS: Record<RoomMode, RoomModeConfig> = {
     uiConfig: {
       theme: 'mixed',
       layout: 'dynamic',
-      showTimer: true
-    }
-  }
+      showTimer: true,
+    },
+  },
 };
 
 /**
@@ -143,7 +142,10 @@ export function getAllModes(): RoomMode[] {
 /**
  * Check if a feature is enabled for a given mode
  */
-export function isFeatureEnabled(mode: RoomMode, feature: keyof RoomModeConfig['features']): boolean {
+export function isFeatureEnabled(
+  mode: RoomMode,
+  feature: keyof RoomModeConfig['features']
+): boolean {
   const config = getModeConfig(mode);
   return config.features[feature] ?? false;
 }
@@ -161,5 +163,5 @@ export default {
   getAllModes,
   isFeatureEnabled,
   getUIConfig,
-  ROOM_MODE_CONFIGS
+  ROOM_MODE_CONFIGS,
 };

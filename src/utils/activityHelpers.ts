@@ -25,7 +25,7 @@ export const mockActivities: Activity[] = [
     roomId: 'ABC123',
     roomName: 'Study Group',
   },
-  
+
   // Yesterday
   {
     id: '2',
@@ -40,7 +40,7 @@ export const mockActivities: Activity[] = [
     roomId: 'XYZ789',
     roomName: 'Quick Meeting',
   },
-  
+
   {
     id: '3',
     type: 'presentation',
@@ -51,7 +51,7 @@ export const mockActivities: Activity[] = [
     timestamp: getRelativeDate(1, 2, 5), // Yesterday + 5 mins
     roomId: 'XYZ789',
   },
-  
+
   // 3 Days ago
   {
     id: '4',
@@ -63,7 +63,7 @@ export const mockActivities: Activity[] = [
     timestamp: getRelativeDate(3, 1, 0), // 3 days ago
     roomId: 'DEF456',
   },
-  
+
   {
     id: '5',
     type: 'browser',
@@ -73,7 +73,7 @@ export const mockActivities: Activity[] = [
     timestamp: getRelativeDate(3, 1, 25), // 3 days ago
     roomId: 'DEF456',
   },
-  
+
   // 5 Days ago
   {
     id: '6',
@@ -84,7 +84,7 @@ export const mockActivities: Activity[] = [
     timestamp: getRelativeDate(5, 4, 0), // 5 days ago
     roomId: 'GHI012',
   },
-  
+
   {
     id: '7',
     type: 'screen',
@@ -94,7 +94,7 @@ export const mockActivities: Activity[] = [
     timestamp: getRelativeDate(5, 4, 15), // 5 days ago
     roomId: 'GHI012',
   },
-  
+
   // 1 Week ago
   {
     id: '8',
@@ -116,17 +116,17 @@ export const mockActivities: Activity[] = [
  */
 export const getFilteredActivities = (filter: string, activities: Activity[]): Activity[] => {
   if (filter === 'All') return activities;
-  
+
   const filterMap: Record<string, string[]> = {
-    'Rooms': ['room', 'session-group'],
-    'Presentations': ['presentation'],
-    'Games': ['game'],
-    'Media': ['browser', 'youtube', 'screen'],
-    'Feedback': [], 
+    Rooms: ['room', 'session-group'],
+    Presentations: ['presentation'],
+    Games: ['game'],
+    Media: ['browser', 'youtube', 'screen'],
+    Feedback: [],
   };
-  
+
   const types = filterMap[filter] || [];
-  return activities.filter(activity => types.includes(activity.type));
+  return activities.filter((activity) => types.includes(activity.type));
 };
 
 /**
@@ -144,43 +144,45 @@ export const formatActivityTimestamp = (date: Date): string => {
  */
 export const groupActivitiesByDate = (activities: Activity[]): Record<string, Activity[]> => {
   const groups: Record<string, Activity[]> = {};
-  
-  activities.forEach(activity => {
+
+  activities.forEach((activity) => {
     let key = 'Earlier';
-    
+
     // We recreate dates to ensure comparison works correctly regardless of existing date object state
     const activityDate = new Date(activity.timestamp);
     const today = new Date();
-    
+
     if (isToday(activityDate)) {
       key = 'Today';
     } else if (isYesterday(activityDate)) {
       key = 'Yesterday';
     } else {
-      const daysDiff = Math.floor((today.getTime() - activityDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.floor(
+        (today.getTime() - activityDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
       if (daysDiff <= 7) {
         key = 'This Week';
       } else if (daysDiff <= 30) {
         key = 'This Month';
       }
     }
-    
+
     if (!groups[key]) {
       groups[key] = [];
     }
     groups[key].push(activity);
   });
-  
+
   // Create ordered object manually to enforce order
   const orderedGroups: Record<string, Activity[]> = {};
   const order = ['Today', 'Yesterday', 'This Week', 'This Month', 'Earlier'];
-  
-  order.forEach(key => {
+
+  order.forEach((key) => {
     if (groups[key]) {
       orderedGroups[key] = groups[key];
     }
   });
-  
+
   return orderedGroups;
 };
 
@@ -192,35 +194,35 @@ export const generateActivityInsight = (activities: Activity[]): string => {
     presentation: 0,
     game: 0,
     media: 0,
-    room: 0
+    room: 0,
   };
-  
-  activities.forEach(a => {
+
+  activities.forEach((a) => {
     if (a.type === 'presentation') counts.presentation++;
     if (a.type === 'game') counts.game++;
     if (['browser', 'youtube', 'screen'].includes(a.type)) counts.media++;
     if (['room', 'session-group'].includes(a.type)) counts.room++;
   });
-  
+
   // Find highest count
   let max = -1;
   let topType = '';
-  
+
   Object.entries(counts).forEach(([type, count]) => {
     if (count > max) {
       max = count;
       topType = type;
     }
   });
-  
+
   switch (topType) {
     case 'game':
-      return "You mostly use games to connect with others.";
+      return 'You mostly use games to connect with others.';
     case 'presentation':
-      return "You frequently share documents and present ideas.";
+      return 'You frequently share documents and present ideas.';
     case 'media':
-      return "You often browse and share media content.";
+      return 'You often browse and share media content.';
     default:
-      return "You are an active room host and participant.";
+      return 'You are an active room host and participant.';
   }
 };

@@ -38,14 +38,14 @@ export const getLossMessage = (gameData: GameData): string => {
 /**
  * Get session emotional anchor
  */
-export const getSessionSummary = (gameData: GameData): string => {
+export const getSessionSummary = (_gameData: GameData): string => {
   const summaries = [
-    "That was chaotic 😄",
-    "You survived a brutal match.",
-    "What a comeback!",
-    "Close game!",
-    "Intense finish!",
-    "Well played!",
+    'That was chaotic 😄',
+    'You survived a brutal match.',
+    'What a comeback!',
+    'Close game!',
+    'Intense finish!',
+    'Well played!',
   ];
 
   // Emotion only, no stats

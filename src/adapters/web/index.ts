@@ -11,7 +11,7 @@ export class WebAdapter implements DesktopAdapter {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, { body });
     } else {
-        logger.debug('[WebAdapter] Notification permission not granted');
+      logger.debug('[WebAdapter] Notification permission not granted');
     }
   }
 
@@ -31,12 +31,12 @@ export class WebAdapter implements DesktopAdapter {
   }
 
   onSystemSleep(_callback: () => void): void {
-      // No standard API for sleep detection in generic web, 
-      // but visibilitychange can capture some aspects
-      document.addEventListener('visibilitychange', () => {
-          if (document.hidden) {
-              // Not exactly sleep, but close enough for web context
-          }
-      });
+    // No standard API for sleep detection in generic web,
+    // but visibilitychange can capture some aspects
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Not exactly sleep, but close enough for web context
+      }
+    });
   }
 }

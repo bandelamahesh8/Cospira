@@ -18,7 +18,7 @@ export const useRageExitInterceptor = () => {
         e.preventDefault();
         e.returnValue = 'Game still running';
         setShowExitWarning(true);
-        
+
         // Delay exit by 300ms
         setTimeout(() => {
           setJustLost(false);
@@ -33,7 +33,7 @@ export const useRageExitInterceptor = () => {
 
   const triggerLoss = useCallback(() => {
     setJustLost(true);
-    
+
     // Auto-reset after 5 seconds
     setTimeout(() => {
       setJustLost(false);

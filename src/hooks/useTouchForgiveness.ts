@@ -19,31 +19,28 @@ export const useTouchForgiveness = () => {
    * Correct tap to nearest valid target
    * Returns null if no target within forgiveness radius
    */
-  const correctTap = useCallback((
-    tapX: number,
-    tapY: number,
-    validTargets: Target[]
-  ): Target | null => {
-    if (validTargets.length === 0) return null;
+  const correctTap = useCallback(
+    (tapX: number, tapY: number, validTargets: Target[]): Target | null => {
+      if (validTargets.length === 0) return null;
 
-    // Find nearest valid target within radius
-    let nearest: { target: Target | null; distance: number } = {
-      target: null,
-      distance: Infinity,
-    };
+      // Find nearest valid target within radius
+      let nearest: { target: Target | null; distance: number } = {
+        target: null,
+        distance: Infinity,
+      };
 
-    for (const target of validTargets) {
-      const distance = Math.sqrt(
-        Math.pow(tapX - target.x, 2) + Math.pow(tapY - target.y, 2)
-      );
+      for (const target of validTargets) {
+        const distance = Math.sqrt(Math.pow(tapX - target.x, 2) + Math.pow(tapY - target.y, 2));
 
-      if (distance < forgivenessRadius && distance < nearest.distance) {
-        nearest = { target, distance };
+        if (distance < forgivenessRadius && distance < nearest.distance) {
+          nearest = { target, distance };
+        }
       }
-    }
 
-    return nearest.target;
-  }, [forgivenessRadius]);
+      return nearest.target;
+    },
+    [forgivenessRadius]
+  );
 
   /**
    * Get expanded hitbox size for low-end devices

@@ -40,38 +40,26 @@ export function MoveHistory({
   };
 
   return (
-    <Card className="bg-slate-950 border-slate-800 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-white">Move History</h3>
+    <Card className='bg-slate-950 border-slate-800 p-4'>
+      <div className='flex items-center justify-between mb-4'>
+        <h3 className='text-lg font-bold text-white'>Move History</h3>
         {onExportPGN && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onExportPGN}
-            className="gap-2"
-          >
-            <Download className="w-4 h-4" />
+          <Button variant='outline' size='sm' onClick={onExportPGN} className='gap-2'>
+            <Download className='w-4 h-4' />
             PGN
           </Button>
         )}
       </div>
 
-      <ScrollArea className="h-[300px] pr-4">
+      <ScrollArea className='h-[300px] pr-4'>
         {moves.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-8">
-            No moves yet
-          </p>
+          <p className='text-sm text-slate-500 text-center py-8'>No moves yet</p>
         ) : (
-          <div className="space-y-1">
+          <div className='space-y-1'>
             {moves.map((move, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[40px_1fr_1fr] gap-2 items-center"
-              >
+              <div key={index} className='grid grid-cols-[40px_1fr_1fr] gap-2 items-center'>
                 {/* Move number */}
-                <span className="text-xs font-bold text-slate-500">
-                  {move.number}.
-                </span>
+                <span className='text-xs font-bold text-slate-500'>{move.number}.</span>
 
                 {/* White's move */}
                 <button
@@ -109,31 +97,31 @@ export function MoveHistory({
       </ScrollArea>
 
       {/* Navigation controls */}
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
+      <div className='flex items-center justify-between mt-4 pt-4 border-t border-slate-800'>
         <Button
-          variant="outline"
-          size="sm"
+          variant='outline'
+          size='sm'
           onClick={handlePrevious}
           disabled={!canGoBack}
-          className="gap-2"
+          className='gap-2'
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className='w-4 h-4' />
           Previous
         </Button>
 
-        <span className="text-xs text-slate-500">
+        <span className='text-xs text-slate-500'>
           Move {currentMoveIndex + 1} / {moves.length * 2}
         </span>
 
         <Button
-          variant="outline"
-          size="sm"
+          variant='outline'
+          size='sm'
           onClick={handleNext}
           disabled={!canGoForward}
-          className="gap-2"
+          className='gap-2'
         >
           Next
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className='w-4 h-4' />
         </Button>
       </div>
     </Card>

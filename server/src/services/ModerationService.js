@@ -53,22 +53,24 @@ class ModerationService {
       });
 
       const autoMod = checkAutoModeration(history);
-      
-      // 4. Execute Actions
-      const finalAction = autoMod.shouldModerate ? autoMod.action : result.action;
+
+      // 4. Advisory suggestion (AI never auto-acts — suggestion goes to host/owner)
+      const suggestedAction = autoMod.shouldModerate ? autoMod.action : result.action;
       const reason = autoMod.shouldModerate ? autoMod.reason : 'Automated content policy violation';
 
-      await this.executeAction(roomId, userId, userName, finalAction, reason, autoMod.duration);
+      // Emit advisory — human decides
+      await this.emitModerationSuggestion(roomId, userId, userName, suggestedAction, reason, result.severity);
 
-      // 5. Filter content if not blocked
+      // 5. Filter content (text redaction is still automatic — not a human action)
       const filteredContent = (result.severity === SEVERITY.HIGH || result.severity === SEVERITY.CRITICAL)
-        ? `[Content blocked for ${result.violations[0]?.type}]`
+        ? `[Content removed for policy violation]`
         : filterContent(content, result);
 
       return { 
         content: filteredContent, 
-        result, 
-        blocked: (result.severity === SEVERITY.HIGH || result.severity === SEVERITY.CRITICAL)
+        result,
+        blocked: (result.severity === SEVERITY.HIGH || result.severity === SEVERITY.CRITICAL),
+        suggestion: { action: suggestedAction, reason },
       };
 
     } catch (error) {
@@ -125,74 +127,57 @@ class ModerationService {
   }
 
   /**
-   * Execute moderation action (Mute, Kick, Warn)
+   * Emit moderation SUGGESTION to host/owner.
+   * AI is advisory — the human decides whether to act.
+   * @param {string} suggestedAction - 'kick' | 'mute_temporary' | 'warn'
    */
-  async executeAction(roomId, userId, userName, action, reason, duration = 0) {
+  async emitModerationSuggestion(roomId, userId, userName, suggestedAction, reason, severity) {
     if (!this.io) return;
 
-    logger.warn(`[Moderation] Executing ${action} on ${userName} (${userId}) in ${roomId}. Reason: ${reason}`);
+    logger.info(`[ModerationService] Advisory: suggest '${suggestedAction}' for ${userName} (${userId}) in ${roomId}`);
 
-    // Save to AI Memory
+    // Save to AI Memory (unchanged)
     try {
-        const { default: aiMemoryService } = await import('./ai/AIMemoryService.js');
-        await aiMemoryService.saveMemory({
-            roomId,
-            userId,
-            eventType: 'decision',
-            content: { 
-                action, 
-                reason, 
-                targetUser: userName,
-                message: `AI Decision: ${action.toUpperCase()} user ${userName} for "${reason}"`
-            },
-            importance: action === 'kick' ? 5 : 3,
-            tags: ['moderation', 'decision', action]
-        });
+      const { default: aiMemoryService } = await import('./ai/AIMemoryService.js');
+      await aiMemoryService.saveMemory({
+        roomId,
+        userId,
+        eventType: 'moderation_suggestion',
+        content: {
+          suggestedAction,
+          reason,
+          targetUser: userName,
+          message: `AI Suggestion: consider '${suggestedAction}' for ${userName} — ${reason}`,
+        },
+        importance: suggestedAction === 'kick' ? 5 : 3,
+        tags: ['moderation', 'suggestion', suggestedAction],
+      });
     } catch (e) {
-        logger.error('[ModerationService] Failed to log memory:', e.message);
+      logger.error('[ModerationService] Failed to log memory:', e.message);
     }
 
-    // Notify the user specifically
-    this.io.to(userId).emit('moderation:action', {
-      action,
-      reason,
-      duration,
-      timestamp: new Date()
-    });
-
-    // Notify the room/host
-    this.io.to(roomId).emit('moderation:alert', {
+    // Advisory emission to host/room (no auto-action)
+    this.io.to(roomId).emit('ai:moderation:suggestion', {
       userId,
       userName,
-      action,
+      suggestedAction,
       reason,
-      severity: action === 'kick' ? 'critical' : 'high'
+      severity,
+      // Actions the host can trigger via normal UI flows
+      available_actions: suggestedAction === 'kick'
+        ? ['Mute', 'Remove from breakout', 'Dismiss']
+        : ['Warn', 'Mute', 'Dismiss'],
     });
+  }
 
-    // Logical execution
-    switch (action) {
-      case 'kick':
-        // We'll need to find the socket associated with this user
-        // and disconnect them from the room.
-        // For now, emit a 'force-leave' event the client must respect.
-        this.io.to(userId).emit('room:force-leave', { reason });
-        break;
-      
-      case 'mute_extended':
-      case 'mute_temporary':
-        // Emit global mute for this user
-        this.io.to(roomId).emit('room:member-muted', {
-          userId,
-          reason,
-          duration,
-          automated: true
-        });
-        break;
-      
-      case 'warn':
-        // Warn is just the notification already sent
-        break;
-    }
+  /**
+   * @deprecated Auto-action removed — AI is advisory only.
+   * Kept for backward compatibility with any direct callers.
+   * Will emit suggestion instead of executing action.
+   */
+  async executeAction(roomId, userId, userName, action, reason, duration = 0) {
+    logger.warn('[ModerationService] executeAction() is deprecated — use emitModerationSuggestion() instead');
+    await this.emitModerationSuggestion(roomId, userId, userName, action, reason, 'medium');
   }
 }
 

@@ -17,7 +17,7 @@ export const FateMessage = ({ message, type }: FateMessageProps) => {
   useEffect(() => {
     if (message) {
       setShow(true);
-      
+
       // Auto-hide after 2 seconds
       setTimeout(() => setShow(false), 2000);
     }
@@ -27,7 +27,7 @@ export const FateMessage = ({ message, type }: FateMessageProps) => {
     <AnimatePresence>
       {show && message && (
         <motion.div
-          className="fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-lg backdrop-blur-sm"
+          className='fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-lg backdrop-blur-sm'
           style={{
             backgroundColor: type === 'ladder' ? '#22c55e20' : '#ef444420',
             border: `1px solid ${type === 'ladder' ? '#22c55e40' : '#ef444440'}`,
@@ -37,9 +37,7 @@ export const FateMessage = ({ message, type }: FateMessageProps) => {
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
         >
-          <p className="text-white text-lg font-light text-center">
-            {message}
-          </p>
+          <p className='text-white text-lg font-light text-center'>{message}</p>
         </motion.div>
       )}
     </AnimatePresence>
