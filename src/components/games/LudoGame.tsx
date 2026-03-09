@@ -8,15 +8,9 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
-  Star,
   ListOrdered,
   Zap,
   Crown,
-  Gem,
-  ChevronRight,
-  ChevronLeft,
-  ChevronUp,
-  ChevronDown,
   BrainCircuit,
   Target,
   ShieldAlert,
@@ -24,22 +18,14 @@ import {
 import { ThreeDDice } from './ui/ThreeDDice';
 import confetti from 'canvas-confetti';
 import { GameResultOverlay } from './ui/GameResultOverlay';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Environment } from '@react-three/drei';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { LudoBoard3D } from './ludo-3d/LudoBoard3D';
+import { LudoToken3D } from './ludo-3d/LudoToken3D';
 
 // --- CONSTANTS ---
-const PATH_COORDS = [
-  { x: 9, y: 2 }, { x: 9, y: 3 }, { x: 9, y: 4 }, { x: 9, y: 5 }, { x: 9, y: 6 },
-  { x: 10, y: 7 }, { x: 11, y: 7 }, { x: 12, y: 7 }, { x: 13, y: 7 }, { x: 14, y: 7 }, { x: 15, y: 7 },
-  { x: 15, y: 8 }, { x: 15, y: 9 },
-  { x: 14, y: 9 }, { x: 13, y: 9 }, { x: 12, y: 9 }, { x: 11, y: 9 }, { x: 10, y: 9 },
-  { x: 9, y: 10 }, { x: 9, y: 11 }, { x: 9, y: 12 }, { x: 9, y: 13 }, { x: 9, y: 14 }, { x: 9, y: 15 },
-  { x: 8, y: 15 }, { x: 7, y: 15 },
-  { x: 7, y: 14 }, { x: 7, y: 13 }, { x: 7, y: 12 }, { x: 7, y: 11 }, { x: 7, y: 10 },
-  { x: 6, y: 9 }, { x: 5, y: 9 }, { x: 4, y: 9 }, { x: 3, y: 9 }, { x: 2, y: 9 }, { x: 1, y: 9 },
-  { x: 1, y: 8 }, { x: 1, y: 7 },
-  { x: 2, y: 7 }, { x: 3, y: 7 }, { x: 4, y: 7 }, { x: 5, y: 7 }, { x: 6, y: 7 },
-  { x: 7, y: 6 }, { x: 7, y: 5 }, { x: 7, y: 4 }, { x: 7, y: 3 }, { x: 7, y: 2 }, { x: 7, y: 1 },
-  { x: 8, y: 1 }, { x: 9, y: 1 },
-];
+// Path coordinates and 3D mapping have been moved to LudoConfig.ts
 
 const SAFE_POSITIONS = [0, 8, 13, 21, 26, 34, 39, 47];
 const PLAYER_OFFSETS = [39, 0, 13, 26]; // Red, Green, Yellow, Blue
@@ -194,182 +180,59 @@ export const LudoGame = () => {
     }
   };
 
-  const getCoords = (pIdx: number, pos: number, tIdx: number) => {
-    if (pos === -1) { // Fixed: checking -1 instead of 0 for home
-      const basePositions = [
-        [{ x: 3, y: 12 }, { x: 5, y: 12 }, { x: 3, y: 14 }, { x: 5, y: 14 }], // Red (BL)
-        [{ x: 3, y: 3 }, { x: 5, y: 3 }, { x: 3, y: 5 }, { x: 5, y: 5 }],    // Green (TL)
-        [{ x: 12, y: 3 }, { x: 14, y: 3 }, { x: 12, y: 5 }, { x: 14, y: 5 }], // Yellow (TR)
-        [{ x: 12, y: 12 }, { x: 14, y: 12 }, { x: 12, y: 14 }, { x: 14, y: 14 }] // Blue (BR)
-      ];
-      return basePositions[pIdx][tIdx];
-    }
-    if (pos >= 57) return { x: 8, y: 8 };
-    if (pos <= 51) {
-      if (pos === 0) return PATH_COORDS[PLAYER_OFFSETS[pIdx]];
-      return PATH_COORDS[(PLAYER_OFFSETS[pIdx] + pos) % 52];
-    }
-    const step = pos - 51; // 1 to 5
-    if (pIdx === 1) return { x: 8, y: step + 1 }; // Green (Top)
-    if (pIdx === 2) return { x: 15 - step, y: 8 }; // Yellow (Right)
-    if (pIdx === 3) return { x: 8, y: 15 - step }; // Blue (Bottom)
-    if (pIdx === 0) return { x: step + 1, y: 8 }; // Red (Left)
-    return { x: 8, y: 8 };
-  };
-
   return (
     <Card className='w-full max-w-6xl mx-auto bg-[#0a0f1e] border-[#5e17a3] shadow-[0_0_100px_rgba(138,43,226,0.3)] relative overflow-hidden flex flex-col xl:flex-row p-4 lg:p-8 rounded-[3rem] border-4'>
       {/* AMBIENT GLOW */}
       <div className='absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-[#8a2be2]/15 to-transparent pointer-events-none' />
 
-      {/* THE LUDO BOARD */}
-      <div className='flex-1 relative aspect-square max-w-[600px] mx-auto p-3 bg-gradient-to-br from-[#1a1025] to-[#2d114c] rounded-[3rem] shadow-2xl border border-[#5e17a3]/50 ring-4 ring-[#8a2be2]/20'>
-        <div
-          className='w-full h-full bg-[#f8f9fa] rounded-[2.5rem] relative overflow-hidden grid p-1 shadow-[inset_0_0_50px_rgba(0,0,0,0.2)]'
-          style={{ gridTemplateColumns: 'repeat(15, 1fr)', gridTemplateRows: 'repeat(15, 1fr)' }}
-        >
-          {/* BASE ZONES */}
-          <div className='absolute top-0 left-0 w-[40%] h-[40%] bg-gradient-to-br from-[#2ecc71] to-[#27ae60] flex items-center justify-center rounded-[2.5rem] border-b-[6px] border-r-[6px] border-black/10'>
-            <div className='w-[85%] h-[85%] bg-white/95 rounded-[2rem] shadow-lg flex items-center justify-center relative overflow-hidden'>
-               <div className='absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(39,174,96,0.1)_100%)]' />
-               <Crown className='absolute top-2 left-2 w-6 h-6 text-emerald-200/50 -rotate-45' />
-            </div>
-          </div>
-          <div className='absolute top-0 right-0 w-[40%] h-[40%] bg-gradient-to-bl from-[#f1c40f] to-[#f39c12] flex items-center justify-center rounded-[2.5rem] border-b-[6px] border-l-[6px] border-black/10'>
-            <div className='w-[85%] h-[85%] bg-white/95 rounded-[2rem] shadow-lg flex items-center justify-center relative overflow-hidden'>
-                <div className='absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(241,196,15,0.1)_100%)]' />
-            </div>
-          </div>
-          <div className='absolute bottom-0 left-0 w-[40%] h-[40%] bg-gradient-to-tr from-[#e74c3c] to-[#c0392b] flex items-center justify-center rounded-[2.5rem] border-t-[6px] border-r-[6px] border-black/10'>
-            <div className='w-[85%] h-[85%] bg-white/95 rounded-[2rem] shadow-lg flex items-center justify-center relative overflow-hidden'>
-                <div className='absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(231,76,60,0.1)_100%)]' />
-            </div>
-          </div>
-          <div className='absolute bottom-0 right-0 w-[40%] h-[40%] bg-gradient-to-tl from-[#3498db] to-[#2980b9] flex items-center justify-center rounded-[2.5rem] border-t-[6px] border-l-[6px] border-black/10'>
-            <div className='w-[85%] h-[85%] bg-white/95 rounded-[2rem] shadow-lg flex items-center justify-center relative overflow-hidden'>
-               <div className='absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(52,152,219,0.1)_100%)]' />
-            </div>
-          </div>
-
-          {/* PATHWAY GRID (15x15) */}
-          {Array.from({ length: 225 }).map((_, i) => {
-            const r = Math.floor(i / 15) + 1;
-            const c = (i % 15) + 1;
-
-            const isSafe =
-              (r === 7 && c === 2) || (r === 2 && c === 9) ||
-              (r === 9 && c === 14) || (r === 14 && c === 7) ||
-              (r === 9 && c === 3) || (r === 3 && c === 7) ||
-              (r === 7 && c === 13) || (r === 13 && c === 9);
-
-            const isGreenStretch = c === 8 && r >= 2 && r <= 7;
-            const isYellowStretch = r === 8 && c >= 9 && c <= 14;
-            const isBlueStretch = c === 8 && r >= 9 && r <= 14;
-            const isRedStretch = r === 8 && c >= 2 && c <= 7;
-
-            const isPath = (r >= 7 && r <= 9) || (c >= 7 && c <= 9);
-            const isHomeBase = !isPath;
-
-            if (isHomeBase) return <div key={i} className='bg-transparent' />;
-
-            const isGreenEnter = r === 2 && c === 9;
-            const isYellowEnter = r === 9 && c === 14;
-            const isBlueEnter = r === 14 && c === 7;
-            const isRedEnter = r === 7 && c === 2;
-
-            return (
-              <div
-                key={i}
-                className={cn(
-                  'relative border-[1px] border-slate-200 transition-all flex items-center justify-center',
-                  isGreenStretch ? 'bg-gradient-to-b from-[#27ae60]/90 to-[#2ecc71]/90' :
-                  isYellowStretch ? 'bg-gradient-to-l from-[#f1c40f]/90 to-[#f39c12]/90' :
-                  isBlueStretch ? 'bg-gradient-to-t from-[#3498db]/90 to-[#2980b9]/90' :
-                  isRedStretch ? 'bg-gradient-to-r from-[#e74c3c]/90 to-[#c0392b]/90' :
-                  'bg-white/90 shadow-[inset_0_0_15px_rgba(0,0,0,0.02)]'
-                )}
-              >
-                {isSafe && <Star className='w-[60%] h-[60%] text-slate-300 fill-slate-200/50' />}
-
-                {/* Path entry arrows */}
-                {isGreenEnter && <div className='absolute inset-0 bg-emerald-500 shadow-inner flex items-center justify-center'><ChevronDown className='w-full h-full text-white/50 stroke-[3]' /></div>}
-                {isYellowEnter && <div className='absolute inset-0 bg-yellow-400 shadow-inner flex items-center justify-center'><ChevronLeft className='w-full h-full text-white/50 stroke-[3]' /></div>}
-                {isBlueEnter && <div className='absolute inset-0 bg-blue-500 shadow-inner flex items-center justify-center'><ChevronUp className='w-full h-full text-white/50 stroke-[3]' /></div>}
-                {isRedEnter && <div className='absolute inset-0 bg-red-500 shadow-inner flex items-center justify-center'><ChevronRight className='w-full h-full text-white/50 stroke-[3]' /></div>}
-              </div>
-            );
-          })}
-
-          {/* CENTRAL HOME CROSS */}
-          <div className='absolute inset-[40%] bg-white rounded-2xl z-20 shadow-[-10px_-10px_30px_rgba(0,0,0,0.15),10px_10px_30px_rgba(255,255,255,0.9)] flex items-center justify-center overflow-hidden border-4 border-white'>
-             <div className='absolute inset-[-50%] grid grid-cols-2 grid-rows-2 -rotate-45 opacity-90 blur-[2px]'>
-               <div className='bg-[#27ae60] shadow-inner' />
-               <div className='bg-[#f1c40f] shadow-inner' />
-               <div className='bg-[#e74c3c] shadow-inner' />
-               <div className='bg-[#3498db] shadow-inner' />
-             </div>
-             <div className='z-10 bg-white/90 backdrop-blur-xl p-3 rounded-2xl shadow-2xl border border-white/50 animate-pulse'>
-               <Gem className='w-6 h-6 text-indigo-600' />
-             </div>
-          </div>
-
-          {/* TOKENS */}
-          <div
-            className='absolute inset-0 grid pointer-events-none z-30'
-            style={{ gridTemplateColumns: 'repeat(15, 1fr)', gridTemplateRows: 'repeat(15, 1fr)' }}
-          >
+      {/* THE 3D LUDO BOARD */}
+      <div className='flex-1 relative aspect-square max-w-[800px] w-full mx-auto shadow-2xl rounded-[3rem] overflow-hidden border border-[#5e17a3]/50 ring-4 ring-[#8a2be2]/20 bg-[#0a0f1e]'>
+        <Canvas camera={{ position: [0, 16, 12], fov: 45 }} dpr={[1, 2]}>
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-mapSize={2048} />
+          <Environment preset="city" />
+          
+          <OrbitControls 
+            enablePan={false} 
+            maxPolarAngle={Math.PI / 2.2} 
+            minDistance={10} 
+            maxDistance={35}
+            dampingFactor={0.05}
+          />
+          
+          <group position={[0, -0.5, 0]}>
+            <LudoBoard3D />
+            
+            {/* Tokens */}
             {players.map((p, pIdx) => {
-              const pTokens = boardTokens.filter((t: LudoToken) => t.playerId === p.id);
-              // Fallback to manual 0,0,0,0 layout if no tokens (safety)
-              const tokenPositions = pTokens.length === 4 ? pTokens : [{position: -1}, {position: -1}, {position: -1}, {position: -1}];
-              
-              return tokenPositions.map((tData: { position: number } | LudoToken, tIdx: number) => {
-                const { x, y } = getCoords(pIdx, tData.position, tIdx);
-                const isMovable = isMyTurn && phase === 'MOVE' && p.id === user?.id && 
-                                  ((tData.position === -1 && dice === 6) || (tData.position >= 0 && tData.position + (dice || 0) <= 57));
+               const pTokens = boardTokens.filter((t: LudoToken) => t.playerId === p.id);
+               // Fallback
+               const tokenData = pTokens.length === 4 ? pTokens : [{position:-1},{position:-1},{position:-1},{position:-1}] as LudoToken[];
+               return tokenData.map((tData, tIdx) => {
+                   const isMovable = isMyTurn && phase === 'MOVE' && p.id === user?.id && 
+                                    ((tData.position === -1 && dice === 6) || (tData.position >= 0 && tData.position + (dice || 0) <= 57));
+                   const isAITarget = aiTips?.tIdx === tIdx && p.id === user?.id;
 
-                const isAITarget = aiTips?.tIdx === tIdx && p.id === user?.id;
-
-                return (
-                  <motion.div
-                    key={`${p.id}-${tIdx}`}
-                    animate={{ gridColumn: x, gridRow: y }}
-                    transition={{ type: 'spring', stiffness: 180, damping: 20 }}
-                    className='w-full h-full p-[12%] pointer-events-auto flex items-center justify-center relative'
-                  >
-                    <motion.div
-                      onClick={() => isMovable && handleAction('move', tIdx)}
-                      whileHover={isMovable ? { scale: 1.2 } : {}}
-                      animate={isMovable ? { y: [0, -8, 0], scale: [1, 1.1, 1] } : {}}
-                      transition={isMovable ? { repeat: Infinity, duration: 1.2, ease: 'easeInOut' } : {}}
-                      className={cn(
-                        'w-full h-full rounded-full cursor-pointer relative shadow-[0_6px_10px_rgba(0,0,0,0.4)] border-[3px]',
-                        p.color === 'red' ? 'bg-gradient-to-t from-[#c0392b] to-[#e74c3c] border-[#922b21]' :
-                        p.color === 'green' ? 'bg-gradient-to-t from-[#219150] to-[#2ecc71] border-[#186a3b]' :
-                        p.color === 'yellow' ? 'bg-gradient-to-t from-[#f39c12] to-[#f1c40f] border-[#b9770e]' :
-                        'bg-gradient-to-t from-[#2980b9] to-[#3498db] border-[#1f618d]'
-                      )}
-                    >
-                      <div className='absolute inset-[15%] rounded-full bg-white/30 border border-white/60 blur-[1px]' />
-                      {/* Highlight movable tokens */}
-                      {isMovable && (
-                        <div className='absolute inset-[-6px] rounded-full border-[3px] border-white/80 animate-ping opacity-50' />
-                      )}
-                      {/* AI Target Highlight */}
-                      {isAITarget && (
-                        <div className='absolute -top-3 -right-3'>
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className='bg-indigo-500 rounded-full p-0.5 border-2 border-white shadow-lg z-50'>
-                             <Target className='w-3 h-3 text-white' />
-                          </motion.div>
-                        </div>
-                      )}
-                    </motion.div>
-                  </motion.div>
-                );
-              });
+                   return (
+                     <LudoToken3D 
+                        key={`${p.id}-${tIdx}`}
+                        playerIndex={pIdx}
+                        tokenIndex={tIdx}
+                        position={tData.position}
+                        color={p.color as 'red' | 'green' | 'yellow' | 'blue'}
+                        isMovable={!!isMovable}
+                        onClick={() => handleAction('move', tIdx)}
+                        isAiTarget={isAITarget}
+                     />
+                   );
+               });
             })}
-          </div>
-        </div>
+          </group>
+
+          <EffectComposer disableNormalPass>
+             <Bloom luminanceThreshold={1} mipmapBlur intensity={1.5} />
+          </EffectComposer>
+        </Canvas>
       </div>
 
       {/* INTERFACE PANEL */}
