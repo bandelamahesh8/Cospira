@@ -31,10 +31,21 @@ export function LudoToken3D({
   }, [position, playerIndex, tokenIndex]);
 
   // Spring animation for smooth movement (x, z) and a parabolic jump (y)
-  // To keep it simple, we animate x,z normally and add a bounce if movable
   const { pos } = useSpring({
     to: { pos: targetPos },
-    config: { mass: 1, tension: 170, friction: 26 }
+    config: { mass: 1, tension: 170, friction: 26 },
+    onStart: () => {
+       // Trigger jump if moving? Actually we can just derive it from the progress if we use a different spring
+    }
+  });
+
+  const { moveJumpY } = useSpring({
+    from: { moveJumpY: 0 },
+    to: async (next) => {
+       await next({ moveJumpY: 0.8, config: { tension: 400, friction: 10 } });
+       await next({ moveJumpY: 0, config: { tension: 200, friction: 20 } });
+    },
+    reset: true,
   });
 
   const { scale } = useSpring({
@@ -46,13 +57,21 @@ export function LudoToken3D({
     from: { bounceY: 0 },
     to: async (next) => {
       while (isMovable) {
-        await next({ bounceY: 0.3 });
+        await next({ bounceY: 0.2 });
         await next({ bounceY: 0 });
       }
     },
     reset: true,
     config: { tension: 300, friction: 10 }
   });
+
+  // Combine animations: bounce if movable, jump once if moving
+  const [isAnimating, setIsAnimating] = useState(false);
+  useEffect(() => {
+     setIsAnimating(true);
+     const timer = setTimeout(() => setIsAnimating(false), 600);
+     return () => clearTimeout(timer);
+  }, [position]);
 
   return (
     <a.group
@@ -65,7 +84,7 @@ export function LudoToken3D({
         }
       }}
     >
-      <a.group position-y={isMovable ? bounceY : 0}>
+      <a.group position-y={isAnimating ? moveJumpY : (isMovable ? bounceY : 0)}>
         <Cylinder args={[BOARD_CELL_SIZE * 0.3, BOARD_CELL_SIZE * 0.4, 0.6, 32]} position={[0, 0.3, 0]} castShadow>
           <meshPhysicalMaterial 
             color={hexColor} 

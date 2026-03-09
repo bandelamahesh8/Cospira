@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Box, RoundedBox } from '@react-three/drei';
+import { Box, RoundedBox, Float, Text } from '@react-three/drei';
 import { BOARD_CELL_SIZE, BOARD_THICKNESS, getPositionFromRC } from './LudoConfig';
 import { RigidBody } from '@react-three/rapier';
 
@@ -93,12 +93,46 @@ export function LudoBoard3D() {
       {/* Blue Bottom-Right */}
       <HomeBase color="#3498db" position={getPositionFromRC(12, 12, 0.1)} />
       
+      {/* Entry Point Indicators */}
+      <EntryPoint pIdx={0} color="#e74c3c" rotation={[0, 0, 0]} />
+      <EntryPoint pIdx={1} color="#2ecc71" rotation={[0, -Math.PI/2, 0]} />
+      <EntryPoint pIdx={2} color="#f1c40f" rotation={[0, Math.PI, 0]} />
+      <EntryPoint pIdx={3} color="#3498db" rotation={[0, Math.PI/2, 0]} />
+
       {/* Center Home Triangle Finish */}
-      {/* We can just put a nice gem in the center */}
       <Box args={[BOARD_CELL_SIZE * 2.8, 0.2, BOARD_CELL_SIZE * 2.8]} position={[0, 0.1, 0]}>
          <meshStandardMaterial color="#111" metalness={0.8} roughness={0.2} />
+         <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+            <Text
+              position={[0, 1, 0]}
+              fontSize={0.5}
+              color="#ffffff"
+              font="https://fonts.gstatic.com/s/outfit/v6/QGYsz_MVcBeNP4NJjtWq6H_S.woff"
+            >
+              FINISH
+            </Text>
+         </Float>
       </Box>
     </group>
+  );
+}
+
+function EntryPoint({ pIdx, color, rotation }: { pIdx: number, color: string, rotation: [number, number, number] }) {
+  // Arrow pointing inward
+  const coords = [
+    getPositionFromRC(7, 2, 0.4), // Red
+    getPositionFromRC(2, 9, 0.4), // Green
+    getPositionFromRC(9, 14, 0.4), // Yellow
+    getPositionFromRC(14, 7, 0.4), // Blue
+  ];
+  
+  return (
+    <Float speed={3} rotationIntensity={0.2} floatIntensity={0.5} position={coords[pIdx]}>
+       <mesh rotation={rotation}>
+          <coneGeometry args={[0.2, 0.4, 4]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+       </mesh>
+    </Float>
   );
 }
 

@@ -26,6 +26,7 @@ import { LudoToken3D } from './ludo-3d/LudoToken3D';
 import { LudoDice3D } from './ludo-3d/LudoDice3D';
 import { Suspense } from 'react';
 import { Physics } from '@react-three/rapier';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 
 // --- CONSTANTS ---
 // Path coordinates and 3D mapping have been moved to LudoConfig.ts
@@ -234,9 +235,20 @@ export const LudoGame = () => {
                 })}
 
                 {/* Dice physics */}
-                <LudoDice3D rolling={phase === 'ROLL' && isMyTurn} value={dice || 1} />
+                <group 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (phase === 'ROLL' && isMyTurn) handleAction('roll');
+                  }}
+                >
+                  <LudoDice3D rolling={phase === 'ROLL' && isMyTurn} value={dice || 1} />
+                </group>
               </group>
             </Physics>
+
+            <EffectComposer>
+              <Bloom luminanceThreshold={1.2} mipmapBlur intensity={0.5} radius={0.4} />
+            </EffectComposer>
           </Suspense>
         </Canvas>
       </div>
