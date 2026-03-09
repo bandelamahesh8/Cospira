@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, RapierRigidBody } from '@react-three/rapier';
 import { Box } from '@react-three/drei';
@@ -49,15 +49,20 @@ export function LudoDice3D({ rolling, value }: DiceProps) {
         6: [Math.PI, 0, 0]
       };
       
-      const target = new THREE.Euler(...(rotations[value] || [0,0,0]));
-      const currentQuat = rigidBodyRef.current.rotation();
+      const target = new THREE.Euler(...(rotations[value] || [0, 0, 0] as [number, number, number]));
+      const currentRotation = rigidBodyRef.current.rotation();
+      const currentQuat = new THREE.Quaternion(currentRotation.x, currentRotation.y, currentRotation.z, currentRotation.w);
       const targetQuat = new THREE.Quaternion().setFromEuler(target);
-      const slerped = new THREE.Quaternion().copy(currentQuat as THREE.Quaternion).slerp(targetQuat, 0.1);
+      const slerped = currentQuat.slerp(targetQuat, 0.1);
       
       // We manually override physics locally to snap to face
       rigidBodyRef.current.setRotation(slerped, true);
     }
   });
+
+  const diceTextures = useMemo(() => {
+    return [1, 2, 3, 4, 5, 6].map(v => createDiceTexture(v));
+  }, []);
 
   return (
     <RigidBody
@@ -70,12 +75,12 @@ export function LudoDice3D({ rolling, value }: DiceProps) {
     >
       <Box args={[1, 1, 1]} castShadow receiveShadow>
          {/* Faces (1 to 6) */}
-         <meshStandardMaterial attach="material-0" color="#ffffff" map={createDiceTexture(4)} />
-         <meshStandardMaterial attach="material-1" color="#ffffff" map={createDiceTexture(3)} />
-         <meshStandardMaterial attach="material-2" color="#ffffff" map={createDiceTexture(6)} />
-         <meshStandardMaterial attach="material-3" color="#ffffff" map={createDiceTexture(1)} />
-         <meshStandardMaterial attach="material-4" color="#ffffff" map={createDiceTexture(5)} />
-         <meshStandardMaterial attach="material-5" color="#ffffff" map={createDiceTexture(2)} />
+         <meshStandardMaterial attach="material-0" color="#ffffff" map={diceTextures[3]} />
+         <meshStandardMaterial attach="material-1" color="#ffffff" map={diceTextures[2]} />
+         <meshStandardMaterial attach="material-2" color="#ffffff" map={diceTextures[5]} />
+         <meshStandardMaterial attach="material-3" color="#ffffff" map={diceTextures[0]} />
+         <meshStandardMaterial attach="material-4" color="#ffffff" map={diceTextures[4]} />
+         <meshStandardMaterial attach="material-5" color="#ffffff" map={diceTextures[1]} />
       </Box>
     </RigidBody>
   );

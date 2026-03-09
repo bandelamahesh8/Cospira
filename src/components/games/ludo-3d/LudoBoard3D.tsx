@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Box, RoundedBox } from '@react-three/drei';
 import { BOARD_CELL_SIZE, BOARD_THICKNESS, getPositionFromRC } from './LudoConfig';
+import { RigidBody } from '@react-three/rapier';
 
 const SAFE_POSITIONS_2D = [
   {r: 7, c: 2}, {r: 2, c: 9},
@@ -61,16 +62,18 @@ export function LudoBoard3D() {
 
   return (
     <group>
-      {/* Base Board */}
-      <RoundedBox 
-        args={[15 * BOARD_CELL_SIZE + 1.5, BOARD_THICKNESS, 15 * BOARD_CELL_SIZE + 1.5]} 
-        position={[0, -BOARD_THICKNESS / 2, 0]}
-        radius={0.5} 
-        smoothness={4} 
-        receiveShadow
-      >
-        <meshStandardMaterial color="#1f1b24" roughness={0.8} metalness={0.2} />
-      </RoundedBox>
+      {/* Base Board Physics */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <RoundedBox 
+          args={[15 * BOARD_CELL_SIZE + 1.5, BOARD_THICKNESS, 15 * BOARD_CELL_SIZE + 1.5]} 
+          position={[0, -BOARD_THICKNESS / 2, 0]}
+          radius={0.5} 
+          smoothness={4} 
+          receiveShadow
+        >
+          <meshStandardMaterial color="#1f1b24" roughness={0.8} metalness={0.2} />
+        </RoundedBox>
+      </RigidBody>
 
       {/* Grid Canvas (Backdrop for paths) */}
       <Box args={[15 * BOARD_CELL_SIZE, 0.05, 15 * BOARD_CELL_SIZE]} position={[0, 0.05, 0]} receiveShadow>

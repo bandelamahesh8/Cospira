@@ -14,15 +14,18 @@ import {
   BrainCircuit,
   Target,
   ShieldAlert,
+  ChevronRight,
 } from 'lucide-react';
 import { ThreeDDice } from './ui/ThreeDDice';
 import confetti from 'canvas-confetti';
 import { GameResultOverlay } from './ui/GameResultOverlay';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { LudoBoard3D } from './ludo-3d/LudoBoard3D';
 import { LudoToken3D } from './ludo-3d/LudoToken3D';
+import { LudoDice3D } from './ludo-3d/LudoDice3D';
+import { Suspense } from 'react';
+import { Physics } from '@react-three/rapier';
 
 // --- CONSTANTS ---
 // Path coordinates and 3D mapping have been moved to LudoConfig.ts
@@ -187,51 +190,54 @@ export const LudoGame = () => {
 
       {/* THE 3D LUDO BOARD */}
       <div className='flex-1 relative aspect-square max-w-[800px] w-full mx-auto shadow-2xl rounded-[3rem] overflow-hidden border border-[#5e17a3]/50 ring-4 ring-[#8a2be2]/20 bg-[#0a0f1e]'>
-        <Canvas camera={{ position: [0, 16, 12], fov: 45 }} dpr={[1, 2]}>
-          <ambientLight intensity={0.6} />
-          <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-mapSize={2048} />
-          <Environment preset="city" />
-          
-          <OrbitControls 
-            enablePan={false} 
-            maxPolarAngle={Math.PI / 2.2} 
-            minDistance={10} 
-            maxDistance={35}
-            dampingFactor={0.05}
-          />
-          
-          <group position={[0, -0.5, 0]}>
-            <LudoBoard3D />
+        <Canvas camera={{ position: [0, 16, 12], fov: 45 }} dpr={[1, 2]} shadows>
+          <Suspense fallback={null}>
+            <ambientLight intensity={0.6} />
+            <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-mapSize={2048} />
+            <Environment preset="city" />
             
-            {/* Tokens */}
-            {players.map((p, pIdx) => {
-               const pTokens = boardTokens.filter((t: LudoToken) => t.playerId === p.id);
-               // Fallback
-               const tokenData = pTokens.length === 4 ? pTokens : [{position:-1},{position:-1},{position:-1},{position:-1}] as LudoToken[];
-               return tokenData.map((tData, tIdx) => {
-                   const isMovable = isMyTurn && phase === 'MOVE' && p.id === user?.id && 
-                                    ((tData.position === -1 && dice === 6) || (tData.position >= 0 && tData.position + (dice || 0) <= 57));
-                   const isAITarget = aiTips?.tIdx === tIdx && p.id === user?.id;
+            <OrbitControls 
+              enablePan={false} 
+              maxPolarAngle={Math.PI / 2.2} 
+              minDistance={10} 
+              maxDistance={35}
+              dampingFactor={0.05}
+            />
+            
+            <Physics debug={false}>
+              <group position={[0, -0.5, 0]}>
+                <LudoBoard3D />
+                
+                {/* Tokens */}
+                {players.map((p, pIdx) => {
+                   const pTokens = boardTokens.filter((t: LudoToken) => t.playerId === p.id);
+                   // Fallback
+                   const tokenData = pTokens.length === 4 ? pTokens : [{position:-1},{position:-1},{position:-1},{position:-1}] as LudoToken[];
+                   return tokenData.map((tData, tIdx) => {
+                       const isMovable = isMyTurn && phase === 'MOVE' && p.id === user?.id && 
+                                        ((tData.position === -1 && dice === 6) || (tData.position >= 0 && tData.position + (dice || 0) <= 57));
+                       const isAITarget = aiTips?.tIdx === tIdx && p.id === user?.id;
 
-                   return (
-                     <LudoToken3D 
-                        key={`${p.id}-${tIdx}`}
-                        playerIndex={pIdx}
-                        tokenIndex={tIdx}
-                        position={tData.position}
-                        color={p.color as 'red' | 'green' | 'yellow' | 'blue'}
-                        isMovable={!!isMovable}
-                        onClick={() => handleAction('move', tIdx)}
-                        isAiTarget={isAITarget}
-                     />
-                   );
-               });
-            })}
-          </group>
+                       return (
+                         <LudoToken3D 
+                            key={`${p.id}-${tIdx}`}
+                            playerIndex={pIdx}
+                            tokenIndex={tIdx}
+                            position={tData.position}
+                            color={p.color as 'red' | 'green' | 'yellow' | 'blue'}
+                            isMovable={!!isMovable}
+                            onClick={() => handleAction('move', tIdx)}
+                            isAiTarget={isAITarget}
+                         />
+                       );
+                   });
+                })}
 
-          <EffectComposer disableNormalPass>
-             <Bloom luminanceThreshold={1} mipmapBlur intensity={1.5} />
-          </EffectComposer>
+                {/* Dice physics */}
+                <LudoDice3D rolling={phase === 'ROLL' && isMyTurn} value={dice || 1} />
+              </group>
+            </Physics>
+          </Suspense>
         </Canvas>
       </div>
 
@@ -371,6 +377,7 @@ export const LudoGame = () => {
 
                   <div className='flex items-center justify-between gap-5 bg-black/20 p-4 rounded-[2rem] border border-white/5'>
                     <div className='p-2 bg-black/40 rounded-[1.5rem] border border-white/5 shadow-inner'>
+                      {/* 2D Preview Dice */}
                       <ThreeDDice value={dice || 1} rolling={phase === 'ROLL' && isMyTurn} size={70} />
                     </div>
                     {isMyTurn && phase === 'ROLL' && (

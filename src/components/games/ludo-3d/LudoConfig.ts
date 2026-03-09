@@ -39,8 +39,10 @@ export const PATH_COORDS = [
 export const PLAYER_OFFSETS = [39, 0, 13, 26]; // Red, Green, Yellow, Blue
 
 export function getCoords3D(pIdx: number, pos: number, tIdx: number): [number, number, number] {
-  let cx = 0;
-  let cy = 0;
+  let cx = 8;
+  let cy = 8;
+
+  if (pos === undefined || pos === null || isNaN(pos)) return getPositionFromRC(8, 8, 0.25);
 
   if (pos === -1) { // Home base
     const basePositions = [

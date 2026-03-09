@@ -1,6 +1,6 @@
 import { useSpring, a } from '@react-spring/three';
 import { getCoords3D, LUDO_COLORS, BOARD_CELL_SIZE } from './LudoConfig';
-import { Cylinder, MeshTransmissionMaterial } from '@react-three/drei';
+import { Cylinder } from '@react-three/drei';
 import { useEffect, useState } from 'react';
 
 interface TokenProps {
@@ -23,7 +23,7 @@ export function LudoToken3D({
   isAiTarget
 }: TokenProps) {
   const [targetPos, setTargetPos] = useState<[number, number, number]>(() => getCoords3D(playerIndex, position, tokenIndex));
-  const hexColor = LUDO_COLORS[color];
+  const hexColor = LUDO_COLORS[color] || '#ffffff';
 
   // Update target when position changes
   useEffect(() => {
@@ -67,19 +67,18 @@ export function LudoToken3D({
     >
       <a.group position-y={isMovable ? bounceY : 0}>
         <Cylinder args={[BOARD_CELL_SIZE * 0.3, BOARD_CELL_SIZE * 0.4, 0.6, 32]} position={[0, 0.3, 0]} castShadow>
-          <MeshTransmissionMaterial 
+          <meshPhysicalMaterial 
             color={hexColor} 
             roughness={0.1}
-            thickness={2}
-            transmission={0.9}
-            ior={1.5}
-            chromaticAberration={0.04}
+            transmission={0.6}
+            thickness={1}
+            metalness={0.2}
           />
         </Cylinder>
         <Cylinder args={[BOARD_CELL_SIZE * 0.2, BOARD_CELL_SIZE * 0.3, 0.4, 32]} position={[0, 0.7, 0]} castShadow>
           <meshStandardMaterial color={hexColor} roughness={0.2} metalness={0.8} />
         </Cylinder>
-        <sphereGeometry args={[BOARD_CELL_SIZE * 0.25, 32, 32]} />
+
         <mesh position={[0, 0.9, 0]} castShadow>
           <sphereGeometry args={[BOARD_CELL_SIZE * 0.25, 32, 32]} />
           <meshStandardMaterial color={hexColor} emissive={isAiTarget ? '#ffffff' : hexColor} emissiveIntensity={isAiTarget ? 0.5 : 0} />
