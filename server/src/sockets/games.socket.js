@@ -345,7 +345,7 @@ export default function registerGameHandlers(io, socket) {
     return room && uid && (room.hostId === uid || (room.coHosts && room.coHosts.includes(uid)));
   };
 
-  socket.on('start-game', async ({ roomId, type, players }, callback) => {
+  socket.on('start-game', async ({ roomId, type, players, config }, callback) => {
     try {
       const rid = sanitizeRoomId(roomId);
       if (!rid) return callback?.({ success: false, error: 'Invalid room id' });
