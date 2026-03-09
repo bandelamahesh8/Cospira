@@ -24,6 +24,7 @@ import { OrbitControls, Environment } from '@react-three/drei';
 import { LudoBoard3D } from './ludo-3d/LudoBoard3D';
 import { LudoToken3D } from './ludo-3d/LudoToken3D';
 import { LudoDice3D } from './ludo-3d/LudoDice3D';
+import { getRCForPosition } from './ludo-3d/LudoConfig';
 import { Suspense } from 'react';
 import { Physics } from '@react-three/rapier';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
@@ -45,6 +46,7 @@ export const LudoGame = () => {
   const { gameState, socket, roomId, endGame, isHost } = useWebSocket();
   const { user } = useAuth();
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [hoveredToken, setHoveredToken] = useState<{ pIdx: number; tIdx: number } | null>(null);
 
   const gameData = useMemo(
     () =>
@@ -172,6 +174,29 @@ export const LudoGame = () => {
     return tips.length > 0 ? tips[0] : { type: 'move', msg: 'Think strategically before your move.', priority: 4, tIdx: -1 };
   }, [isMyTurn, dice, phase, user?.id, players, boardTokens]);
 
+  const highlightedCells = useMemo(() => {
+    if (!hoveredToken || !dice || phase !== 'MOVE') return [];
+    const { pIdx, tIdx } = hoveredToken;
+    const player = players[pIdx];
+    const pTokens = boardTokens.filter((t: LudoToken) => t.playerId === player.id);
+    const token = pTokens[tIdx];
+    if (!token) return [];
+
+    const cells = [];
+    // If token is at home, and dice is 6, show entry point
+    if (token.position === -1 && dice === 6) {
+      cells.push(getRCForPosition(pIdx, 0, tIdx));
+    } else if (token.position >= 0) {
+      // Show full path from current to target
+      for (let i = 1; i <= dice; i++) {
+        if (token.position + i <= 57) {
+          cells.push(getRCForPosition(pIdx, token.position + i, tIdx));
+        }
+      }
+    }
+    return cells;
+  }, [hoveredToken, dice, phase, players, boardTokens]);
+
 
   if (!gameData) return null;
 
@@ -207,7 +232,7 @@ export const LudoGame = () => {
             
             <Physics debug={false}>
               <group position={[0, -0.5, 0]}>
-                <LudoBoard3D />
+                <LudoBoard3D highlightedCells={highlightedCells} />
                 
                 {/* Tokens */}
                 {players.map((p, pIdx) => {
@@ -229,6 +254,8 @@ export const LudoGame = () => {
                             isMovable={!!isMovable}
                             onClick={() => handleAction('move', tIdx)}
                             isAiTarget={isAITarget}
+                            onPointerEnter={() => setHoveredToken({ pIdx, tIdx })}
+                            onPointerLeave={() => setHoveredToken(null)}
                          />
                        );
                    });
@@ -333,6 +360,18 @@ export const LudoGame = () => {
                    </div>
                    
                    <div className='bg-black/40 rounded-2xl p-4 border border-indigo-500/20'>
+                      <div className='flex items-center justify-between mb-2'>
+                        <span className='text-[10px] font-black text-indigo-400 uppercase tracking-tighter'>Win Probability</span>
+                        <span className='text-[10px] font-black text-indigo-300'>{Math.round((scores[user?.id || ''] || 0) / (Object.values(scores).reduce((a, b) => (a as number) + (b as number), 0) as number || 1) * 100)}%</span>
+                      </div>
+                      <div className='h-1 w-full bg-indigo-900/40 rounded-full overflow-hidden mb-4'>
+                         <motion.div 
+                           initial={{ width: 0 }}
+                           animate={{ width: `${Math.round((scores[user?.id || ''] || 0) / (Object.values(scores).reduce((a, b) => (a as number) + (b as number), 0) as number || 1) * 100)}%` }}
+                           className='h-full bg-gradient-to-r from-indigo-500 to-purple-500' 
+                         />
+                      </div>
+
                       {!isMyTurn ? (
                          <div className='flex items-center gap-3 text-indigo-300 opacity-70'>
                            <div className='w-2 h-2 bg-indigo-500 rounded-full animate-pulse' />

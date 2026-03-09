@@ -10,7 +10,7 @@ const SAFE_POSITIONS_2D = [
   {r: 7, c: 13}, {r: 13, c: 9}
 ];
 
-export function LudoBoard3D() {
+export function LudoBoard3D({ highlightedCells = [] }: { highlightedCells?: {r: number, c: number}[] }) {
   // Main wooden or plastic board base
 
   const cells = useMemo(() => {
@@ -36,6 +36,8 @@ export function LudoBoard3D() {
       const isSafe = SAFE_POSITIONS_2D.some(s => s.r === r && s.c === c);
       if (isSafe && color === '#ffffff') color = '#95a5a6'; // Safe spots
 
+      const isHighlighted = highlightedCells.some(h => h.r === r && h.c === c);
+
       // Convert R,C to 3D coords
       const [x, y, z] = getPositionFromRC(r, c, 0);
 
@@ -50,15 +52,14 @@ export function LudoBoard3D() {
              color={color} 
              roughness={0.2} 
              metalness={0.1}
-             // emission if you want neon
-             // emissive={isSafe ? '#ffffff' : '#000000'}
-             // emissiveIntensity={0.1}
+             emissive={isHighlighted ? '#ffffff' : '#000000'}
+             emissiveIntensity={isHighlighted ? 0.8 : 0}
            />
          </Box>
       );
     }
     return arr;
-  }, []);
+  }, [highlightedCells]);
 
   return (
     <group>

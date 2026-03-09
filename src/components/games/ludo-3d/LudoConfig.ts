@@ -76,3 +76,32 @@ export function getCoords3D(pIdx: number, pos: number, tIdx: number): [number, n
   // Actually, standard Ludo visually offsets stacked pieces. We can do that in Token component if needed.
   return getPositionFromRC(cy, cx, 0.25);
 }
+
+export function getRCForPosition(pIdx: number, pos: number, tIdx: number): {r: number, c: number} {
+  let cx = 8;
+  let cy = 8;
+
+  if (pos === -1) {
+    const basePositions = [
+      [{ x: 3, y: 12 }, { x: 5, y: 12 }, { x: 3, y: 14 }, { x: 5, y: 14 }],
+      [{ x: 3, y: 3 }, { x: 5, y: 3 }, { x: 3, y: 5 }, { x: 5, y: 5 }],
+      [{ x: 12, y: 3 }, { x: 14, y: 3 }, { x: 12, y: 5 }, { x: 14, y: 5 }],
+      [{ x: 12, y: 12 }, { x: 14, y: 12 }, { x: 12, y: 14 }, { x: 14, y: 14 }]
+    ];
+    cx = basePositions[pIdx][tIdx].x;
+    cy = basePositions[pIdx][tIdx].y;
+  } else if (pos >= 57) {
+    cx = 8; cy = 8;
+  } else if (pos <= 51) {
+    const pathIdx = (PLAYER_OFFSETS[pIdx] + (pos === 0 ? 0 : pos)) % 52;
+    cx = PATH_COORDS[pathIdx].x;
+    cy = PATH_COORDS[pathIdx].y;
+  } else {
+    const step = pos - 51;
+    if (pIdx === 1) { cx = 8; cy = step + 1; }
+    else if (pIdx === 2) { cx = 15 - step; cy = 8; }
+    else if (pIdx === 3) { cx = 8; cy = 15 - step; }
+    else if (pIdx === 0) { cx = step + 1; cy = 8; }
+  }
+  return { r: cy, c: cx };
+}

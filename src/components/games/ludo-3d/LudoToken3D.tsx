@@ -11,6 +11,8 @@ interface TokenProps {
   isMovable: boolean;
   onClick: () => void;
   isAiTarget?: boolean;
+  onPointerEnter?: () => void;
+  onPointerLeave?: () => void;
 }
 
 export function LudoToken3D({
@@ -20,7 +22,9 @@ export function LudoToken3D({
   color,
   isMovable,
   onClick,
-  isAiTarget
+  isAiTarget,
+  onPointerEnter,
+  onPointerLeave
 }: TokenProps) {
   const [targetPos, setTargetPos] = useState<[number, number, number]>(() => getCoords3D(playerIndex, position, tokenIndex));
   const hexColor = LUDO_COLORS[color] || '#ffffff';
@@ -77,6 +81,18 @@ export function LudoToken3D({
     <a.group
       position={pos as unknown as [number, number, number]}
       scale={scale as unknown as [number, number, number]}
+      onPointerEnter={(e) => {
+        if (isMovable) {
+          e.stopPropagation();
+          onPointerEnter?.();
+        }
+      }}
+      onPointerLeave={(e) => {
+        if (isMovable) {
+          e.stopPropagation();
+          onPointerLeave?.();
+        }
+      }}
       onClick={(e) => {
         if (isMovable) {
           e.stopPropagation();
