@@ -1,0 +1,45 @@
+# Logs
+*.log
+logs/
+combined.log
+error.log
+
+# Dependency directories
+node_modules/
+server/node_modules/
+
+# Debug and temp
+tmp_*
+debug*
+*_debug.*
+*_crash.*
+output.txt
+ffmpeg_*.txt
+*client_error*
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+vite.config.ts.timestamp-*
+
+# Test output
+test-results/
+playwright-report/
+eslint-results.json
+lint_output.txt
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -29,6 +29,7 @@ import tictactoeP from '@/assets/tictactoe_poster_1769337515157.png';
 import ludoP from '@/assets/ludo_poster_v2.png';
 import carromP from '@/assets/carrom_poster_v2.png';
 import kartP from '@/assets/kart_racing_poster.png';
+import snakeladderP from '@/assets/snakeladder_poster_1773553472575.png';
 
 type GameId =
   | 'xoxo'
@@ -122,7 +123,7 @@ const Games = () => {
       id: 'ludo',
       name: 'Ludo Pro',
       desc: 'The ultimate race to victory',
-      category: 'Casual',
+      category: 'Strategy',
       available: true,
       color: '#8B5CF6',
       featured: true,
@@ -134,13 +135,13 @@ const Games = () => {
       id: 'snakeladder',
       name: 'Apex Serpents',
       desc: 'Ruthless climb to the top',
-      category: 'Casual',
+      category: 'Strategy',
       available: true,
       color: '#EF4444',
-      featured: false,
+      featured: true,
       players: 567,
-      poster: tictactoeP,
-      tags: ['Casual', 'Luck'],
+      poster: snakeladderP,
+      tags: ['Competitive', 'Luck'],
     },
     {
       id: 'checkers',
@@ -170,7 +171,7 @@ const Games = () => {
       id: 'kart-racing',
       name: 'Kart Racing',
       desc: 'High-speed multiplayer racing action',
-      category: 'Arcade',
+      category: 'Strategy',
       available: true,
       color: '#f43f5e',
       featured: true,
