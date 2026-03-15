@@ -85,6 +85,7 @@ export type RoomJoinedData = {
   settings?: Record<string, unknown>; // Fallback
   activeTimer?: TimerData | null;
   createdAt?: Date | string;
+  isLocked?: boolean;
 };
 
 export type SfuNewProducerData = {
@@ -155,7 +156,7 @@ export interface GameState {
   lastMove?: unknown;
   lastAction?: { type: string; playerId: string; [key: string]: unknown };
   turnStartTime?: number;
-  
+
   // Ludo v2.0 Spec
   version?: number;
   hostId?: string;
@@ -209,7 +210,7 @@ export type PollData = {
   expiresAt: number;
   results?: Record<string, number>;
   onlySelectOption?: boolean;
-  voters?: Record<string, { id: string, name: string }[]>;
+  voters?: Record<string, { id: string; name: string }[]>;
   duration?: number;
   type?: 'POLL' | 'QUIZ';
   correctOption?: number;

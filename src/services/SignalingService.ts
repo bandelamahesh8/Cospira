@@ -116,6 +116,14 @@ export type SignalingEvents = {
   'global-chat-message': (data: { sender: string; content: string; timestamp: string }) => void;
   'lobby:approved': (data: { roomId: string }) => void;
   'room:status-changed': (status: RoomStatus) => void;
+  'present-file': (data: { file: FileData; presenterName: string }) => void;
+  'stop-presentation': () => void;
+  'youtube-state': (data: {
+    videoId: string | null;
+    status: 'playing' | 'paused' | 'closed';
+    currentTime: number;
+    presenterName: string | null;
+  }) => void;
 };
 
 export class SignalingService {

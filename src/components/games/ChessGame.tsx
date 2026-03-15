@@ -35,10 +35,13 @@ export const ChessGame = () => {
   // Stability: Guard against missing data
   // In AI mode, we don't use socket gameData
   const gameData = useMemo(
-    () => (gameState && (gameState.type === 'chess' || gameState.type === 'chess-puzzle') ? gameState : null),
+    () =>
+      gameState && (gameState.type === 'chess' || gameState.type === 'chess-puzzle')
+        ? gameState
+        : null,
     [gameState]
   );
-  
+
   const isPuzzleMode = gameData?.type === 'chess-puzzle';
   const board = gameData?.board;
   const players = useMemo(() => gameData?.players || [], [gameData?.players]);
@@ -75,7 +78,7 @@ export const ChessGame = () => {
     return players?.find((p) => p.id === user?.id)?.role;
   }, [players, user]);
 
-  const isMyTurn = isPuzzleMode || turn === user?.id || turn === 'all'; 
+  const isMyTurn = isPuzzleMode || turn === user?.id || turn === 'all';
   const isSpectator = !myRole;
 
   // Sync local game state with server board (FEN) OR keep AI game state
@@ -173,11 +176,11 @@ export const ChessGame = () => {
 
   const loadPuzzle = () => {
     if (!isHost) return;
-    socket?.emit('start-game', { 
-      roomId, 
-      type: 'chess-puzzle', 
+    socket?.emit('start-game', {
+      roomId,
+      type: 'chess-puzzle',
       players: players?.map((p) => p.id),
-      config: { puzzleFen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4' }
+      config: { puzzleFen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4' },
     });
   };
 
@@ -603,3 +606,4 @@ export const ChessGame = () => {
     </Card>
   );
 };
+export default ChessGame;

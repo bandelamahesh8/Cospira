@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { SignalingService } from '@/services/SignalingService';
 import { logger } from '@/utils/logger';
@@ -11,7 +12,7 @@ interface ConnectionContextType {
 
 const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined);
 
-export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ConnectionProvider = ({ children }: { children: React.ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const signalingRef = useRef<SignalingService | null>(null);
@@ -22,9 +23,12 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const { hostname, origin, protocol } = window.location;
 
     const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
-    const isLanIp = hostname.startsWith('192.168.') || 
-                    hostname.startsWith('10.') || 
-                    (hostname.startsWith('172.') && parseInt(hostname.split('.')[1]) >= 16 && parseInt(hostname.split('.')[1]) <= 31);
+    const isLanIp =
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
+      (hostname.startsWith('172.') &&
+        parseInt(hostname.split('.')[1]) >= 16 &&
+        parseInt(hostname.split('.')[1]) <= 31);
 
     if (isLocalHost) {
       wsUrl = `${protocol}//${hostname}:3001`;
@@ -43,7 +47,7 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
-    const onError = (err: any) => setError(String(err));
+    const onError = (err: Error | string) => setError(String(err));
 
     signaling.on('connect', onConnect);
     signaling.on('disconnect', onDisconnect);

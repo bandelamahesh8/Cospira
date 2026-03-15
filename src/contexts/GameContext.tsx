@@ -1,19 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { GameState } from '@/types/websocket';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useConnection } from './ConnectionContext';
-import { useRoom } from './RoomContext';
+import { useRoomContext } from '@/hooks/useRoomContext';
 import { toast } from 'sonner';
+import { GameState, GamePlayer } from '@/types/websocket';
+import { GameContext } from './GameContextValue';
 
-interface GameContextType {
-  gameState: GameState;
-  setGameState: React.Dispatch<React.SetStateAction<GameState>>;
-  startGame: (type: string, players: string[], config?: Record<string, any>) => void;
-  makeMove: (move: any) => void;
-}
-
-const GameContext = createContext<GameContextType | undefined>(undefined);
-
-export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [gameState, setGameState] = useState<GameState>({
     isActive: false,
     type: null,
@@ -25,7 +17,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const { socket, isConnected } = useConnection();
-  const { roomId } = useRoom();
+  const { roomId } = useRoomContext();
 
   useEffect(() => {
     if (!socket || !isConnected) return;
@@ -35,41 +27,47 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const onGameEnded = (state: GameState) => {
       setGameState(state);
       if (state.winner) {
-        const winner = state.players.find(p => p.id === state.winner)?.name || state.winner;
+        const winner =
+          state.players.find((p: GamePlayer) => p.id === state.winner)?.name || state.winner;
         toast.success('Game Over', { description: `Winner: ${winner}` });
       }
     };
 
-    socket.on('game:started', onGameStarted);
-    socket.on('game:move', onGameMove);
-    socket.on('game:ended', onGameEnded);
+    socket.on('game-started', onGameStarted);
+    socket.on('game-move', onGameMove);
+    socket.on('game-ended', onGameEnded);
 
     return () => {
-      socket.off('game:started', onGameStarted);
-      socket.off('game:move', onGameMove);
-      socket.off('game:ended', onGameEnded);
+      socket.off('game-started', onGameStarted);
+      socket.off('game-move', onGameMove);
+      socket.off('game-ended', onGameEnded);
     };
   }, [socket, isConnected]);
 
-  const startGame = useCallback((type: string, players: string[], config?: Record<string, any>) => {
-    if (!socket || !roomId) return;
-    socket.emit('game:start', { roomId, type, players, config });
-  }, [socket, roomId]);
+  const startGame = useCallback(
+    (type: string, players: string[], config?: Record<string, unknown>) => {
+      if (!socket || !roomId) return;
+      socket.emit('start-game', { roomId, type, players, config });
+    },
+    [socket, roomId]
+  );
 
-  const makeMove = useCallback((move: any) => {
+  const makeMove = useCallback(
+    (move: unknown) => {
+      if (!socket || !roomId) return;
+      socket.emit('make-game-move', { roomId, move });
+    },
+    [socket, roomId]
+  );
+
+  const endGame = useCallback(() => {
     if (!socket || !roomId) return;
-    socket.emit('game:move', { roomId, move });
+    socket.emit('end-game', { roomId });
   }, [socket, roomId]);
 
   return (
-    <GameContext.Provider value={{ gameState, setGameState, startGame, makeMove }}>
+    <GameContext.Provider value={{ gameState, setGameState, startGame, makeMove, endGame }}>
       {children}
     </GameContext.Provider>
   );
-};
-
-export const useGame = () => {
-  const context = useContext(GameContext);
-  if (!context) throw new Error('useGame must be used within GameProvider');
-  return context;
 };

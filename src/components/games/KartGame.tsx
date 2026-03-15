@@ -13,7 +13,7 @@ export const KartGame = () => {
   const isHost = gameState?.hostId === user?.id;
 
   // Map room users to KartLauncherPanel players
-  const launcherPlayers = users.map(p => ({
+  const launcherPlayers = users.map((p) => ({
     userId: p.id,
     username: p.name,
     ready: true,
@@ -27,11 +27,7 @@ export const KartGame = () => {
 
   if (state === 'idle' || state === 'creating_session' || state === 'waiting_for_players') {
     return (
-      <KartLauncherPanel
-        onStartRace={onStartRace}
-        players={launcherPlayers}
-        isHost={isHost}
-      />
+      <KartLauncherPanel onStartRace={onStartRace} players={launcherPlayers} isHost={isHost} />
     );
   }
 
@@ -52,13 +48,9 @@ export const KartGame = () => {
   }
 
   if (state === 'results') {
-    return (
-      <KartResultsOverlay
-        results={results}
-        onDismiss={exitGame}
-      />
-    );
+    return <KartResultsOverlay results={results} onDismiss={exitGame} />;
   }
 
   return null;
 };
+export default KartGame;

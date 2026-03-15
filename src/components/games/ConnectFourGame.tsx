@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useCallback } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAuth } from '@/hooks/useAuth';
+import { User } from '@/types/websocket';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -35,7 +36,9 @@ const buildBoard = (raw: unknown): CellValue[][] => {
 
   if (parsed.length < rows) {
     return [
-      ...Array.from({ length: rows - parsed.length }, () => Array.from({ length: cols }, () => 0 as CellValue)),
+      ...Array.from({ length: rows - parsed.length }, () =>
+        Array.from({ length: cols }, () => 0 as CellValue)
+      ),
       ...parsed,
     ];
   }
@@ -44,7 +47,8 @@ const buildBoard = (raw: unknown): CellValue[][] => {
 };
 
 export const ConnectFourGame = () => {
-  const { gameState, users, makeGameMove, startGame, endGame, isHost, socket, roomId } = useWebSocket();
+  const { gameState, users, makeGameMove, startGame, endGame, isHost, socket, roomId } =
+    useWebSocket();
   const { user } = useAuth();
 
   const gameData = useMemo(
@@ -56,20 +60,17 @@ export const ConnectFourGame = () => {
   const players = useMemo(() => {
     const rawPlayers = gameData?.players || [];
     if (rawPlayers.length === 0) return [];
-    
-    return rawPlayers.map(p => {
-        // Handle both string IDs and player objects
-        const id = typeof p === 'string' ? p : p.id;
-        const found = users.find(u => u.id === id);
-        if (found) return found;
-        
-        // Return dummy object if not found in room users
-        return typeof p === 'string' ? { id: p, name: 'Player' } : p;
+
+    return rawPlayers.map((p: unknown) => {
+      const id = typeof p === 'string' ? p : (p as { id: string }).id;
+      const found = users.find((u: User) => u.id === id);
+      if (found) return found;
+      return typeof p === 'string' ? { id: p, name: 'Player' } : (p as User);
     });
   }, [gameData?.players, users]);
 
   const playerIndex = useMemo(
-    () => players.findIndex((p) => p.id === user?.id),
+    () => players.findIndex((p: User | { id: string; name: string }) => p.id === user?.id),
     [players, user?.id]
   );
   const isSpectator = playerIndex === -1;
@@ -83,16 +84,23 @@ export const ConnectFourGame = () => {
   useEffect(() => {
     // SECURITY: Only initialize if we have exactly 2 players as required by the engine
     if (isHost && gameData && !engineRef.current && players.length === 2) {
-        // Initialize engine with current state for host
-        const initialState: Partial<BoardState> = {
-            grid: boardMatrix,
-            currentPlayer: (gameData.turn === players[0]?.id ? 1 : 2) as 1 | 2,
-            status: (gameData.winner ? (gameData.winner === 'draw' ? 'draw' : 'won') : 'active') as BoardState['status'],
-            winner: (gameData.winner === 'draw' ? null : (gameData.winner === players[0]?.id ? 1 : 2)) as 1 | 2 | null,
-            moveCount: boardMatrix.flat().filter(v => v !== 0).length
-        };
-        engineRef.current = new Connect4Engine(initialState);
-        engineRef.current.initialize({ players: players.map(p => p.id) });
+      // Initialize engine with current state for host
+      const initialState: Partial<BoardState> = {
+        grid: boardMatrix,
+        currentPlayer: (gameData.turn === players[1]?.id ? 2 : 1) as 1 | 2,
+        status: (gameData.winner
+          ? gameData.winner === 'draw'
+            ? 'draw'
+            : 'won'
+          : 'active') as BoardState['status'],
+        winner: (gameData.winner === 'draw' ? null : gameData.winner === players[0]?.id ? 1 : 2) as
+          | 1
+          | 2
+          | null,
+        moveCount: boardMatrix.flat().filter((v: CellValue) => v !== 0).length,
+      };
+      engineRef.current = new Connect4Engine(initialState);
+      engineRef.current.initialize({ players: players.map((p: User) => p.id) });
     }
   }, [isHost, gameData, players, boardMatrix]);
 
@@ -100,47 +108,62 @@ export const ConnectFourGame = () => {
   useEffect(() => {
     if (!isHost || !socket) return;
 
-    const handleActionRequest = (data: { game: string; action: string; payload?: Record<string, unknown>; move?: Record<string, unknown>; senderId: string }) => {
-        if (data.game !== 'connect4') return;
-        const action = data.action || data.move?.type || '';
-        const payload = data.payload || data.move || {};
-        
-        if (action !== 'MOVE' && action !== 'drop') return;
-        if (!engineRef.current) {
-            console.warn('[Connect4Host] Engine not initialized, ignoring move');
-            return;
-        }
+    const handleActionRequest = (data: {
+      game: string;
+      action: string;
+      payload?: Record<string, unknown>;
+      move?: Record<string, unknown>;
+      senderId: string;
+    }) => {
+      if (data.game !== 'connect4') return;
+      const action = data.action || data.move?.type || '';
+      const payload = data.payload || data.move || {};
 
-        const move = {
-            type: 'drop' as const,
-            playerId: data.senderId,
-            column: payload.col ?? payload.column
-        };
+      if (action !== 'MOVE' && action !== 'drop') return;
+      if (!engineRef.current) {
+        console.warn('[Connect4Host] Engine not initialized, ignoring move');
+        return;
+      }
 
-        try {
-            const nextState = engineRef.current.applyMove(move);
-            
-            // Broadcast new state back to everyone via the generic state update handler
-            socket.emit('game-ludo-state-update', {
-                roomId,
-                newState: {
-                    ...gameData,
-                    board: nextState.grid,
-                    turn: nextState.currentPlayer === 1 ? players[0]?.id : (players[1]?.id || players[0]?.id),
-                    currentTurn: nextState.currentPlayer === 1 ? players[0]?.id : (players[1]?.id || players[0]?.id),
-                    winner: nextState.status === 'won' ? (nextState.winner === 1 ? players[0]?.id : (players[1]?.id || players[0]?.id)) : (nextState.status === 'draw' ? 'draw' : null),
-                    isActive: nextState.status === 'active',
-                    players: players // Crucial: preserve player data
-                }
-            });
-        } catch (err) {
-            console.error('[Connect4Host] Move application failed:', err);
-        }
+      const move = {
+        type: 'drop' as const,
+        playerId: data.senderId,
+        column: (payload.col ?? payload.column) as number,
+      };
+
+      try {
+        const nextState = engineRef.current.applyMove(move);
+        if (nextState.lastMove) lastMoveRef.current = nextState.lastMove;
+
+        // Broadcast new state back to everyone via the generic state update handler
+        socket.emit('game-ludo-state-update', {
+          roomId,
+          newState: {
+            ...gameData,
+            board: nextState.grid,
+            turn: nextState.currentPlayer === 1 ? players[0]?.id : players[1]?.id || players[0]?.id,
+            currentTurn:
+              nextState.currentPlayer === 1 ? players[0]?.id : players[1]?.id || players[0]?.id,
+            winner:
+              nextState.status === 'won'
+                ? nextState.winner === 1
+                  ? players[0]?.id
+                  : players[1]?.id || players[0]?.id
+                : nextState.status === 'draw'
+                  ? 'draw'
+                  : null,
+            isActive: nextState.status === 'active',
+            players: players, // Crucial: preserve player data
+          },
+        });
+      } catch (err) {
+        console.error('[Connect4Host] Move application failed:', err);
+      }
     };
 
     socket.on('game-action-request', handleActionRequest);
     return () => {
-        socket.off('game-action-request', handleActionRequest);
+      socket.off('game-action-request', handleActionRequest);
     };
   }, [isHost, socket, roomId, players, gameData]);
 
@@ -176,7 +199,7 @@ export const ConnectFourGame = () => {
       status,
       winner: winnerNumber as 1 | 2 | null,
       winningCells: null,
-      moveCount: boardMatrix.flat().filter((v) => v !== 0).length,
+      moveCount: boardMatrix.flat().filter((v: CellValue) => v !== 0).length,
       lastMove: lastMoveRef.current,
     };
 
@@ -192,11 +215,11 @@ export const ConnectFourGame = () => {
 
   useEffect(() => {
     if (winnerId && winnerId !== 'draw') {
-      confetti({ 
-        particleCount: 150, 
-        spread: 70, 
+      confetti({
+        particleCount: 150,
+        spread: 70,
         origin: { y: 0.6 },
-        colors: winnerId === players[0]?.id ? ['#ef4444', '#f87171'] : ['#fbbf24', '#fcd34d']
+        colors: winnerId === players[0]?.id ? ['#ef4444', '#f87171'] : ['#fbbf24', '#fcd34d'],
       });
     }
   }, [winnerId, players]);
@@ -205,16 +228,20 @@ export const ConnectFourGame = () => {
     (col: number) => {
       if (!gameData || !user?.id) return;
       if (!gameData.isActive || !isMyTurn || isSpectator) {
-          console.warn('[Connect4] Move blocked:', { isActive: gameData.isActive, isMyTurn, isSpectator });
-          return;
+        console.warn('[Connect4] Move blocked:', {
+          isActive: gameData.isActive,
+          isMyTurn,
+          isSpectator,
+        });
+        return;
       }
       if (boardMatrix[0]?.[col] !== 0) return;
 
       // Phase 7: Clients send Move Requests
-      makeGameMove({ 
-          game: 'connect4', 
-          type: 'drop', 
-          col 
+      makeGameMove({
+        game: 'connect4',
+        type: 'drop',
+        col,
       });
     },
     [gameData, isMyTurn, isSpectator, boardMatrix, makeGameMove, user?.id]
@@ -246,61 +273,77 @@ export const ConnectFourGame = () => {
         </div>
 
         <div className='p-6 bg-white/5 rounded-[2rem] border border-white/10 backdrop-blur-md shadow-xl flex flex-col gap-4'>
-            <div className='flex items-center justify-between'>
-                <p className='text-[10px] font-bold text-slate-400 uppercase tracking-tighter'>Session Players</p>
-                <div className='flex items-center gap-1'>
-                    <div className='w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping' />
-                    <span className='text-[8px] font-bold text-emerald-400'>LIVE</span>
-                </div>
+          <div className='flex items-center justify-between'>
+            <p className='text-[10px] font-bold text-slate-400 uppercase tracking-tighter'>
+              Session Players
+            </p>
+            <div className='flex items-center gap-1'>
+              <div className='w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping' />
+              <span className='text-[8px] font-bold text-emerald-400'>LIVE</span>
             </div>
+          </div>
 
-            <div className='space-y-3'>
-                {players.map((p, idx) => (
-                    <div key={p.id} className={cn(
-                        'flex items-center gap-3 p-3 rounded-2xl transition-all border',
-                        currentPlayerId === p.id ? 'bg-white/10 border-white/20' : 'bg-transparent border-transparent opacity-60'
-                    )}>
-                        <div className={cn(
-                            'w-8 h-8 rounded-full flex items-center justify-center shadow-lg',
-                            idx === 0 ? 'bg-red-500' : 'bg-yellow-400'
-                        )}>
-                            <Users className='w-4 h-4 text-white' />
-                        </div>
-                        <div className='flex-1'>
-                            <p className='text-xs font-black text-white truncate max-w-[100px]'>{p.name}</p>
-                            <p className='text-[8px] text-slate-500 font-bold uppercase'>{idx === 0 ? 'Player 1' : 'Player 2'}</p>
-                        </div>
-                        {currentPlayerId === p.id && (
-                            <div className='px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase'>Turn</div>
-                        )}
-                    </div>
-                ))}
-            </div>
+          <div className='space-y-3'>
+            {players.map((p: User, idx: number) => (
+              <div
+                key={p.id}
+                className={cn(
+                  'flex items-center gap-3 p-3 rounded-2xl transition-all border',
+                  currentPlayerId === p.id
+                    ? 'bg-white/10 border-white/20'
+                    : 'bg-transparent border-transparent opacity-60'
+                )}
+              >
+                <div
+                  className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center shadow-lg',
+                    idx === 0 ? 'bg-red-500' : 'bg-yellow-400'
+                  )}
+                >
+                  <Users className='w-4 h-4 text-white' />
+                </div>
+                <div className='flex-1'>
+                  <p className='text-xs font-black text-white truncate max-w-[100px]'>{p.name}</p>
+                  <p className='text-[8px] text-slate-500 font-bold uppercase'>
+                    {idx === 0 ? 'Player 1' : 'Player 2'}
+                  </p>
+                </div>
+                {currentPlayerId === p.id && (
+                  <div className='px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase'>
+                    Turn
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className='flex-1' />
 
         <div className='space-y-3'>
-            {!gameData.isActive && (isHost || isSpectator) && (
-                <Button
-                    onClick={() => {
-                        if (players.length < 2) return;
-                        startGame('connect4', players.map(p => p.id));
-                    }}
-                    disabled={players.length < 2}
-                    className='h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest w-full shadow-[0_0_20px_rgba(37,99,235,0.4)]'
-                >
-                    Rematch
-                </Button>
-            )}
-            
+          {!gameData.isActive && (isHost || isSpectator) && (
             <Button
-                variant='outline'
-                onClick={() => endGame()}
-                className='h-12 bg-red-500/10 border-red-500/20 text-red-500 rounded-xl hover:bg-red-500/20 transition-all text-[10px] font-black uppercase tracking-widest w-full'
+              onClick={() => {
+                if (players.length < 2) return;
+                startGame(
+                  'connect4',
+                  players.map((p: User) => p.id)
+                );
+              }}
+              disabled={players.length < 2}
+              className='h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest w-full shadow-[0_0_20px_rgba(37,99,235,0.4)]'
             >
-                <RotateCcw className='w-3 h-3 mr-2' /> {isSpectator ? 'Leave Game' : 'Forfeit'}
+              Rematch
             </Button>
+          )}
+
+          <Button
+            variant='outline'
+            onClick={() => endGame()}
+            className='h-12 bg-red-500/10 border-red-500/20 text-red-500 rounded-xl hover:bg-red-500/20 transition-all text-[10px] font-black uppercase tracking-widest w-full'
+          >
+            <RotateCcw className='w-3 h-3 mr-2' /> {isSpectator ? 'Leave Game' : 'Forfeit'}
+          </Button>
         </div>
       </div>
 
@@ -310,9 +353,12 @@ export const ConnectFourGame = () => {
         localUserId={user?.id || ''}
         isHost={isHost}
         onRematch={() => {
-            if (players.length >= 2) {
-                startGame('connect4', players.map((p) => p.id));
-            }
+          if (players.length >= 2) {
+            startGame(
+              'connect4',
+              players.map((p: User) => p.id)
+            );
+          }
         }}
         onEndGame={() => endGame()}
         gameType='connect4'
@@ -320,3 +366,4 @@ export const ConnectFourGame = () => {
     </Card>
   );
 };
+export default ConnectFourGame;

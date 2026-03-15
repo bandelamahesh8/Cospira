@@ -35,7 +35,12 @@ export const TicTacToe = () => {
     () => (activeGameState && activeGameState.type === 'xoxo' ? activeGameState : null),
     [activeGameState]
   );
-  const board = useMemo(() => gameData?.board || Array(9).fill(null), [gameData?.board]);
+  const board = useMemo<(string | null)[]>(() => {
+    if (Array.isArray(gameData?.board)) {
+      return gameData.board as (string | null)[];
+    }
+    return Array(9).fill(null);
+  }, [gameData?.board]);
   const players = useMemo(() => gameData?.players || [], [gameData?.players]);
   const currentTurn = gameData?.currentTurn;
   const winner = gameData?.winner;
@@ -43,7 +48,7 @@ export const TicTacToe = () => {
     () => (activeGameState as unknown as { scores?: Record<string, number> })?.scores || {},
     [activeGameState]
   );
-  const isTimeAttackActive = gameData?.metadata?.isTimeAttack;
+  const _isTimeAttackActive = gameData?.metadata?.isTimeAttack;
 
   useEffect(() => {
     if (winner) {
@@ -505,3 +510,4 @@ export const TicTacToe = () => {
     </Card>
   );
 };
+export default TicTacToe;
