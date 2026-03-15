@@ -22,7 +22,7 @@ import {
   Briefcase,
   Layers,
   Trash2,
-  Network
+  Network,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -97,9 +97,17 @@ const OrgCard: React.FC<{
         onClick={onSelect}
       >
         {/* Hover Glow Effect */}
-        <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none ${
-          org.mode === 'FUN' ? 'bg-emerald-500/30' : org.mode === 'PROF' ? 'bg-blue-500/30' : org.mode === 'ULTRA_SECURE' ? 'bg-red-500/30' : 'bg-purple-500/30'
-        }`} />
+        <div
+          className={`absolute -top-20 -right-20 w-40 h-40 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none ${
+            org.mode === 'FUN'
+              ? 'bg-emerald-500/30'
+              : org.mode === 'PROF'
+                ? 'bg-blue-500/30'
+                : org.mode === 'ULTRA_SECURE'
+                  ? 'bg-red-500/30'
+                  : 'bg-purple-500/30'
+          }`}
+        />
 
         <div className='flex items-start justify-between mb-8 relative z-10'>
           <div className='flex items-center gap-4'>
@@ -117,10 +125,10 @@ const OrgCard: React.FC<{
               <ModeIcon mode={org.mode} className='w-6 h-6' />
             </div>
             <div>
-              <h3 className='text-white font-black text-xl uppercase tracking-tight'>
-                {org.name}
-              </h3>
-              <p className='text-zinc-500 text-[11px] font-mono tracking-wider mt-0.5 mb-2'>/{org.slug || org.id.substring(0,8)}</p>
+              <h3 className='text-white font-black text-xl uppercase tracking-tight'>{org.name}</h3>
+              <p className='text-zinc-500 text-[11px] font-mono tracking-wider mt-0.5 mb-2'>
+                /{org.slug || org.id.substring(0, 8)}
+              </p>
               <ModeBadge mode={org.mode} />
             </div>
           </div>
@@ -142,9 +150,13 @@ const OrgCard: React.FC<{
 
         <div className='flex items-center justify-between mt-6 relative z-10 border-t border-white/5 pt-5'>
           <div className='flex flex-col'>
-            <span className='text-[9px] text-zinc-500 font-bold uppercase tracking-widest mb-1'>Role Identifier</span>
-            <span className={`text-xs font-black uppercase tracking-wider ${isOwner ? 'text-indigo-400' : 'text-zinc-400'}`}>
-               {isOwner ? 'Super Host' : 'Member'}
+            <span className='text-[9px] text-zinc-500 font-bold uppercase tracking-widest mb-1'>
+              Role Identifier
+            </span>
+            <span
+              className={`text-xs font-black uppercase tracking-wider ${isOwner ? 'text-indigo-400' : 'text-zinc-400'}`}
+            >
+              {isOwner ? 'Super Host' : 'Member'}
             </span>
           </div>
 
@@ -203,8 +215,8 @@ const Organizations: React.FC = () => {
     try {
       await OrganizationService.joinOrganizationByCode(code);
       toast.success('Joined organization successfully', { description: 'Connection established.' });
-      setCurrentOrganization(null); 
-      window.location.reload(); 
+      setCurrentOrganization(null);
+      window.location.reload();
     } catch (error) {
       toast.error('Connection Failed', {
         description: error instanceof Error ? error.message : String(error),
@@ -262,10 +274,11 @@ const Organizations: React.FC = () => {
               ORGANIZATIONS
             </h2>
             <p className='text-zinc-500 font-medium max-w-xl'>
-              Architect and govern isolated environments. Establish policies, roles, and deep collaboration hubs across your network.
+              Architect and govern isolated environments. Establish policies, roles, and deep
+              collaboration hubs across your network.
             </p>
           </div>
-          
+
           <div className='flex items-center gap-4 flex-wrap'>
             <div className='relative group flex items-center'>
               <div className='absolute -inset-0.5 bg-gradient-to-r from-indigo-500/30 to-purple-500/30 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500'></div>
@@ -306,7 +319,9 @@ const Organizations: React.FC = () => {
         <div className='flex items-center gap-4 mb-10 p-5 bg-[#0F1116] border border-white/5 rounded-2xl flex-wrap'>
           <div className='flex items-center gap-2 mr-4'>
             <Network className='w-4 h-4 text-zinc-500' />
-            <span className='text-[10px] font-black uppercase tracking-widest text-zinc-500'>Detected Architectures</span>
+            <span className='text-[10px] font-black uppercase tracking-widest text-zinc-500'>
+              Detected Architectures
+            </span>
           </div>
           <div className='flex items-center gap-3 flex-wrap'>
             {(['FUN', 'PROF', 'ULTRA_SECURE', 'MIXED'] as OrgMode[]).map((m) => (
@@ -320,7 +335,9 @@ const Organizations: React.FC = () => {
           <div className='flex items-center justify-center py-32'>
             <div className='flex flex-col items-center gap-4'>
               <div className='w-12 h-12 border-b-2 border-indigo-500 rounded-full animate-spin' />
-              <span className='text-[10px] font-bold text-zinc-500 uppercase tracking-widest'>Syncing Grid...</span>
+              <span className='text-[10px] font-bold text-zinc-500 uppercase tracking-widest'>
+                Syncing Grid...
+              </span>
             </div>
           </div>
         ) : organizations.length === 0 ? (
@@ -337,7 +354,8 @@ const Organizations: React.FC = () => {
               NO ORGS FOUND
             </h2>
             <p className='text-zinc-500 font-medium max-w-sm mb-8'>
-              Your sector is currently empty. Initialize an organization to begin establishing secure team environments.
+              Your sector is currently empty. Initialize an organization to begin establishing
+              secure team environments.
             </p>
             <button
               onClick={() => setIsCreateOpen(true)}
@@ -366,10 +384,10 @@ const Organizations: React.FC = () => {
 
         {/* Action History Container */}
         <div className='mt-12'>
-          <RecentRoomsCard 
-            filterType="organization" 
-            title="Organization History" 
-            subtitle="Your active & past tenant nodes" 
+          <RecentRoomsCard
+            filterType='organization'
+            title='Organization History'
+            subtitle='Your active & past tenant nodes'
           />
         </div>
       </div>
@@ -384,8 +402,11 @@ const Organizations: React.FC = () => {
               Destruct Warning
             </AlertDialogTitle>
             <AlertDialogDescription className='text-zinc-400 font-medium text-sm leading-relaxed'>
-              This action will permanently obliterate <strong className='text-white font-black uppercase'>{orgToDelete?.name}</strong> and purge all nested breakout rooms, activity logs, and system data. 
-              <br/><br/>
+              This action will permanently obliterate{' '}
+              <strong className='text-white font-black uppercase'>{orgToDelete?.name}</strong> and
+              purge all nested breakout rooms, activity logs, and system data.
+              <br />
+              <br />
               <span className='text-red-400 font-bold'>This protocol cannot be reversed.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>

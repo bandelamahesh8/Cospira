@@ -3,36 +3,11 @@
  * Allows users to toggle chess game features
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-export interface FeatureToggles {
-  sounds: boolean;
-  blunderWarnings: boolean;
-  focusMode: boolean;
-  antiRage: boolean;
-}
-
-const SETTINGS_STORAGE_KEY = 'chess_settings';
-
-const DEFAULT_SETTINGS: FeatureToggles = {
-  sounds: true,
-  blunderWarnings: false,
-  focusMode: true,
-  antiRage: true,
-};
-
-export const loadSettings = (): FeatureToggles => {
-  try {
-    const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS;
-  } catch (error) {
-    console.warn('[Settings] Failed to load settings:', error);
-    return DEFAULT_SETTINGS;
-  }
-};
+import { loadSettings, SETTINGS_STORAGE_KEY, FeatureToggles } from './SettingsUtils';
 
 interface SettingsPanelProps {
   onSettingsChange?: (settings: FeatureToggles) => void;

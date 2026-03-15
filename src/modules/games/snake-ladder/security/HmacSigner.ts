@@ -24,12 +24,12 @@ export class HmacSigner {
         name: 'HKDF',
         hash: 'SHA-256',
         salt: new Uint8Array(32), // zero salt
-        info
+        info,
       },
       masterKey,
       {
         name: this.ALGORITHM,
-        hash: this.HASH
+        hash: this.HASH,
       },
       false,
       ['sign', 'verify']
@@ -45,7 +45,7 @@ export class HmacSigner {
       roomId: event.roomId,
       sequenceId: event.sequenceId,
       action: event.action,
-      payload: event.payload
+      payload: event.payload,
     });
 
     const signature = await webcrypto.subtle.sign(
@@ -66,7 +66,7 @@ export class HmacSigner {
       roomId: event.roomId,
       sequenceId: event.sequenceId,
       action: event.action,
-      payload: event.payload
+      payload: event.payload,
     });
 
     const signatureBytes = Buffer.from(signature, 'hex');

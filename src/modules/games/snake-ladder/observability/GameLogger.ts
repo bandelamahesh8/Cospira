@@ -31,7 +31,7 @@ export class GameLogger {
       traceId: 'trace-id', // from context
       spanId: 'span-id',
       message,
-      context
+      context,
     });
   }
 
@@ -44,7 +44,7 @@ export class GameLogger {
       traceId: 'trace-id',
       spanId: 'span-id',
       message,
-      context
+      context,
     });
   }
 
@@ -57,11 +57,16 @@ export class GameLogger {
       traceId: 'trace-id',
       spanId: 'span-id',
       message,
-      context
+      context,
     });
   }
 
-  static error(roomId: string, message: string, errorCode?: GameErrorCode, context?: Record<string, unknown>): void {
+  static error(
+    roomId: string,
+    message: string,
+    errorCode?: GameErrorCode,
+    context?: Record<string, unknown>
+  ): void {
     this.log({
       timestamp: Date.now(),
       level: 'ERROR',
@@ -71,7 +76,7 @@ export class GameLogger {
       spanId: 'span-id',
       message,
       errorCode,
-      context
+      context,
     });
   }
 }

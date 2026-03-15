@@ -15,7 +15,7 @@ export class LudoEngine {
   constructor(initialState: GameState) {
     this.manager = new GameStateManager(initialState);
     if (!this.manager.getState().consecutiveSixes) {
-        this.manager.update({ consecutiveSixes: 0 });
+      this.manager.update({ consecutiveSixes: 0 });
     }
   }
 
@@ -42,34 +42,39 @@ export class LudoEngine {
   private processRoll(playerId: string) {
     const val = DiceEngine.roll();
     const state = this.manager.getState();
-    
-    let consec = (state.consecutiveSixes || 0);
+
+    let consec = state.consecutiveSixes || 0;
     if (val === 6) consec++;
     else consec = 0;
 
     // Audit M2: Forfeit three 6s
     if (consec === 3) {
-        this.manager.update({
-            diceValue: 6,
-            diceRolled: false,
-            consecutiveSixes: 0,
-            lastAction: { type: 'ROLL', playerId, data: { value: 6, forfeit: true } }
-        });
-        this.passTurn();
-        return;
+      this.manager.update({
+        diceValue: 6,
+        diceRolled: false,
+        consecutiveSixes: 0,
+        lastAction: { type: 'ROLL', playerId, data: { value: 6, forfeit: true } },
+      });
+      this.passTurn();
+      return;
     }
 
     this.manager.update({
       diceValue: val,
       diceRolled: true,
       consecutiveSixes: consec,
-      lastAction: { type: 'ROLL', playerId, data: { value: val } }
+      lastAction: { type: 'ROLL', playerId, data: { value: val } },
     });
   }
 
-  private processMove(action: { playerId: string; tokenId: number; fromCell: number; toCell: number }) {
+  private processMove(action: {
+    playerId: string;
+    tokenId: number;
+    fromCell: number;
+    toCell: number;
+  }) {
     const state = this.manager.getState();
-    const player = state.players.find(p => p.id === action.playerId);
+    const player = state.players.find((p) => p.id === action.playerId);
     if (!player || !player.color || !state.tokens) return;
 
     const newTokens = { ...state.tokens };
@@ -90,27 +95,28 @@ export class LudoEngine {
     if (globalIndex !== null) {
       const captures = TokenController.checkCaptures(globalIndex, player.color, newTokens);
       if (captures.length > 0) {
-          extraTurn = true;
-          captures.forEach(([vicColor, vicIdx]) => {
-              newTokens[vicColor][vicIdx] = TokenController.YARD_POS;
-          });
+        extraTurn = true;
+        captures.forEach(([vicColor, vicIdx]) => {
+          newTokens[vicColor][vicIdx] = TokenController.YARD_POS;
+        });
       }
     }
 
     this.manager.update({
       tokens: newTokens,
       diceRolled: false,
-      diceValue: extraTurn ? state.diceValue : 0, 
-      lastAction: { 
-        type: 'MOVE', playerId: action.playerId, 
-        data: { tokenId: action.tokenId, from: action.fromCell, to: action.toCell } 
-      }
+      diceValue: extraTurn ? state.diceValue : 0,
+      lastAction: {
+        type: 'MOVE',
+        playerId: action.playerId,
+        data: { tokenId: action.tokenId, from: action.fromCell, to: action.toCell },
+      },
     });
 
     if (RulesEngine.isTerminal(this.manager.getState())) {
       this.manager.update({
         isActive: false,
-        winner: RulesEngine.getWinner(this.manager.getState())
+        winner: RulesEngine.getWinner(this.manager.getState()),
       });
     } else {
       if (!extraTurn) {
@@ -124,19 +130,21 @@ export class LudoEngine {
   public passTurn(): GameState {
     const state = this.manager.getState();
     const players = state.players;
-    const currentIndex = players.findIndex(p => p.id === state.currentTurn);
-    
+    const currentIndex = players.findIndex((p) => p.id === state.currentTurn);
+
     // Audit M5: Skip finished players
     let nextIndex = (currentIndex + 1) % players.length;
     let candidatesChecked = 0;
     while (candidatesChecked < players.length) {
-        const candidate = players[nextIndex];
-        const isFinished = state.tokens?.[candidate.color!]?.every(pos => pos === TokenController.FINISHED_POS);
-        if (!isFinished) break;
-        nextIndex = (nextIndex + 1) % players.length;
-        candidatesChecked++;
+      const candidate = players[nextIndex];
+      const isFinished = state.tokens?.[candidate.color!]?.every(
+        (pos) => pos === TokenController.FINISHED_POS
+      );
+      if (!isFinished) break;
+      nextIndex = (nextIndex + 1) % players.length;
+      candidatesChecked++;
     }
-    
+
     this.manager.update({
       currentTurn: players[nextIndex].id,
       diceRolled: false,
@@ -150,18 +158,24 @@ export class LudoEngine {
 
   public hasPossibleMoves(playerId: string, diceValue: number): boolean {
     const state = this.manager.getState();
-    const player = state.players.find(p => p.id === playerId);
+    const player = state.players.find((p) => p.id === playerId);
     if (!player || !player.color || !state.tokens) return false;
 
     const tokens = state.tokens[player.color];
     const validationResults = tokens.map((pos, idx) => {
-        if (pos === TokenController.FINISHED_POS) return false;
-        const nextPos = TokenController.calculateNextPosition(pos, diceValue);
-        const action = { type: 'MOVE_TOKEN', playerId, tokenId: idx, fromCell: pos, toCell: nextPos } as GameAction;
-        return RulesEngine.validate(state, action).valid;
+      if (pos === TokenController.FINISHED_POS) return false;
+      const nextPos = TokenController.calculateNextPosition(pos, diceValue);
+      const action = {
+        type: 'MOVE_TOKEN',
+        playerId,
+        tokenId: idx,
+        fromCell: pos,
+        toCell: nextPos,
+      } as GameAction;
+      return RulesEngine.validate(state, action).valid;
     });
 
-    return validationResults.some(result => result);
+    return validationResults.some((result) => result);
   }
 
   getState(): GameState {

@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import ffmpegPath from '@ffmpeg-installer/ffmpeg';
 import { EventEmitter } from 'events';
-import logger from '../logger.js';
+import logger from '../shared/logger.js';
 
 class AudioCaptureManager extends EventEmitter {
   constructor(sessionId, options = {}) {

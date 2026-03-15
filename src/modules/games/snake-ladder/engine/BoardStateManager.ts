@@ -15,7 +15,7 @@ export class BoardStateManager {
     const previousState = structuredClone(this.state);
 
     if (delta.playerId !== undefined) {
-      const player = this.state.players.find(p => p.id === delta.playerId);
+      const player = this.state.players.find((p) => p.id === delta.playerId);
       if (player) {
         if (delta.fromPosition !== undefined) player.position = delta.fromPosition;
         if (delta.toPosition !== undefined) player.position = delta.toPosition;

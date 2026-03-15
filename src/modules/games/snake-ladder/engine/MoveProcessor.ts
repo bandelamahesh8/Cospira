@@ -14,7 +14,7 @@ export class MoveProcessor {
       throw new GameError('INVALID_DICE', `Invalid dice value: ${diceValue}`);
     }
 
-    const player = state.players.find(p => p.id === playerId)!;
+    const player = state.players.find((p) => p.id === playerId)!;
     const currentPosition = player.position;
 
     // Step 3: Check triple-six penalty
@@ -26,7 +26,7 @@ export class MoveProcessor {
       return {
         playerId,
         outcome: 'BLOCKED',
-        nextPlayerId: nextPlayer.id
+        nextPlayerId: nextPlayer.id,
       };
     }
 
@@ -36,7 +36,7 @@ export class MoveProcessor {
       return {
         playerId,
         outcome: 'BLOCKED',
-        nextPlayerId: nextPlayer.id
+        nextPlayerId: nextPlayer.id,
       };
     }
 
@@ -52,7 +52,7 @@ export class MoveProcessor {
         toPosition: currentPosition, // no move
         outcome: 'OVERSHOOT',
         diceValue,
-        nextPlayerId: nextPlayer.id
+        nextPlayerId: nextPlayer.id,
       };
     }
 
@@ -64,7 +64,7 @@ export class MoveProcessor {
         toPosition: 100,
         outcome: 'WIN',
         diceValue,
-        winnerId: playerId
+        winnerId: playerId,
       };
     }
 
@@ -97,16 +97,16 @@ export class MoveProcessor {
       toPosition: finalPosition,
       outcome,
       diceValue,
-      nextPlayerId
+      nextPlayerId,
     };
   }
 
   private static getNextPlayer(state: GameState): { id: PlayerId } {
     // Rotate in joinTimestamp ascending order, skip spectators/disconnected
     const activePlayers = state.players
-      .filter(p => !p.isSpectator && p.isConnected)
+      .filter((p) => !p.isSpectator && p.isConnected)
       .sort((a, b) => a.joinTimestamp - b.joinTimestamp);
-    const currentIndex = activePlayers.findIndex(p => p.id === state.currentPlayerId);
+    const currentIndex = activePlayers.findIndex((p) => p.id === state.currentPlayerId);
     const nextIndex = (currentIndex + 1) % activePlayers.length;
     return activePlayers[nextIndex];
   }

@@ -18,7 +18,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { AlertTriangle, ShieldAlert } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface ReportDialogProps {
@@ -60,8 +60,9 @@ export const ReportDialog = ({
       }); // Using default variant as success isn't standard in shadcn sometimes, or just standard toast
       onOpenChange(false);
       setDescription('');
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An error occurred';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }

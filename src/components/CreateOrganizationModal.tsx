@@ -15,10 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { useOrganization } from '@/contexts/useOrganization';
 import { ModePolicyResolver } from '@/lib/ModePolicyResolver';
 import { OrgMode } from '@/types/organization';
-import {
-  Building2,
-  Plus,
-} from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface CreateOrganizationModalProps {

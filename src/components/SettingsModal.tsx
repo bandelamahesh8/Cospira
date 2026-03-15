@@ -47,10 +47,7 @@ import { useOrganization } from '@/contexts/useOrganization';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { copyToClipboard } from '@/utils/clipboard';
-import { 
-  AdvancedRoomSettings, 
-  type AdvancedSettings 
-} from './rooms/AdvancedRoomSettings';
+import { AdvancedRoomSettings, type AdvancedSettings } from './rooms/AdvancedRoomSettings';
 
 interface SettingsModalProps {
   roomId: string;
@@ -154,7 +151,15 @@ const SettingsModal = ({ roomId, isHost, trigger }: SettingsModalProps) => {
         }));
       }
     }
-  }, [open, currentRoomName, accessType, hasWaitingRoom, autoApprove, currentStopJoiningTime, currentAdvancedSettings]);
+  }, [
+    open,
+    currentRoomName,
+    accessType,
+    hasWaitingRoom,
+    autoApprove,
+    currentStopJoiningTime,
+    currentAdvancedSettings,
+  ]);
 
   const handleLeave = () => {
     leaveRoom();
@@ -580,10 +585,7 @@ const SettingsModal = ({ roomId, isHost, trigger }: SettingsModalProps) => {
               <h4 className='text-[10px] md:text-[11px] font-black uppercase tracking-[0.3em] text-primary mb-4 flex items-center gap-2 px-1'>
                 <Zap className='w-3 h-3 md:w-4 md:h-4' /> Advanced Protocols
               </h4>
-              <AdvancedRoomSettings 
-                settings={advancedSettings} 
-                onChange={setAdvancedSettings} 
-              />
+              <AdvancedRoomSettings settings={advancedSettings} onChange={setAdvancedSettings} />
             </motion.div>
           )}
         </div>

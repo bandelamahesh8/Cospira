@@ -17,11 +17,11 @@ export const SecurityOverlay: React.FC<SecurityOverlayProps> = ({ roomId, userNa
     const handleCopy = (e: ClipboardEvent) => {
       e.preventDefault();
     };
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent PrintScreen, and common screenshot combos (Cmd+Shift+3/4/5 on Mac, Windows+Shift+S)
       if (
-        e.key === 'PrintScreen' || 
+        e.key === 'PrintScreen' ||
         (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(e.key)) ||
         (e.metaKey && e.shiftKey && e.key.toLowerCase() === 's')
       ) {
@@ -51,12 +51,12 @@ export const SecurityOverlay: React.FC<SecurityOverlayProps> = ({ roomId, userNa
   }, []);
 
   return (
-    <div 
+    <div
       className='fixed inset-0 pointer-events-none z-[9999] overflow-hidden'
       style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
     >
       {/* 0. ANTI-CAPTURE NOISE LAYER (Flickers slightly to corrupt video encoders) */}
-      <motion.div 
+      <motion.div
         animate={{ opacity: [0.01, 0.03, 0.01] }}
         transition={{ duration: 0.1, repeat: Infinity }}
         className='absolute inset-0 bg-[url("data:image/svg+xml,%3Csvg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cfilter id=\"noiseFilter\"%3E%3CfeTurbulence type=\"fractalNoise\" baseFrequency=\"0.65\" numOctaves=\"3\" stitchTiles=\"stitch\"/%3E%3C/filter%3E%3Crect width=\"100%25\" height=\"100%25\" filter=\"url(%23noiseFilter)\"/%3E%3C/svg%3E")] opacity-10 mix-blend-overlay pointer-events-none'
@@ -79,7 +79,7 @@ export const SecurityOverlay: React.FC<SecurityOverlayProps> = ({ roomId, userNa
         className='absolute inset-0 opacity-[0.04] pointer-events-none'
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='300' height='300' viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='50%25' y='50%25' font-family='monospace' font-size='18' fill='white' text-anchor='middle' transform='rotate(-45 150 150)' opacity='0.5'%3E ${userName} - ${ip} %3C/text%3E%3Ctext x='50%25' y='60%25' font-family='monospace' font-size='12' fill='white' text-anchor='middle' transform='rotate(-45 150 150)' opacity='0.3'%3E CONFIDENTIAL %3C/text%3E%3C/svg%3E")`,
-          backgroundRepeat: 'repeat'
+          backgroundRepeat: 'repeat',
         }}
       />
 

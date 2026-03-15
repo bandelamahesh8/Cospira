@@ -9,7 +9,11 @@ export { GameError } from './errors/GameError';
 export { HmacSigner } from './security/HmacSigner';
 export { RoomKeyRegistry } from './security/RoomKeyRegistry';
 
-export { GameEventSerializer, type GameEvent, type GameAction } from './transport/GameEventSerializer';
+export {
+  GameEventSerializer,
+  type GameEvent,
+  type GameAction,
+} from './transport/GameEventSerializer';
 export { SequenceTracker } from './transport/SequenceTracker';
 
 export { RedisRoomRegistry } from './infra/RedisRoomRegistry';

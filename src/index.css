@@ -121,12 +121,7 @@
     --radius: 1.25rem;
 
     /* Exclusive Gradient Tokens */
-    --gradient-luxury: linear-gradient(
-      135deg,
-      #ffffff 0%,
-      #a5b4fc 50%,
-      #6366f1 100%
-    );
+    --gradient-luxury: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #6366f1 100%);
     --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
     --gradient-dark: linear-gradient(180deg, #0b0f14, #101722);
 

@@ -1,6 +1,6 @@
 import { chromium } from 'playwright-extra';
 import stealth from 'puppeteer-extra-plugin-stealth';
-import logger from '../logger.js';
+import logger from '../shared/logger.js';
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
 import AudioCaptureManager from './AudioCaptureManager.js';

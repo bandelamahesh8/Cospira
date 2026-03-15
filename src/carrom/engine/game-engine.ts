@@ -6,12 +6,7 @@
  * coordinates with physics simulation.
  */
 
-import {
-  CarromGameState,
-  PlayerInput,
-  GameEvent,
-  PlayerId,
-} from '../types/game-state';
+import { CarromGameState, PlayerInput, GameEvent, PlayerId } from '../types/game-state';
 import { CarromPhysicsEngine } from '../physics/matter-engine';
 import { hashGameState } from '../utils/state-hash';
 import { FixedVector2, toFixed, fromFixed, magnitudeVec2Fixed } from '../fixed-point';
@@ -48,11 +43,11 @@ export class CarromGameEngine {
   private physicsEngine: CarromPhysicsEngine;
   private gameState: CarromGameState;
   private eventListeners: Array<(event: GameEvent) => void> = [];
-  
+
   // Physics loop state
   private accumulator = 0;
   private lastTime = 0;
-  
+
   // Turn state
   private isMoving = false;
   private coinsPocketedThisTurn: string[] = [];
@@ -62,10 +57,10 @@ export class CarromGameEngine {
     this.gameState = { ...initialState };
     this.physicsEngine = new CarromPhysicsEngine();
     this.physicsEngine.initializeBoard(this.gameState.board);
-    
+
     // Seed Math.random from roomId for determinism
     this.seedRandom(this.gameState.roomId);
-    
+
     this.initializePhysicsBodies();
   }
 
@@ -75,15 +70,15 @@ export class CarromGameEngine {
   private seedRandom(roomId: string): void {
     let h = 0;
     for (let i = 0; i < roomId.length; i++) {
-      h = Math.imul(31, h) + roomId.charCodeAt(i) | 0;
+      h = (Math.imul(31, h) + roomId.charCodeAt(i)) | 0;
     }
     let state = h >>> 0;
-    
+
     Math.random = () => {
       state ^= state << 13;
       state ^= state >>> 17;
       state ^= state << 5;
-      return (state >>> 0) / 0xFFFFFFFF;
+      return (state >>> 0) / 0xffffffff;
     };
   }
 
@@ -92,7 +87,7 @@ export class CarromGameEngine {
    */
   private initializePhysicsBodies(): void {
     this.physicsEngine.createBody(this.gameState.physics.striker);
-    this.gameState.physics.coins.forEach(coin => {
+    this.gameState.physics.coins.forEach((coin) => {
       if (!coin.pocketed) {
         this.physicsEngine.createBody(coin);
       }
@@ -128,11 +123,11 @@ export class CarromGameEngine {
     }
 
     this.syncStateFromPhysics();
-    
+
     if (this.isMoving && this.allBodiesAtRest()) {
       this.handleShotEnd();
     }
-    
+
     if (this.gameState.phase === 'playing' && !this.isMoving) {
       this.gameState.timeRemaining = Math.max(0, this.gameState.timeRemaining - elapsed);
       if (this.gameState.timeRemaining <= 0) {
@@ -153,7 +148,7 @@ export class CarromGameEngine {
     if (this.gameState.phase !== 'playing' || input.playerId !== this.gameState.currentPlayer) {
       return;
     }
-    
+
     if (this.isMoving) return;
 
     if (input.type === 'drag_end') {
@@ -173,9 +168,10 @@ export class CarromGameEngine {
     if (dragMagnitude < fromFixed(MIN_DRAG_DISTANCE)) return;
 
     const clampedMagnitude = Math.min(dragMagnitude, fromFixed(MAX_DRAG_DISTANCE));
-    const forceFactor = (clampedMagnitude / fromFixed(MAX_DRAG_DISTANCE)) * fromFixed(DRAG_FORCE_MULTIPLIER);
+    const forceFactor =
+      (clampedMagnitude / fromFixed(MAX_DRAG_DISTANCE)) * fromFixed(DRAG_FORCE_MULTIPLIER);
     const forceAngle = Math.atan2(-dragY, -dragX);
-    
+
     const forceVector: FixedVector2 = {
       x: toFixed(Math.cos(forceAngle) * forceFactor),
       y: toFixed(Math.sin(forceAngle) * forceFactor),
@@ -186,10 +182,14 @@ export class CarromGameEngine {
     this.isMoving = true;
 
     this.physicsEngine.applyForce(this.gameState.physics.striker.id, forceVector);
-    
+
     this.emitEvent({
       type: 'PLAYER_SHOT',
-      payload: { playerId: input.playerId, angle: forceAngle, power: clampedMagnitude / fromFixed(MAX_DRAG_DISTANCE) },
+      payload: {
+        playerId: input.playerId,
+        angle: forceAngle,
+        power: clampedMagnitude / fromFixed(MAX_DRAG_DISTANCE),
+      },
       timestamp: Date.now(),
     });
   }
@@ -200,7 +200,7 @@ export class CarromGameEngine {
       return;
     }
 
-    const coinIndex = this.gameState.physics.coins.findIndex(c => c.id === bodyId);
+    const coinIndex = this.gameState.physics.coins.findIndex((c) => c.id === bodyId);
     const coin = this.gameState.physics.coins[coinIndex];
     if (!coin || coin.pocketed) return;
 
@@ -210,7 +210,11 @@ export class CarromGameEngine {
 
     if (coin.type === 'queen') {
       this.gameState.queenStatus = 'pocketed_needs_cover';
-      this.emitEvent({ type: 'QUEEN_POCKETED', payload: { player: this.gameState.currentPlayer }, timestamp: Date.now() });
+      this.emitEvent({
+        type: 'QUEEN_POCKETED',
+        payload: { player: this.gameState.currentPlayer },
+        timestamp: Date.now(),
+      });
     }
 
     this.emitEvent({
@@ -223,7 +227,7 @@ export class CarromGameEngine {
   private handleShotEnd(): void {
     this.isMoving = false;
     const currentPlayerId = this.gameState.currentPlayer;
-    
+
     this.checkColorAssignment();
     this.handleQueenLogic();
     this.updateScoresAtTurnEnd();
@@ -232,9 +236,10 @@ export class CarromGameEngine {
     let turnContinues = false;
     if (!this.currentTurnFouled && this.coinsPocketedThisTurn.length > 0) {
       const assignedColor = this.gameState.coinAssignment[currentPlayerId];
-      const ownCoins = this.gameState.physics.coins.filter(c => 
-        this.coinsPocketedThisTurn.includes(c.id) && 
-        (c.type === assignedColor || c.type === 'queen')
+      const ownCoins = this.gameState.physics.coins.filter(
+        (c) =>
+          this.coinsPocketedThisTurn.includes(c.id) &&
+          (c.type === assignedColor || c.type === 'queen')
       );
       if (ownCoins.length > 0) {
         turnContinues = true;
@@ -244,7 +249,7 @@ export class CarromGameEngine {
     this.emitEvent({
       type: 'SHOT_RESULT',
       payload: { turner: currentPlayerId, turnContinues, fouled: this.currentTurnFouled },
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
 
     if (!turnContinues) {
@@ -252,7 +257,7 @@ export class CarromGameEngine {
     } else {
       this.resetStrikerPosition();
     }
-    
+
     this.checkWinConditions();
     this.gameState.sequenceId++;
     this.gameState.stateHash = hashGameState(this.gameState);
@@ -261,19 +266,19 @@ export class CarromGameEngine {
   private checkColorAssignment(): void {
     const cp = this.gameState.currentPlayer;
     if (this.gameState.coinAssignment[cp] !== 'none') return;
-    
-    const firstCoinId = this.coinsPocketedThisTurn.find(id => {
-      const c = this.gameState.physics.coins.find(coin => coin.id === id);
+
+    const firstCoinId = this.coinsPocketedThisTurn.find((id) => {
+      const c = this.gameState.physics.coins.find((coin) => coin.id === id);
       return c && c.type !== 'queen';
     });
 
     if (firstCoinId) {
-      const coin = this.gameState.physics.coins.find(c => c.id === firstCoinId)!;
+      const coin = this.gameState.physics.coins.find((c) => c.id === firstCoinId)!;
       const assignedColor = coin.type as 'white' | 'black';
       const opponentColor = assignedColor === 'white' ? 'black' : 'white';
-      
+
       this.gameState.coinAssignment[cp] = assignedColor;
-      const opponentId = this.gameState.players.find(p => p.id !== cp)!.id;
+      const opponentId = this.gameState.players.find((p) => p.id !== cp)!.id;
       this.gameState.coinAssignment[opponentId] = opponentColor;
     }
   }
@@ -282,9 +287,9 @@ export class CarromGameEngine {
     if (this.gameState.queenStatus === 'pocketed_needs_cover') {
       const cp = this.gameState.currentPlayer;
       const assignedColor = this.gameState.coinAssignment[cp];
-      
-      const coverSucceeded = this.gameState.physics.coins.some(c => 
-        this.coinsPocketedThisTurn.includes(c.id) && c.type === assignedColor
+
+      const coverSucceeded = this.gameState.physics.coins.some(
+        (c) => this.coinsPocketedThisTurn.includes(c.id) && c.type === assignedColor
       );
 
       if (coverSucceeded) {
@@ -293,24 +298,28 @@ export class CarromGameEngine {
         this.emitEvent({ type: 'QUEEN_COVERED', payload: { player: cp }, timestamp: Date.now() });
       } else {
         this.gameState.queenStatus = 'on_board';
-        const queen = this.gameState.physics.coins.find(c => c.id === 'queen')!;
+        const queen = this.gameState.physics.coins.find((c) => c.id === 'queen')!;
         queen.pocketed = false;
         queen.position = { x: toFixed(BOARD_WIDTH / 2), y: toFixed(BOARD_HEIGHT / 2) };
         queen.velocity = { x: 0, y: 0 };
         this.physicsEngine.createBody(queen);
-        this.emitEvent({ type: 'QUEEN_RETURNED', payload: { reason: 'failed_cover' }, timestamp: Date.now() });
+        this.emitEvent({
+          type: 'QUEEN_RETURNED',
+          payload: { reason: 'failed_cover' },
+          timestamp: Date.now(),
+        });
       }
     }
   }
 
   private updateScoresAtTurnEnd(): void {
     const cp = this.gameState.currentPlayer;
-    const opponentId = this.gameState.players.find(p => p.id !== cp)!.id;
+    const opponentId = this.gameState.players.find((p) => p.id !== cp)!.id;
     const cpColor = this.gameState.coinAssignment[cp];
     const opColor = this.gameState.coinAssignment[opponentId];
 
-    this.coinsPocketedThisTurn.forEach(id => {
-      const coin = this.gameState.physics.coins.find(c => c.id === id)!;
+    this.coinsPocketedThisTurn.forEach((id) => {
+      const coin = this.gameState.physics.coins.find((c) => c.id === id)!;
       if (coin.type === cpColor) {
         this.addScore(cp, POINTS.OWN_COIN);
       } else if (coin.type === opColor) {
@@ -326,7 +335,11 @@ export class CarromGameEngine {
     const cp = this.gameState.currentPlayer;
     this.addScore(cp, POINTS.FOUL);
     this.returnOnePocketedCoin(cp);
-    this.emitEvent({ type: 'FOUL', payload: { player: cp, reason: 'striker_pocketed' }, timestamp: Date.now() });
+    this.emitEvent({
+      type: 'FOUL',
+      payload: { player: cp, reason: 'striker_pocketed' },
+      timestamp: Date.now(),
+    });
     this.gameState.physics.striker.pocketed = true;
     this.physicsEngine.removeBody('striker');
   }
@@ -334,23 +347,23 @@ export class CarromGameEngine {
   private returnOnePocketedCoin(playerId: PlayerId): void {
     const color = this.gameState.coinAssignment[playerId];
     if (color === 'none') return;
-    const coin = this.gameState.physics.coins.find(c => c.pocketed && c.type === color);
+    const coin = this.gameState.physics.coins.find((c) => c.pocketed && c.type === color);
     if (coin) {
       coin.pocketed = false;
-      coin.position = { x: toFixed(BOARD_WIDTH/2), y: toFixed(BOARD_HEIGHT/2) };
+      coin.position = { x: toFixed(BOARD_WIDTH / 2), y: toFixed(BOARD_HEIGHT / 2) };
       coin.velocity = { x: 0, y: 0 };
       this.physicsEngine.createBody(coin);
     }
   }
 
   private addScore(playerId: PlayerId, points: number): void {
-    const p = this.gameState.players.find(player => player.id === playerId);
+    const p = this.gameState.players.find((player) => player.id === playerId);
     if (p) p.score += points;
   }
 
   private switchTurn(): void {
     const currentPlayerId = this.gameState.currentPlayer;
-    const nextPlayer = this.gameState.players.find(p => p.id !== currentPlayerId)!.id;
+    const nextPlayer = this.gameState.players.find((p) => p.id !== currentPlayerId)!.id;
     this.gameState.currentPlayer = nextPlayer;
     this.resetStrikerPosition();
     this.emitEvent({ type: 'TURN_SWITCH', payload: { nextPlayer }, timestamp: Date.now() });
@@ -371,7 +384,8 @@ export class CarromGameEngine {
   private allBodiesAtRest(): boolean {
     const THRESHOLD = 0.05;
     const striker = this.gameState.physics.striker;
-    if (!striker.pocketed && magnitudeVec2Fixed(striker.velocity) > toFixed(THRESHOLD)) return false;
+    if (!striker.pocketed && magnitudeVec2Fixed(striker.velocity) > toFixed(THRESHOLD))
+      return false;
     for (const coin of this.gameState.physics.coins) {
       if (!coin.pocketed && magnitudeVec2Fixed(coin.velocity) > toFixed(THRESHOLD)) return false;
     }
@@ -379,10 +393,12 @@ export class CarromGameEngine {
   }
 
   private checkWinConditions(): void {
-    this.gameState.players.forEach(p => {
+    this.gameState.players.forEach((p) => {
       const color = this.gameState.coinAssignment[p.id];
       if (color !== 'none') {
-        const remaining = this.gameState.physics.coins.filter(c => !c.pocketed && c.type === color).length;
+        const remaining = this.gameState.physics.coins.filter(
+          (c) => !c.pocketed && c.type === color
+        ).length;
         p.remainingCoins = remaining;
         if (remaining === 0 && this.gameState.queenStatus === 'covered') {
           this.endGame('all_coins_pocketed');
@@ -399,13 +415,17 @@ export class CarromGameEngine {
     if (p1.score > p2.score) this.gameState.winner = p1.id;
     else if (p2.score > p1.score) this.gameState.winner = p2.id;
     else this.gameState.winner = p1.id;
-    this.emitEvent({ type: 'GAME_OVER', payload: { winner: this.gameState.winner, reason }, timestamp: Date.now() });
+    this.emitEvent({
+      type: 'GAME_OVER',
+      payload: { winner: this.gameState.winner, reason },
+      timestamp: Date.now(),
+    });
   }
 
   private syncStateFromPhysics(): void {
     const physicsState = this.physicsEngine.getPhysicsState();
-    this.gameState.physics.coins.forEach(c => {
-      const ps = physicsState.coins.find(pc => pc.id === c.id);
+    this.gameState.physics.coins.forEach((c) => {
+      const ps = physicsState.coins.find((pc) => pc.id === c.id);
       if (ps) {
         c.position = ps.position;
         c.velocity = ps.velocity;
@@ -429,10 +449,10 @@ export class CarromGameEngine {
   }
 
   removeEventListener(listener: (event: GameEvent) => void): void {
-    this.eventListeners = this.eventListeners.filter(l => l !== listener);
+    this.eventListeners = this.eventListeners.filter((l) => l !== listener);
   }
 
   private emitEvent(event: GameEvent): void {
-    this.eventListeners.forEach(l => l(event));
+    this.eventListeners.forEach((l) => l(event));
   }
 }

@@ -20,7 +20,7 @@ export interface SideEffect {
 
 export interface GameEngineAdapter<
   S extends BaseGameState,
-  E extends GameEvent<GameActionPayload>
+  E extends GameEvent<GameActionPayload>,
 > {
   readonly gameId: string;
   readonly displayName: string;

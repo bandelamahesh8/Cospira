@@ -173,9 +173,7 @@ export interface WebSocketContextType extends WebSocketState {
     organizationName?: string | null;
     error?: string;
   }>;
-  analyzeRoom: (
-    roomId: string
-  ) => Promise<{
+  analyzeRoom: (roomId: string) => Promise<{
     success: boolean;
     mode: RoomMode;
     config: RoomModeConfig;

@@ -1,25 +1,17 @@
-"use client";
+'use client';
 
-import { cn } from "@/lib/utils";
-import React, { MouseEvent, useEffect, useState } from "react";
+import { cn } from '@/lib/utils';
+import React, { MouseEvent, useEffect, useState } from 'react';
 
-interface RippleButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface RippleButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   rippleColor?: string;
   duration?: string;
 }
 
 const RippleButton = React.forwardRef<HTMLButtonElement, RippleButtonProps>(
   (
-    {
-      className,
-      children,
-      rippleColor = "#ffffff",
-      duration = "600ms",
-      onClick,
-      ...props
-    },
-    ref,
+    { className, children, rippleColor = '#ffffff', duration = '600ms', onClick, ...props },
+    ref
   ) => {
     const [buttonRipples, setButtonRipples] = useState<
       Array<{ x: number; y: number; size: number; key: number }>
@@ -46,7 +38,7 @@ const RippleButton = React.forwardRef<HTMLButtonElement, RippleButtonProps>(
         const lastRipple = buttonRipples[buttonRipples.length - 1];
         const timeout = setTimeout(() => {
           setButtonRipples((prevRipples) =>
-            prevRipples.filter((ripple) => ripple.key !== lastRipple.key),
+            prevRipples.filter((ripple) => ripple.key !== lastRipple.key)
           );
         }, parseInt(duration));
         return () => clearTimeout(timeout);
@@ -56,18 +48,18 @@ const RippleButton = React.forwardRef<HTMLButtonElement, RippleButtonProps>(
     return (
       <button
         className={cn(
-          "relative flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 bg-background px-4 py-2 text-center text-primary",
-          className,
+          'relative flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 bg-background px-4 py-2 text-center text-primary',
+          className
         )}
         onClick={handleClick}
         ref={ref}
         {...props}
       >
-        <div className="relative z-10 flex items-center justify-center gap-2">{children}</div>
-        <span className="pointer-events-none absolute inset-0">
+        <div className='relative z-10 flex items-center justify-center gap-2'>{children}</div>
+        <span className='pointer-events-none absolute inset-0'>
           {buttonRipples.map((ripple) => (
             <span
-              className="absolute animate-rippling rounded-full bg-background opacity-30"
+              className='absolute animate-rippling rounded-full bg-background opacity-30'
               key={ripple.key}
               style={{
                 width: `${ripple.size}px`,
@@ -82,9 +74,9 @@ const RippleButton = React.forwardRef<HTMLButtonElement, RippleButtonProps>(
         </span>
       </button>
     );
-  },
+  }
 );
 
-RippleButton.displayName = "RippleButton";
+RippleButton.displayName = 'RippleButton';
 
 export { RippleButton };

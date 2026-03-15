@@ -11,7 +11,7 @@ export interface ValidationResult {
   reason?: string;
 }
 
-export type GameAction = 
+export type GameAction =
   | { type: 'REQUEST_ROLL'; playerId: string }
   | { type: 'MOVE_TOKEN'; playerId: string; tokenId: number; fromCell: number; toCell: number }
   | { type: 'STATE_SYNC_REQUEST'; fromSeq: number };
@@ -41,7 +41,10 @@ export class RulesEngine {
     return { valid: true };
   }
 
-  private static validateMove(state: GameState, action: { playerId: string; tokenId: number; fromCell: number; toCell: number }): ValidationResult {
+  private static validateMove(
+    state: GameState,
+    action: { playerId: string; tokenId: number; fromCell: number; toCell: number }
+  ): ValidationResult {
     const { playerId, tokenId } = action;
 
     if (state.currentTurn !== playerId) {
@@ -52,11 +55,11 @@ export class RulesEngine {
       return { valid: false, reason: 'Roll dice first' };
     }
 
-    const player = state.players.find(p => p.id === playerId);
+    const player = state.players.find((p) => p.id === playerId);
     if (!player || !player.color) {
-        return { valid: false, reason: 'Player or color not found' };
+      return { valid: false, reason: 'Player or color not found' };
     }
-    
+
     const tokens = state.tokens?.[player.color];
     if (!tokens || tokens[tokenId] === undefined) {
       return { valid: false, reason: 'Token not found' };
@@ -67,7 +70,7 @@ export class RulesEngine {
     }
 
     const diceValue = state.diceValue || 0;
-    
+
     // Core Rules from Audit
     if (tokens[tokenId] === TokenController.YARD_POS) {
       if (diceValue !== 6) {
@@ -78,7 +81,7 @@ export class RulesEngine {
       if (tokens[tokenId] + diceValue > TokenController.FINISHED_POS) {
         return { valid: false, reason: 'Cannot move beyond home' };
       }
-      
+
       // Block check (Audit M4) - Cannot pass opponent block
       // A block is 2+ tokens of same color on a cell
       if (!this.canPassPath(state, player.color, tokens[tokenId], diceValue)) {
@@ -92,28 +95,33 @@ export class RulesEngine {
   /**
    * Checks if path is clear of opponent blocks
    */
-  private static canPassPath(state: GameState, myColor: string, currentPos: number, steps: number): boolean {
+  private static canPassPath(
+    state: GameState,
+    myColor: string,
+    currentPos: number,
+    steps: number
+  ): boolean {
     if (!state.tokens) return true;
-    
+
     for (let i = 1; i <= steps; i++) {
-        const nextPos = currentPos + i;
-        if (nextPos >= TokenController.BOARD_CELLS) break; // Home stretch has no blocks
+      const nextPos = currentPos + i;
+      if (nextPos >= TokenController.BOARD_CELLS) break; // Home stretch has no blocks
 
-        const globalIdx = TokenController.getGlobalIndex(nextPos, myColor);
-        if (globalIdx === null) continue;
+      const globalIdx = TokenController.getGlobalIndex(nextPos, myColor);
+      if (globalIdx === null) continue;
 
-        // Check every color for a block on this cell
-        for (const color in state.tokens) {
-            if (color === myColor) continue;
-            
-            const opponentTokens = state.tokens[color];
-            const tokensOnCell = opponentTokens.filter(pos => {
-                const gIdx = TokenController.getGlobalIndex(pos, color);
-                return gIdx === globalIdx;
-            });
+      // Check every color for a block on this cell
+      for (const color in state.tokens) {
+        if (color === myColor) continue;
 
-            if (tokensOnCell.length >= 2) return false; // Block detected
-        }
+        const opponentTokens = state.tokens[color];
+        const tokensOnCell = opponentTokens.filter((pos) => {
+          const gIdx = TokenController.getGlobalIndex(pos, color);
+          return gIdx === globalIdx;
+        });
+
+        if (tokensOnCell.length >= 2) return false; // Block detected
+      }
     }
     return true;
   }
@@ -122,7 +130,7 @@ export class RulesEngine {
     if (!state.tokens) return false;
     let finishedPlayers = 0;
     for (const color in state.tokens) {
-      if (state.tokens[color].every(pos => pos === TokenController.FINISHED_POS)) {
+      if (state.tokens[color].every((pos) => pos === TokenController.FINISHED_POS)) {
         finishedPlayers++;
       }
     }
@@ -133,8 +141,8 @@ export class RulesEngine {
   static getWinner(state: GameState): string | null {
     if (!state.tokens) return null;
     for (const color in state.tokens) {
-      if (state.tokens[color].every(pos => pos === TokenController.FINISHED_POS)) {
-        const player = state.players.find(p => p.color === color);
+      if (state.tokens[color].every((pos) => pos === TokenController.FINISHED_POS)) {
+        const player = state.players.find((p) => p.color === color);
         return player?.id || null;
       }
     }

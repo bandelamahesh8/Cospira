@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, BarChart3, Globe, Lock, Building2, HelpCircle, Check, History, ArrowLeft } from 'lucide-react';
+import {
+  X,
+  Plus,
+  Trash2,
+  BarChart3,
+  Globe,
+  Lock,
+  Building2,
+  HelpCircle,
+  Check,
+  History,
+  ArrowLeft,
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { PollData } from '@/types/websocket';
 
@@ -62,23 +74,31 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
       toast({ title: 'Error', description: 'Please enter a question', variant: 'destructive' });
       return;
     }
-    const filteredOptions = options.map(o => o.trim()).filter(o => o !== '');
+    const filteredOptions = options.map((o) => o.trim()).filter((o) => o !== '');
     if (filteredOptions.length < 2) {
-      toast({ title: 'Error', description: 'Please provide at least 2 options', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Please provide at least 2 options',
+        variant: 'destructive',
+      });
       return;
     }
     if (pollType === 'QUIZ' && correctOption === null) {
-      toast({ title: 'Error', description: 'Please select a correct answer for the quiz', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Please select a correct answer for the quiz',
+        variant: 'destructive',
+      });
       return;
     }
-    onSubmit({ 
-      question, 
-      options: filteredOptions, 
-      scope, 
-      onlySelectOption, 
+    onSubmit({
+      question,
+      options: filteredOptions,
+      scope,
+      onlySelectOption,
       duration,
       type: pollType,
-      correctOption: pollType === 'QUIZ' ? correctOption! : undefined
+      correctOption: pollType === 'QUIZ' ? correctOption! : undefined,
     });
     onClose();
   };
@@ -99,7 +119,11 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
               <div className='relative flex items-center justify-between'>
                 <div className='flex items-center gap-4'>
                   <div className='w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-lg shadow-indigo-500/5'>
-                    {isShowingHistory ? <History className='w-5 h-5 text-purple-400' /> : <BarChart3 className='w-5 h-5 text-indigo-400' />}
+                    {isShowingHistory ? (
+                      <History className='w-5 h-5 text-purple-400' />
+                    ) : (
+                      <BarChart3 className='w-5 h-5 text-indigo-400' />
+                    )}
                   </div>
                   <div>
                     <h2 className='text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60'>
@@ -158,22 +182,26 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                   {pollHistory.length === 0 ? (
                     <div className='flex flex-col items-center justify-center py-20 text-white/20'>
                       <History className='w-12 h-12 mb-4 opacity-10' />
-                      <p className='text-xs font-bold uppercase tracking-widest'>No archival data found</p>
+                      <p className='text-xs font-bold uppercase tracking-widest'>
+                        No archival data found
+                      </p>
                     </div>
                   ) : (
                     [...pollHistory].reverse().map((poll, idx) => (
-                      <div 
+                      <div
                         key={poll.id || idx}
                         className='group bg-white/5 border border-white/5 rounded-2xl p-5 hover:bg-white/[0.08] hover:border-white/10 transition-all cursor-default'
                       >
                         <div className='flex items-start justify-between gap-4'>
                           <div className='flex-1 min-w-0'>
                             <div className='flex items-center gap-2 mb-2'>
-                              <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter ${
-                                poll.type === 'QUIZ' 
-                                  ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' 
-                                  : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                              }`}>
+                              <span
+                                className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter ${
+                                  poll.type === 'QUIZ'
+                                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                                    : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                }`}
+                              >
                                 {poll.type || 'POLL'}
                               </span>
                               <span className='text-[8px] font-bold text-white/20 uppercase tracking-widest'>
@@ -185,7 +213,10 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                             </h4>
                             <div className='flex flex-wrap gap-2'>
                               {poll.options.map((opt: string, i: number) => (
-                                <span key={i} className='text-[9px] bg-white/5 border border-white/5 px-2.5 py-1 rounded-lg text-white/40 font-medium'>
+                                <span
+                                  key={i}
+                                  className='text-[9px] bg-white/5 border border-white/5 px-2.5 py-1 rounded-lg text-white/40 font-medium'
+                                >
                                   {opt}
                                 </span>
                               ))}
@@ -196,7 +227,7 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                               #{(pollHistory.length - idx).toString().padStart(2, '0')}
                             </div>
                             <div className='text-[10px] font-bold text-indigo-400/40 mt-1 uppercase tracking-tighter'>
-                                {poll.totalVotes || 0} Votes
+                              {poll.totalVotes || 0} Votes
                             </div>
                           </div>
                         </div>
@@ -207,7 +238,10 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
               </div>
             ) : (
               /* Creation Form */
-              <form onSubmit={handleSubmit} className='p-0 flex flex-col md:flex-row divide-x divide-white/5'>
+              <form
+                onSubmit={handleSubmit}
+                className='p-0 flex flex-col md:flex-row divide-x divide-white/5'
+              >
                 {/* Left Column: Configuration */}
                 <div className='flex-1 p-8 space-y-8 bg-white/[0.01]'>
                   {/* Question Area */}
@@ -225,7 +259,7 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className='grid grid-cols-2 gap-6'>
                     {/* Poll Type */}
                     <div className='space-y-3 col-span-2'>
                       <label className='text-[10px] font-black text-white/40 uppercase tracking-widest block px-1'>
@@ -239,21 +273,29 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                             setCorrectOption(null);
                           }}
                           className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all ${
-                            pollType === 'POLL' ? 'bg-indigo-500/20 text-indigo-400 shadow-inner' : 'text-white/40 hover:text-white/60'
+                            pollType === 'POLL'
+                              ? 'bg-indigo-500/20 text-indigo-400 shadow-inner'
+                              : 'text-white/40 hover:text-white/60'
                           }`}
                         >
                           <BarChart3 className='w-3.5 h-3.5' />
-                          <span className='text-[9px] font-bold uppercase tracking-wider'>Consensus</span>
+                          <span className='text-[9px] font-bold uppercase tracking-wider'>
+                            Consensus
+                          </span>
                         </button>
                         <button
                           type='button'
                           onClick={() => setPollType('QUIZ')}
                           className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all ${
-                            pollType === 'QUIZ' ? 'bg-purple-500/20 text-purple-400 shadow-inner' : 'text-white/40 hover:text-white/60'
+                            pollType === 'QUIZ'
+                              ? 'bg-purple-500/20 text-purple-400 shadow-inner'
+                              : 'text-white/40 hover:text-white/60'
                           }`}
                         >
                           <HelpCircle className='w-3.5 h-3.5' />
-                          <span className='text-[9px] font-bold uppercase tracking-wider'>Quiz / Q&A</span>
+                          <span className='text-[9px] font-bold uppercase tracking-wider'>
+                            Quiz / Q&A
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -268,23 +310,27 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                           type='button'
                           onClick={() => setScope('CURRENT')}
                           className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 transition-all ${
-                            scope === 'CURRENT' ? 'bg-indigo-500/20 text-indigo-400 shadow-inner' : 'text-white/40 hover:text-white/60'
+                            scope === 'CURRENT'
+                              ? 'bg-indigo-500/20 text-indigo-400 shadow-inner'
+                              : 'text-white/40 hover:text-white/60'
                           }`}
                         >
                           <Building2 className='w-3 h-3' />
                           <span className='text-[8px] font-bold uppercase'>Room</span>
                         </button>
                         {isSuperHost && (
-                            <button
-                              type='button'
-                              onClick={() => setScope('ALL')}
-                              className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 transition-all ${
-                                scope === 'ALL' ? 'bg-indigo-500/20 text-indigo-400 shadow-inner' : 'text-white/40 hover:text-white/60'
-                              }`}
-                            >
-                              <Globe className='w-3 h-3' />
-                              <span className='text-[8px] font-bold uppercase'>Global</span>
-                            </button>
+                          <button
+                            type='button'
+                            onClick={() => setScope('ALL')}
+                            className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 transition-all ${
+                              scope === 'ALL'
+                                ? 'bg-indigo-500/20 text-indigo-400 shadow-inner'
+                                : 'text-white/40 hover:text-white/60'
+                            }`}
+                          >
+                            <Globe className='w-3 h-3' />
+                            <span className='text-[8px] font-bold uppercase'>Global</span>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -324,10 +370,16 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                     >
                       <div className='flex items-center gap-2'>
                         <Lock className='w-3.5 h-3.5' />
-                        <span className='text-[9px] font-bold uppercase'>Hide Results from Non-Hosts</span>
+                        <span className='text-[9px] font-bold uppercase'>
+                          Hide Results from Non-Hosts
+                        </span>
                       </div>
-                      <div className={`w-6 h-3 rounded-full relative transition-colors ${onlySelectOption ? 'bg-amber-400' : 'bg-white/10'}`}>
-                          <div className={`absolute top-0.5 w-2 h-2 rounded-full transition-all ${onlySelectOption ? 'right-0.5 bg-white' : 'left-0.5 bg-white/20'}`} />
+                      <div
+                        className={`w-6 h-3 rounded-full relative transition-colors ${onlySelectOption ? 'bg-amber-400' : 'bg-white/10'}`}
+                      >
+                        <div
+                          className={`absolute top-0.5 w-2 h-2 rounded-full transition-all ${onlySelectOption ? 'right-0.5 bg-white' : 'left-0.5 bg-white/20'}`}
+                        />
                       </div>
                     </button>
                   </div>
@@ -337,7 +389,10 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                 <div className='flex-[1.2] p-8 space-y-6 flex flex-col'>
                   <div className='flex items-center justify-between px-1'>
                     <label className='text-[10px] font-black text-white/40 uppercase tracking-widest'>
-                      Response Parameters {pollType === 'QUIZ' && <span className="text-purple-400 ml-1">• MARK CORRECT</span>}
+                      Response Parameters{' '}
+                      {pollType === 'QUIZ' && (
+                        <span className='text-purple-400 ml-1'>• MARK CORRECT</span>
+                      )}
                     </label>
                     <span className='text-[9px] font-bold text-white/20 uppercase tracking-tighter'>
                       {options.length}/6 Options
@@ -353,24 +408,26 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                             onChange={(e) => handleOptionChange(index, e.target.value)}
                             placeholder={`Option ${index + 1}`}
                             className={`w-full bg-white/5 border border-white/5 rounded-xl p-3.5 text-xs text-white focus:outline-none transition-all pl-10 pr-12 ${
-                              pollType === 'QUIZ' && correctOption === index ? 'border-purple-500/40 bg-purple-500/5' : 'focus:border-indigo-500/40'
+                              pollType === 'QUIZ' && correctOption === index
+                                ? 'border-purple-500/40 bg-purple-500/5'
+                                : 'focus:border-indigo-500/40'
                             }`}
                           />
                           <div className='absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20 font-mono'>
                             {index + 1}
                           </div>
-                          
+
                           {pollType === 'QUIZ' && (
                             <button
-                              type="button"
+                              type='button'
                               onClick={() => setCorrectOption(index)}
                               className={`absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border transition-all flex items-center justify-center ${
-                                correctOption === index 
-                                  ? 'bg-purple-500 border-purple-500 text-white' 
+                                correctOption === index
+                                  ? 'bg-purple-500 border-purple-500 text-white'
                                   : 'border-white/10 text-transparent hover:border-purple-500/40 hover:text-purple-500/40'
                               }`}
                             >
-                              <Check className="w-3.5 h-3.5" />
+                              <Check className='w-3.5 h-3.5' />
                             </button>
                           )}
                         </div>
@@ -385,7 +442,7 @@ const ManualPollModal: React.FC<ManualPollModalProps> = ({
                         )}
                       </div>
                     ))}
-                    
+
                     {options.length < 6 && (
                       <button
                         type='button'

@@ -1,6 +1,6 @@
-import React, { lazy, Suspense, ReactNode, isValidElement } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
+import React, { lazy, Suspense, ReactNode, isValidElement } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 
 // Fallback component displayed when a lazy-loaded module fails to load or has an invalid default export.
 const FallbackComponent = () => (
@@ -9,9 +9,12 @@ const FallbackComponent = () => (
       <div className='w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-red-500/20'>
         <div className='w-3 h-3 bg-red-500 rounded-full animate-ping' />
       </div>
-      <h2 className='text-2xl font-black text-white uppercase italic tracking-tighter mb-4'>Component Error</h2>
+      <h2 className='text-2xl font-black text-white uppercase italic tracking-tighter mb-4'>
+        Component Error
+      </h2>
       <p className='text-zinc-400 text-sm leading-relaxed mb-8'>
-        Unable to load this section. This is often caused by a bundle loading error or a top-level crash in the module.
+        Unable to load this section. This is often caused by a bundle loading error or a top-level
+        crash in the module.
       </p>
       <button
         onClick={() => window.location.reload()}
@@ -37,51 +40,50 @@ export function safeLazy<T extends React.ComponentType<any>>(
       .then((module) => {
         // Sanity check: module might not have default export if developer used named import pattern wrong
         const Component = module?.default;
-        
+
         if (!Component || (typeof Component !== 'function' && typeof Component !== 'object')) {
           console.error('safeLazy error: Target is not a valid component', { module });
-          return { default: (FallbackComponent as unknown) as T };
+          return { default: FallbackComponent as unknown as T };
         }
         return module;
       })
       .catch((err) => {
         // Use separate arguments to prevent string conversion attempt if the logger is buggy
         console.error('safeLazy failed to load module:', err);
-        return { default: (FallbackComponent as unknown) as T };
+        return { default: FallbackComponent as unknown as T };
       })
   );
 }
 
-import ProtectedRoute from "@/components/ProtectedRoute";
-import PageTransition from "./PageTransition";
-import RootLayout from "@/components/layout/RootLayout";
-import { PageLayout } from "@/components/layout/PageLayout";
-import { PageLoader } from "./PageLoader";
+import ProtectedRoute from '@/components/ProtectedRoute';
+import PageTransition from './PageTransition';
+import RootLayout from '@/components/layout/RootLayout';
+import { PageLayout } from '@/components/layout/PageLayout';
+import { PageLoader } from './PageLoader';
 
-import Index from "@/pages/Index";
-import Dashboard from "@/pages/Dashboard";
+import Index from '@/pages/Index';
+import Dashboard from '@/pages/Dashboard';
 
-const Auth = safeLazy(() => import("@/pages/Auth"));
-const About = safeLazy(() => import("@/pages/AboutPage"));
-const CreateRoom = safeLazy(() => import("@/pages/CreateRoom"));
-const Docs = safeLazy(() => import("@/pages/Docs"));
-const Room = safeLazy(() => import("@/pages/Room"));
-const Profile = safeLazy(() => import("@/pages/Profile"));
-const Feedback = safeLazy(() => import("@/pages/Feedback"));
-const NotFound = safeLazy(() => import("@/pages/NotFound"));
-const RandomLanding = safeLazy(() => import("@/pages/random-connect/RandomLanding"));
-const TextRoom = safeLazy(() => import("@/pages/random-connect/TextRoom"));
-const ProjectsPage = safeLazy(() => import("@/pages/Projects"));
-const Organizations = safeLazy(() => import("@/pages/Organizations"));
-const OrganizationRoom = safeLazy(() => import("@/pages/OrganizationRoom"));
-const BreakoutRoom = safeLazy(() => import("@/pages/BreakoutRoom"));
-const Join = safeLazy(() => import("@/pages/Join"));
-const Games = safeLazy(() => import("@/pages/Games"));
-const AIAnalytics = safeLazy(() => import("@/pages/AIAnalyticsPage"));
-const Settings = safeLazy(() => import("@/pages/Settings"));
-const UpcomingFeatures = safeLazy(() => import("@/pages/UpcomingFeatures"));
-import { SidebarDemo } from "@/components/SidebarDemo";
-
+const Auth = safeLazy(() => import('@/pages/Auth'));
+const About = safeLazy(() => import('@/pages/AboutPage'));
+const CreateRoom = safeLazy(() => import('@/pages/CreateRoom'));
+const Docs = safeLazy(() => import('@/pages/Docs'));
+const Room = safeLazy(() => import('@/pages/Room'));
+const Profile = safeLazy(() => import('@/pages/Profile'));
+const Feedback = safeLazy(() => import('@/pages/Feedback'));
+const NotFound = safeLazy(() => import('@/pages/NotFound'));
+const RandomLanding = safeLazy(() => import('@/pages/random-connect/RandomLanding'));
+const TextRoom = safeLazy(() => import('@/pages/random-connect/TextRoom'));
+const ProjectsPage = safeLazy(() => import('@/pages/Projects'));
+const Organizations = safeLazy(() => import('@/pages/Organizations'));
+const OrganizationRoom = safeLazy(() => import('@/pages/OrganizationRoom'));
+const BreakoutRoom = safeLazy(() => import('@/pages/BreakoutRoom'));
+const Join = safeLazy(() => import('@/pages/Join'));
+const Games = safeLazy(() => import('@/pages/Games'));
+const AIAnalytics = safeLazy(() => import('@/pages/AIAnalyticsPage'));
+const Settings = safeLazy(() => import('@/pages/Settings'));
+const UpcomingFeatures = safeLazy(() => import('@/pages/UpcomingFeatures'));
+import { SidebarDemo } from '@/components/SidebarDemo';
 
 const Loader = ({ children }: { children: ReactNode }) => {
   // guard against undefined/null children; this is the most common symptom when a lazy
@@ -103,44 +105,44 @@ const AnimatedRoutes = () => {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode='wait'>
       <Routes location={location} key={getRouteKey(location.pathname)}>
         {/* Public Routes */}
 
         <Route
-          path="/"
+          path='/'
           element={
             <PageTransition>
               <Loader>
                 <Index />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         <Route
-          path="/auth"
+          path='/auth'
           element={
             <PageTransition>
               <Loader>
                 <Auth />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         {/* Dashboard */}
 
         <Route
-          path="/dashboard"
+          path='/dashboard'
           element={
             <PageTransition>
               <Loader>
-                <PageLayout showNavbar showSidebar className="p-0 overflow-hidden">
+                <PageLayout showNavbar showSidebar className='p-0 overflow-hidden'>
                   <Dashboard />
                 </PageLayout>
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
@@ -148,10 +150,10 @@ const AnimatedRoutes = () => {
 
         <Route element={<RootLayout />}>
           <Route
-            path="/organizations"
+            path='/organizations'
             element={
               <PageTransition>
-              <Loader>
+                <Loader>
                   <ProtectedRoute>
                     <Organizations />
                   </ProtectedRoute>
@@ -161,10 +163,10 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="/organizations/:orgId/room"
+            path='/organizations/:orgId/room'
             element={
               <PageTransition>
-              <Loader>
+                <Loader>
                   <ProtectedRoute>
                     <OrganizationRoom />
                   </ProtectedRoute>
@@ -174,10 +176,10 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="/organizations/:orgId/breakout/:breakoutId"
+            path='/organizations/:orgId/breakout/:breakoutId'
             element={
               <PageTransition>
-              <Loader>
+                <Loader>
                   <ProtectedRoute>
                     <BreakoutRoom />
                   </ProtectedRoute>
@@ -187,10 +189,10 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="/join/:orgId"
+            path='/join/:orgId'
             element={
               <PageTransition>
-              <Loader>
+                <Loader>
                   <ProtectedRoute>
                     <Join />
                   </ProtectedRoute>
@@ -200,10 +202,10 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="/profile"
+            path='/profile'
             element={
-              <PageTransition variant="scale">
-              <Loader>
+              <PageTransition variant='scale'>
+                <Loader>
                   <ProtectedRoute>
                     <Profile />
                   </ProtectedRoute>
@@ -213,10 +215,10 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="/projects"
+            path='/projects'
             element={
               <PageTransition>
-              <Loader>
+                <Loader>
                   <ProtectedRoute>
                     <ProjectsPage />
                   </ProtectedRoute>
@@ -226,10 +228,10 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="/games"
+            path='/games'
             element={
               <PageTransition>
-              <Loader>
+                <Loader>
                   <ProtectedRoute>
                     <Games />
                   </ProtectedRoute>
@@ -239,10 +241,10 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="/ai-analytics"
+            path='/ai-analytics'
             element={
               <PageTransition>
-              <Loader>
+                <Loader>
                   <ProtectedRoute>
                     <AIAnalytics />
                   </ProtectedRoute>
@@ -252,10 +254,10 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="/settings"
+            path='/settings'
             element={
               <PageTransition>
-              <Loader>
+                <Loader>
                   <ProtectedRoute>
                     <Settings />
                   </ProtectedRoute>
@@ -265,10 +267,10 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="/upcoming-features"
+            path='/upcoming-features'
             element={
               <PageTransition>
-              <Loader>
+                <Loader>
                   <ProtectedRoute>
                     <UpcomingFeatures />
                   </ProtectedRoute>
@@ -281,95 +283,95 @@ const AnimatedRoutes = () => {
         {/* Other Routes */}
 
         <Route
-          path="/create-room"
+          path='/create-room'
           element={
-            <PageTransition variant="rotate">
+            <PageTransition variant='rotate'>
               <Loader>
                 <CreateRoom />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         <Route
-          path="/room/:roomId"
+          path='/room/:roomId'
           element={
             <PageTransition>
               <Loader>
                 <Room />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         <Route
-          path="/dashboard/room/:roomId"
+          path='/dashboard/room/:roomId'
           element={
             <PageTransition>
               <Loader>
                 <Room />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         <Route
-          path="/connect"
+          path='/connect'
           element={
-            <PageTransition variant="scale">
+            <PageTransition variant='scale'>
               <Loader>
                 <RandomLanding />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         <Route
-          path="/text-room/:roomId"
+          path='/text-room/:roomId'
           element={
             <PageTransition>
               <Loader>
                 <TextRoom />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         <Route
-          path="/feedback"
+          path='/feedback'
           element={
-            <PageTransition variant="slideLeft">
+            <PageTransition variant='slideLeft'>
               <Loader>
                 <Feedback />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         <Route
-          path="/about"
+          path='/about'
           element={
-            <PageTransition variant="slideLeft">
+            <PageTransition variant='slideLeft'>
               <Loader>
                 <About />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         <Route
-          path="/docs"
+          path='/docs'
           element={
             <PageTransition>
               <Loader>
                 <Docs />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
 
         <Route
-          path="/sidebar-demo"
+          path='/sidebar-demo'
           element={
             <PageTransition>
               <SidebarDemo />
@@ -378,13 +380,13 @@ const AnimatedRoutes = () => {
         />
 
         <Route
-          path="*"
+          path='*'
           element={
             <PageTransition>
               <Loader>
                 <NotFound />
               </Loader>
-              </PageTransition>
+            </PageTransition>
           }
         />
       </Routes>

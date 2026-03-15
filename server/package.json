@@ -4,8 +4,10 @@
   "description": "WebSocket server for Cospira real-time communication",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "concurrently \"node src/api/server.js\" \"node src/signaling/server.js\"",
+    "dev:api": "nodemon src/api/server.js",
+    "dev:signaling": "nodemon src/signaling/server.js",
+    "dev": "concurrently -n 'api,signaling' -c 'green,yellow' \"npm run dev:api\" \"npm run dev:signaling\"",
     "lint": "eslint src/**/*.js",
     "format": "prettier --write \"src/**/*.js\"",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -17,6 +19,7 @@
     "@socket.io/redis-adapter": "^8.3.0",
     "@supabase/supabase-js": "^2.86.0",
     "agora-access-token": "^2.0.4",
+    "axios": "^1.6.0",
     "chess.js": "^1.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
@@ -42,10 +45,10 @@
     "socket.io": "^4.7.2",
     "uuid": "^9.0.0",
     "winston": "^3.18.3",
-    "zod": "^3.25.0",
-    "axios": "^1.6.0"
+    "zod": "^3.25.0"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "eslint": "^8.56.0",
     "nodemon": "^3.0.1",
     "prettier": "^3.1.1"

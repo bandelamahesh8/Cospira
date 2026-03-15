@@ -6,7 +6,7 @@ export class GameTracer {
 
   static startMoveResolve(roomId: string, playerId: string): Span {
     return this.tracer.startSpan('snake_ladder.move.resolve', {
-      attributes: { roomId, playerId }
+      attributes: { roomId, playerId },
     });
   }
 

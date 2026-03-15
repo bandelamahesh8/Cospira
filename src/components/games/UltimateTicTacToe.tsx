@@ -59,9 +59,16 @@ export const UltimateTicTacToe = () => {
 
       // Track stats
       if (user?.id && gameData) {
-        const duration = Math.floor(
-          (Date.now() - ((gameData as any).createdAt?.getTime() || Date.now())) / 1000
-        );
+        const createdAt = gameData.createdAt;
+        const createdAtMs =
+          typeof createdAt === 'number'
+            ? createdAt
+            : createdAt instanceof Date
+              ? createdAt.getTime()
+              : createdAt
+                ? new Date(createdAt).getTime()
+                : Date.now();
+        const duration = Math.floor((Date.now() - createdAtMs) / 1000);
         playerService
           .updateGameStats(user.id, 'ultimate-xoxo', result, 1500, duration)
           .catch((err) => console.warn('Failed stats', err));

@@ -10,13 +10,13 @@ import { decodeRoomId, encodeRoomId } from '@/utils/roomCode';
 const SUPPORTED_FORMATS = {
   images: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
   videos: ['mp4', 'webm', 'ogg'],
-  docs: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pps', 'ppsx', 'txt', 'rtf', 'csv']
+  docs: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pps', 'ppsx', 'txt', 'rtf', 'csv'],
 };
 
 const ALL_SUPPORTED_EXTENSIONS = [
   ...SUPPORTED_FORMATS.images,
   ...SUPPORTED_FORMATS.videos,
-  ...SUPPORTED_FORMATS.docs
+  ...SUPPORTED_FORMATS.docs,
 ];
 
 export const useRoom = () => {
@@ -61,7 +61,7 @@ export const useRoom = () => {
 
   const [newMessage, setNewMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  
+
   // Recovery: If upload gets stuck in loading state (e.g. network hang), reset after 30s
   useEffect(() => {
     let timeout: NodeJS.Timeout;
@@ -202,7 +202,6 @@ export const useRoom = () => {
     contextRoomId,
   ]);
 
-
   const requestJoin = useCallback(() => {
     setJoinExplicitlyRequested(true);
   }, []);
@@ -224,9 +223,7 @@ export const useRoom = () => {
       },
       isGhost
     );
-
   }, [roomId, passwordInput, inviteToken, joinRoom, isGhost]);
-
 
   const handleSendMessage = useCallback(
     (e: React.FormEvent) => {
@@ -242,9 +239,9 @@ export const useRoom = () => {
     async (input: React.ChangeEvent<HTMLInputElement> | File | unknown) => {
       // 1. Initial Trigger Phase
       logger.info('[useRoom] handleFileUpload entry point', { inputType: typeof input });
-      
+
       let file: File | undefined;
-      
+
       // Determine file source (Event vs Direct File)
       if (input && typeof input === 'object' && 'target' in input) {
         const target = (input as React.ChangeEvent<HTMLInputElement>).target;
@@ -264,12 +261,12 @@ export const useRoom = () => {
       // 3. Validation Phase
       const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
       const isSupported = ALL_SUPPORTED_EXTENSIONS.includes(fileExtension);
-      
+
       if (!isSupported) {
         logger.warn('[useRoom] Unsupported file attempt:', file.name);
         toast.error('Unsupported File Format', {
           description: `.${fileExtension} files cannot be manifested on the stage. Please use Images, Videos, or standard Office Documents.`,
-          duration: 6000
+          duration: 6000,
         });
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
@@ -280,12 +277,12 @@ export const useRoom = () => {
         setIsUploading(true);
         toast.info(`Preparing projection: ${file.name}`, { id: 'file-prep-toast' });
 
-        const currentUserObj = users.find(u => String(u.id) === String(effectiveUserId));
+        const currentUserObj = users.find((u) => String(u.id) === String(effectiveUserId));
         const isCoHost = currentUserObj?.isCoHost;
 
         logger.info('[useRoom] Manifesting asset:', {
           file: file.name,
-          role: isHost ? 'host' : (isCoHost ? 'cohost' : 'participant')
+          role: isHost ? 'host' : isCoHost ? 'cohost' : 'participant',
         });
 
         if (isHost || isCoHost) {
@@ -296,7 +293,7 @@ export const useRoom = () => {
       } catch (error) {
         logger.error('[useRoom] Manifest Process Failed:', error);
         toast.error('Projection Failed', {
-          description: 'The internal manifest could not be synchronized with the stage.'
+          description: 'The internal manifest could not be synchronized with the stage.',
         });
       } finally {
         setIsUploading(false);

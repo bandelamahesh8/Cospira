@@ -14,7 +14,7 @@ export const DEFAULT_SNAKES: Record<number, number> = {
   64: 60,
   93: 68,
   95: 24,
-  99: 78
+  99: 78,
 };
 
 export const DEFAULT_LADDERS: Record<number, number> = {
@@ -25,7 +25,7 @@ export const DEFAULT_LADDERS: Record<number, number> = {
   40: 59,
   51: 67,
   63: 81,
-  71: 91
+  71: 91,
 };
 
 export function validateBoardConfig(config: BoardConfig): ValidationResult {
@@ -48,7 +48,7 @@ export function validateBoardConfig(config: BoardConfig): ValidationResult {
   // 3. No cell is both a snake head and a ladder base
   const snakeHeads = new Set(Object.keys(config.snakes).map(Number));
   const ladderBases = new Set(Object.keys(config.ladders).map(Number));
-  const overlap = [...snakeHeads].filter(x => ladderBases.has(x));
+  const overlap = [...snakeHeads].filter((x) => ladderBases.has(x));
   if (overlap.length > 0) {
     errors.push(`Cells cannot be both snake heads and ladder bases: ${overlap.join(', ')}`);
   }
@@ -56,7 +56,7 @@ export function validateBoardConfig(config: BoardConfig): ValidationResult {
   // 4. No cell is both a snake tail and a ladder top
   const snakeTails = new Set(Object.values(config.snakes));
   const ladderTops = new Set(Object.values(config.ladders));
-  const tailTopOverlap = [...snakeTails].filter(x => ladderTops.has(x));
+  const tailTopOverlap = [...snakeTails].filter((x) => ladderTops.has(x));
   if (tailTopOverlap.length > 0) {
     errors.push(`Cells cannot be both snake tails and ladder tops: ${tailTopOverlap.join(', ')}`);
   }
@@ -66,7 +66,7 @@ export function validateBoardConfig(config: BoardConfig): ValidationResult {
     ...Object.keys(config.snakes).map(Number),
     ...Object.values(config.snakes),
     ...Object.keys(config.ladders).map(Number),
-    ...Object.values(config.ladders)
+    ...Object.values(config.ladders),
   ]);
   for (const cell of allCells) {
     if (cell < 1 || cell > 100) {
@@ -94,6 +94,6 @@ export function validateBoardConfig(config: BoardConfig): ValidationResult {
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }

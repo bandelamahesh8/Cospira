@@ -49,7 +49,11 @@ export const OrganizationSettingsModal: React.FC<OrganizationSettingsModalProps>
   onOpenChange,
 }) => {
   const { currentOrganization, removeMember } = useOrganization();
-  const { updateRoomSettings, autoApprove, stopJoiningTime: currentStopJoiningTime } = useWebSocket();
+  const {
+    updateRoomSettings,
+    autoApprove,
+    stopJoiningTime: currentStopJoiningTime,
+  } = useWebSocket();
 
   // Data State
   const [members, setMembers] = useState<OrganizationUser[]>([]);

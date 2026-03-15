@@ -187,7 +187,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
   const [isBatchDisbanding, setIsBatchDisbanding] = useState(false);
 
   const { breakouts } = useBreakout() || { breakouts: [] };
-  const activeBreakouts = breakouts.filter(b => b.status !== 'CLOSED');
+  const activeBreakouts = breakouts.filter((b) => b.status !== 'CLOSED');
 
   // Reset disband state when modal closes
   useEffect(() => {
@@ -210,7 +210,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
       }
     } else {
       // Single Stage for breakouts
-      handleFinalDisband(true); 
+      handleFinalDisband(true);
     }
   };
 
@@ -230,14 +230,13 @@ const RoomControls: React.FC<RoomControlsProps> = ({
     }
   };
 
-
   const handleFinalDisband = async (bypassCheck = false) => {
     if (!bypassCheck && disbandInput !== 'DISBAND') return;
     setIsTerminating(true);
-    
+
     // Artificial delay for "Terminating..." feel
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
     try {
       await disbandRoom(isMainRoom);
       // Close modal after disband
@@ -612,7 +611,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                   if (file) props.onFileSelected?.(file);
                   e.target.value = '';
                 }}
-                accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.webm,.ogg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pps,.ppsx,.txt"
+                accept='.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.webm,.ogg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pps,.ppsx,.txt'
               />
             </motion.div>
           </div>
@@ -667,7 +666,8 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                         Active Sessions Detected
                       </AlertDialogTitle>
                       <AlertDialogDescription className='text-slate-400 text-sm font-medium leading-relaxed text-center sm:text-left'>
-                        The following rooms are still active. To prevent orphaned sessions, you must disband all child rooms before purging the organization.
+                        The following rooms are still active. To prevent orphaned sessions, you must
+                        disband all child rooms before purging the organization.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
 
@@ -708,13 +708,17 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                         <Trash2 className='w-10 h-10 text-red-500' />
                       </div>
                       <AlertDialogTitle className='text-3xl font-black uppercase tracking-tighter text-red-500 mb-2 italic'>
-                        {isMainRoom ? 'Organization Purge' : isBreakout ? 'Disband Breakout' : 'Terminate Sector'}
+                        {isMainRoom
+                          ? 'Organization Purge'
+                          : isBreakout
+                            ? 'Disband Breakout'
+                            : 'Terminate Sector'}
                       </AlertDialogTitle>
                       <AlertDialogDescription className='text-slate-400 text-sm font-medium leading-relaxed'>
                         {isMainRoom ? (
                           <span className='text-red-400 font-bold'>
-                            WARNING: This will permanently DELETE the entire organization and all its data. 
-                            This action is irreversible. All access links will be severed.
+                            WARNING: This will permanently DELETE the entire organization and all
+                            its data. This action is irreversible. All access links will be severed.
                           </span>
                         ) : isBreakout ? (
                           'You are about to disband this breakout session. All participants will be returned to the main lobby and this sub-space will be permanently closed.'
@@ -754,7 +758,13 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                   </h3>
                   <p className='text-slate-400 text-xs font-bold uppercase tracking-widest'>
                     Type <span className='text-white bg-white/10 px-1 rounded'>DISBAND</span> to
-                    confirm {isMainRoom ? 'ORGANIZATION DELETION' : isBreakout ? 'breakout destruction' : 'sector termination'}.
+                    confirm{' '}
+                    {isMainRoom
+                      ? 'ORGANIZATION DELETION'
+                      : isBreakout
+                        ? 'breakout destruction'
+                        : 'sector termination'}
+                    .
                   </p>
                 </div>
 

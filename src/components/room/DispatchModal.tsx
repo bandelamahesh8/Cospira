@@ -1874,8 +1874,8 @@ const RoomCard = ({
               Delete Session?
             </AlertDialogTitle>
             <AlertDialogDescription className='text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-relaxed'>
-              This will permanently destroy <span className='text-white'>{breakout.name}</span>. 
-              All participants will be immediately ejected to the main room.
+              This will permanently destroy <span className='text-white'>{breakout.name}</span>. All
+              participants will be immediately ejected to the main room.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className='flex-col gap-2'>
@@ -1895,8 +1895,8 @@ const RoomCard = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog 
-        open={!!showDeleteChildConfirm} 
+      <AlertDialog
+        open={!!showDeleteChildConfirm}
         onOpenChange={(open) => !open && setShowDeleteChildConfirm(null)}
       >
         <AlertDialogContent className='luxury-glass border-white/5 p-8 rounded-[2rem] bg-black/90 backdrop-blur-3xl max-w-xs'>

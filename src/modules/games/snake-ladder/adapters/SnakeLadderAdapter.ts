@@ -1,10 +1,18 @@
-import { GameEngineAdapter, StateTransitionResult, BaseGameState, SideEffect } from './GameEngineAdapter';
+import {
+  GameEngineAdapter,
+  StateTransitionResult,
+  BaseGameState,
+  SideEffect,
+} from './GameEngineAdapter';
 import { GameState, GameEvent, GameActionPayload, PlayerId } from '../types';
 import { SnakeLadderEngine } from '../engine/SnakeLadderEngine';
 import { validateBoardConfig, DEFAULT_SNAKES, DEFAULT_LADDERS } from '../engine/SnakeLadderRules';
 import { GameError } from '../errors/GameError';
 
-export class SnakeLadderAdapter implements GameEngineAdapter<GameState, GameEvent<GameActionPayload>> {
+export class SnakeLadderAdapter implements GameEngineAdapter<
+  GameState,
+  GameEvent<GameActionPayload>
+> {
   readonly gameId = 'snake_ladder';
   readonly displayName = 'Snake & Ladder';
   readonly minPlayers = 2;
@@ -12,17 +20,17 @@ export class SnakeLadderAdapter implements GameEngineAdapter<GameState, GameEven
   readonly version = '1.0.0';
 
   initialize(roomId: string, playerIds: PlayerId[], config?: unknown): GameState {
-    const boardConfig = config as any || {
+    const boardConfig = (config as any) || {
       snakes: DEFAULT_SNAKES,
       ladders: DEFAULT_LADDERS,
-      totalCells: 100
+      totalCells: 100,
     };
     const validation = validateBoardConfig(boardConfig);
     if (!validation.isValid) {
       throw new GameError('BOARD_CONFIG_INVALID', validation.errors.join(', '));
     }
 
-    const players = playerIds.map(id => ({
+    const players = playerIds.map((id) => ({
       id,
       displayName: `Player ${id}`,
       position: 0,
@@ -32,7 +40,7 @@ export class SnakeLadderAdapter implements GameEngineAdapter<GameState, GameEven
       consecutiveSixes: 0,
       joinTimestamp: Date.now(),
       isConnected: true,
-      lastActivityAt: Date.now()
+      lastActivityAt: Date.now(),
     }));
 
     return {
@@ -46,11 +54,14 @@ export class SnakeLadderAdapter implements GameEngineAdapter<GameState, GameEven
       winnerId: null,
       sequenceId: 0,
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
   }
 
-  processEvent(state: GameState, event: GameEvent<GameActionPayload>): StateTransitionResult<GameState> {
+  processEvent(
+    state: GameState,
+    event: GameEvent<GameActionPayload>
+  ): StateTransitionResult<GameState> {
     // Implement based on action
     // For REQUEST_ROLL, process roll
     const engine = new SnakeLadderEngine(state);
@@ -59,13 +70,13 @@ export class SnakeLadderAdapter implements GameEngineAdapter<GameState, GameEven
       return {
         nextState: engine.getState(),
         delta,
-        sideEffects: [{ type: 'ROLL_RESULT', payload: { diceValue, delta } }]
+        sideEffects: [{ type: 'ROLL_RESULT', payload: { diceValue, delta } }],
       };
     }
     return {
       nextState: state,
       delta: {},
-      sideEffects: []
+      sideEffects: [],
     };
   }
 
@@ -96,7 +107,7 @@ export class SnakeLadderAdapter implements GameEngineAdapter<GameState, GameEven
     return {
       snakes: DEFAULT_SNAKES,
       ladders: DEFAULT_LADDERS,
-      totalCells: 100
+      totalCells: 100,
     };
   }
 }

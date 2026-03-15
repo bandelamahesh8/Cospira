@@ -58,10 +58,14 @@ const AITimer: React.FC<AITimerProps> = ({
       </div>
 
       <div className='flex flex-col'>
-        <span className={`text-[9px] uppercase tracking-[0.2em] font-black leading-none mb-1 transition-colors duration-500 ${isPaused ? 'text-amber-500' : 'text-amber-500/60'}`}>
-          {isPaused ? 'PAUSED' : (label || 'Protocol Timer')}
+        <span
+          className={`text-[9px] uppercase tracking-[0.2em] font-black leading-none mb-1 transition-colors duration-500 ${isPaused ? 'text-amber-500' : 'text-amber-500/60'}`}
+        >
+          {isPaused ? 'PAUSED' : label || 'Protocol Timer'}
         </span>
-        <span className={`text-xl font-mono font-black tabular-nums leading-none tracking-tight transition-all duration-500 ${isPaused ? 'text-white/40 filter-none' : 'text-white filter drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`}>
+        <span
+          className={`text-xl font-mono font-black tabular-nums leading-none tracking-tight transition-all duration-500 ${isPaused ? 'text-white/40 filter-none' : 'text-white filter drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`}
+        >
           {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
         </span>
       </div>

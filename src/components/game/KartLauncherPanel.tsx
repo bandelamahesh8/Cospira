@@ -40,20 +40,26 @@ export function KartLauncherPanel({ onStartRace, players, isHost }: KartLauncher
           </div>
 
           <p className='text-slate-400 text-lg leading-relaxed font-medium'>
-            Welcome to the Apex Circuit. High-stakes multiplayer racing where precision meets velocity. 
-            Ensure your engines are primed and your focus is absolute.
+            Welcome to the Apex Circuit. High-stakes multiplayer racing where precision meets
+            velocity. Ensure your engines are primed and your focus is absolute.
           </p>
 
           <div className='grid grid-cols-2 gap-4'>
             <div className='p-6 rounded-[2rem] bg-white/5 border border-white/10'>
               <Trophy className='w-8 h-8 text-rose-500 mb-3' />
-              <h3 className='text-white font-black uppercase text-xs tracking-widest'>Tournament</h3>
-              <p className='text-slate-500 text-[10px] font-bold uppercase mt-1'>Standard Grand Prix</p>
+              <h3 className='text-white font-black uppercase text-xs tracking-widest'>
+                Tournament
+              </h3>
+              <p className='text-slate-500 text-[10px] font-bold uppercase mt-1'>
+                Standard Grand Prix
+              </p>
             </div>
             <div className='p-6 rounded-[2rem] bg-white/5 border border-white/10'>
               <Users className='w-8 h-8 text-rose-500 mb-3' />
               <h3 className='text-white font-black uppercase text-xs tracking-widest'>Capacity</h3>
-              <p className='text-slate-500 text-[10px] font-bold uppercase mt-1'>Up to 6 Combatants</p>
+              <p className='text-slate-500 text-[10px] font-bold uppercase mt-1'>
+                Up to 6 Combatants
+              </p>
             </div>
           </div>
         </div>
@@ -86,13 +92,19 @@ export function KartLauncherPanel({ onStartRace, players, isHost }: KartLauncher
                     </div>
                     <div>
                       <p className='text-sm font-bold text-white uppercase'>{player.username}</p>
-                      <p className='text-[9px] text-slate-500 font-black tracking-widest uppercase'>Combatant</p>
+                      <p className='text-[9px] text-slate-500 font-black tracking-widest uppercase'>
+                        Combatant
+                      </p>
                     </div>
                   </div>
-                  <div className={cn(
-                    'px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tight',
-                    player.ready ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                  )}>
+                  <div
+                    className={cn(
+                      'px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tight',
+                      player.ready
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                    )}
+                  >
                     {player.ready ? 'Ready' : 'Waiting'}
                   </div>
                 </motion.div>

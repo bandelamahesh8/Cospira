@@ -194,4 +194,3 @@ export function createInitialGameState(
     gameStartTimestamp: Date.now(),
   };
 }
-

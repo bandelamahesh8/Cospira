@@ -24,7 +24,7 @@ export class RedisRoomRegistry {
       phase: entry.phase,
       sequenceId: entry.sequenceId.toString(),
       stateSnapshot: entry.stateSnapshot,
-      lastUpdatedAt: entry.lastUpdatedAt.toString()
+      lastUpdatedAt: entry.lastUpdatedAt.toString(),
     });
     await this.client.expire(`room:${entry.roomId}`, entry.ttl);
   }
@@ -41,14 +41,14 @@ export class RedisRoomRegistry {
       sequenceId: parseInt(data.sequenceId),
       stateSnapshot: data.stateSnapshot,
       lastUpdatedAt: parseInt(data.lastUpdatedAt),
-      ttl: 600 // default
+      ttl: 600, // default
     };
   }
 
   async updateHost(roomId: string, newHostId: string, newHostSocketId: string): Promise<void> {
     await this.client.hSet(`room:${roomId}`, {
       hostId: newHostId,
-      hostSocketId: newHostSocketId
+      hostSocketId: newHostSocketId,
     });
   }
 }

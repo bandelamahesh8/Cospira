@@ -433,7 +433,7 @@ import { createClient } from 'redis';
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
-if (process.env.USE_REDIS === 'true') {
+if (process.env.USE_REDIS !== 'false') {
     const pubClient = createClient({ url: redisUrl });
     const subClient = pubClient.duplicate();
 
@@ -442,6 +442,10 @@ if (process.env.USE_REDIS === 'true') {
         logger.info('✅ Socket.IO Redis Adapter configured');
     }).catch(err => {
         logger.error('Failed to connect Redis Adapter:', err);
+        if (process.env.NODE_ENV === 'production') {
+            logger.error('❌ PRODUCTION ERROR: Redis Adapter required in production');
+            process.exit(1);
+        }
     });
 }
 
@@ -969,9 +973,14 @@ app.get('/health', async (req, res) => {
       uptime: process.uptime(),
       rooms: activeRooms?.length ?? 0,
       users: 0,
+      redis: 'connected' // Since if Redis fails, the catch block will trigger
     });
   } catch (e) {
-    res.status(503).json({ status: 'degraded', error: 'Redis unavailable' });
+    res.status(503).json({ 
+      status: 'degraded', 
+      error: 'Redis unavailable',
+      redis: 'disconnected'
+    });
   }
 });
 

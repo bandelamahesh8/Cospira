@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
 import { EventEmitter } from 'events';
-import logger from '../logger.js';
+import logger from '../shared/logger.js';
 
 class ChessServer extends EventEmitter {
     constructor() {

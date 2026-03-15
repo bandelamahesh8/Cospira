@@ -99,7 +99,6 @@ const BreakoutCard: React.FC<{
   onResume,
   onCreateChild,
 }) => {
-
   const [showChildForm, setShowChildForm] = useState(false);
   const [childName, setChildName] = useState('');
   const [childRoomType, setChildRoomType] = useState<RoomType>('GENERAL');
@@ -329,7 +328,6 @@ const BreakoutCard: React.FC<{
               {breakout.status === 'PAUSED' ? 'Paused' : 'Enter'}
             </button>
           </div>
-
         )}
         {isOwner && breakout.status === 'CREATED' && (
           <button
@@ -712,8 +710,8 @@ const OrganizationRoom: React.FC<{ embeddedOrgId?: string; onEmbeddedClose?: () 
         <div className='relative z-20 bg-red-500/10 border-b border-red-500/20 px-6 py-2.5 flex items-center gap-3'>
           <AlertTriangle className='w-4 h-4 text-red-400 shrink-0' />
           <p className='text-red-300 text-[10px] font-black uppercase tracking-widest'>
-            SECURE MODE — All sessions are recorded. All actions are immutably logged. No
-            silent joins.
+            SECURE MODE — All sessions are recorded. All actions are immutably logged. No silent
+            joins.
           </p>
         </div>
       )}
@@ -802,8 +800,8 @@ const OrganizationRoom: React.FC<{ embeddedOrgId?: string; onEmbeddedClose?: () 
               Participant Lobby
             </h2>
             <p className='text-white/40 font-medium max-w-md'>
-              You are currently in the waiting lobby. The super host will assign you to a
-              breakout session shortly.
+              You are currently in the waiting lobby. The super host will assign you to a breakout
+              session shortly.
             </p>
 
             <div className='mt-12 w-full max-w-sm'>
@@ -981,7 +979,6 @@ const OrganizationRoom: React.FC<{ embeddedOrgId?: string; onEmbeddedClose?: () 
                           onResume={() => resumeBreakout(breakout.id)}
                           onCreateChild={createChildRoom}
                         />
-
                       ))}
                     </AnimatePresence>
                   </div>

@@ -28,9 +28,9 @@ export type CoinType = 'white' | 'black' | 'queen' | 'striker';
 /** Queen status tracking */
 export type QueenStatus =
   | 'on_board'
-  | 'pocketed_needs_cover'  // queen pocketed, awaiting cover coin this turn
-  | 'covered'               // queen successfully covered, scored
-  | 'returned';             // queen returned to board after failed cover
+  | 'pocketed_needs_cover' // queen pocketed, awaiting cover coin this turn
+  | 'covered' // queen successfully covered, scored
+  | 'returned'; // queen returned to board after failed cover
 
 /** Coin assignment (which color each player controls) */
 export type CoinAssignment = Record<PlayerId, 'white' | 'black' | 'none'>;
@@ -179,8 +179,8 @@ export type GameEventType =
 /** Game event object */
 export interface GameEvent {
   type: GameEventType;
-  payload: any;
+  payload: unknown;
   senderId?: PlayerId;
   sequenceId?: SequenceId;
   timestamp: number;
-}
+}

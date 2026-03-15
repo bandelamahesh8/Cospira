@@ -59,12 +59,12 @@ class InputManager {
       scrollThreshold: 10,
       gestureStartTime: 0,
       lastTapTime: 0,
-      tapCount: 0
+      tapCount: 0,
     };
     this.mouseState = {
       isDown: false,
       lastX: 0,
-      lastY: 0
+      lastY: 0,
     };
 
     // Performance optimization: cache viewport and container rect
@@ -181,7 +181,10 @@ class InputManager {
     const dx = Math.abs(currentX - this.touchState.startX);
     const dy = Math.abs(currentY - this.touchState.startY);
 
-    if (!this.touchState.isScrolling && (dx > this.touchState.scrollThreshold || dy > this.touchState.scrollThreshold)) {
+    if (
+      !this.touchState.isScrolling &&
+      (dx > this.touchState.scrollThreshold || dy > this.touchState.scrollThreshold)
+    ) {
       this.touchState.isScrolling = true;
     }
 
@@ -190,7 +193,10 @@ class InputManager {
       // Negate deltas because finger move UP (negative delta) should scroll DOWN (positive wheel delta)
       const deltaX = this.touchState.lastX - currentX;
       const deltaY = this.touchState.lastY - currentY;
-      this.sendInput('wheel', coords.x, coords.y, 'touch', { deltaX: deltaX * 1.5, deltaY: deltaY * 1.5 });
+      this.sendInput('wheel', coords.x, coords.y, 'touch', {
+        deltaX: deltaX * 1.5,
+        deltaY: deltaY * 1.5,
+      });
     } else {
       // Send mousemove for dragging
       this.sendInput('mousemove', coords.x, coords.y, 'touch');
@@ -275,7 +281,7 @@ class InputManager {
 
     this.pinchState = {
       initialDistance: this.getTouchDistance(touch1, touch2),
-      center: this.getCoordinates(centerX, centerY, videoElement)
+      center: this.getCoordinates(centerX, centerY, videoElement),
     };
   }
 
@@ -335,7 +341,7 @@ class InputManager {
     const coords = this.getCoordinates(event.clientX, event.clientY, videoElement);
     this.sendInput('wheel', coords.x, coords.y, 'mouse', {
       deltaX: event.deltaX,
-      deltaY: event.deltaY
+      deltaY: event.deltaY,
     });
   }
 
@@ -360,8 +366,8 @@ class InputManager {
         y,
         pointerType,
         timestamp: Date.now(),
-        ...extra
-      }
+        ...extra,
+      },
     });
   }
 

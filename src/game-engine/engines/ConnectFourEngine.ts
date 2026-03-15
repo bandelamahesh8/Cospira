@@ -25,16 +25,16 @@ export class ConnectFourEngine extends BaseGameEngine {
       console.error('Connect Four requires exactly 2 players, but got:', players.length);
       // Construct a minimal state to avoid crash, though it will be invalid
       return {
-          id: this.generateGameId(),
-          type: 'connect4',
-          players: players.map(p => ({ ...p, role: 'spectator' })),
-          currentTurn: players[0]?.id || '',
-          status: 'waiting',
-          winner: null,
-          board: [],
-          metadata: { moveHistory: [] },
-          createdAt: new Date(),
-          updatedAt: new Date(),
+        id: this.generateGameId(),
+        type: 'connect4',
+        players: players.map((p) => ({ ...p, role: 'spectator' })),
+        currentTurn: players[0]?.id || '',
+        status: 'waiting',
+        winner: null,
+        board: [],
+        metadata: { moveHistory: [] },
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
     }
 

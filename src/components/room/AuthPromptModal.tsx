@@ -107,7 +107,7 @@ export const AuthPromptModal = ({ open, onOpenChange, triggerActivity }: AuthPro
             >
               <Button
                 onClick={() => navigate('/auth')}
-                className="w-full h-14 bg-white text-black font-black uppercase tracking-widest rounded-xl hover:bg-white/90 transition-all shadow-[0_5px_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-3"
+                className='w-full h-14 bg-white text-black font-black uppercase tracking-widest rounded-xl hover:bg-white/90 transition-all shadow-[0_5px_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-3'
               >
                 <span>Create Free Account</span>
                 <ArrowRight className='w-4 h-4' />

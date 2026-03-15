@@ -12,11 +12,11 @@ interface KartResultsOverlayProps {
 
 export function KartResultsOverlay({ results, onDismiss }: KartResultsOverlayProps) {
   const { users } = useWebSocket();
-  
+
   // Sort results by rank (position)
   const sortedResults = [...results].sort((a, b) => a.position - b.position);
-  const firstPlaceId = sortedResults.find(r => r.position === 1)?.playerId;
-  const firstPlaceName = users.find(u => u.id === firstPlaceId)?.name || 'Someone';
+  const firstPlaceId = sortedResults.find((r) => r.position === 1)?.playerId;
+  const firstPlaceName = users.find((u) => u.id === firstPlaceId)?.name || 'Someone';
 
   return (
     <motion.div
@@ -55,7 +55,7 @@ export function KartResultsOverlay({ results, onDismiss }: KartResultsOverlayPro
         <div className='space-y-3 mb-12 relative z-10'>
           <AnimatePresence>
             {sortedResults.map((res, idx) => {
-              const playerName = users.find(u => u.id === res.playerId)?.name || 'Combatant';
+              const playerName = users.find((u) => u.id === res.playerId)?.name || 'Combatant';
               return (
                 <motion.div
                   key={res.playerId}
@@ -64,16 +64,20 @@ export function KartResultsOverlay({ results, onDismiss }: KartResultsOverlayPro
                   transition={{ delay: idx * 0.1 }}
                   className={cn(
                     'flex items-center justify-between p-4 rounded-3xl border transition-all',
-                    res.position === 1 
-                      ? 'bg-rose-500/10 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.2)]' 
+                    res.position === 1
+                      ? 'bg-rose-500/10 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.2)]'
                       : 'bg-white/5 border-white/10'
                   )}
                 >
                   <div className='flex items-center gap-4'>
-                    <div className={cn(
-                      'w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs',
-                      res.position === 1 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'
-                    )}>
+                    <div
+                      className={cn(
+                        'w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs',
+                        res.position === 1
+                          ? 'bg-rose-500 text-white'
+                          : 'bg-slate-800 text-slate-400'
+                      )}
+                    >
                       {res.position === 1 ? <Award className='w-5 h-5' /> : `#${res.position}`}
                     </div>
                     <div>
@@ -84,7 +88,7 @@ export function KartResultsOverlay({ results, onDismiss }: KartResultsOverlayPro
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className='text-right'>
                     <div className='text-sm font-black text-rose-500'>
                       {res.bestLapMs > 0 ? `${(res.bestLapMs / 1000).toFixed(2)}s` : '--'}

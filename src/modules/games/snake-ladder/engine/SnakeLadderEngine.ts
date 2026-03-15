@@ -35,7 +35,7 @@ export class SnakeLadderEngine {
     }
     // Set phase to ACTIVE, set currentPlayerId to first
     const firstPlayer = state.players
-      .filter(p => !p.isSpectator)
+      .filter((p) => !p.isSpectator)
       .sort((a, b) => a.joinTimestamp - b.joinTimestamp)[0];
     this.stateManager.applyDelta({ nextPlayerId: firstPlayer.id });
     // Update phase

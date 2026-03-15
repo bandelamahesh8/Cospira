@@ -30,7 +30,12 @@ export class GameError extends Error implements GameError {
   public context?: Record<string, unknown>;
   public traceId?: string;
 
-  constructor(code: GameErrorCode, message: string, retryable: boolean = false, context?: Record<string, unknown>) {
+  constructor(
+    code: GameErrorCode,
+    message: string,
+    retryable: boolean = false,
+    context?: Record<string, unknown>
+  ) {
     super(message);
     this.code = code;
     this.retryable = retryable;

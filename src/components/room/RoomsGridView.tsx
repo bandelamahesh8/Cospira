@@ -10,7 +10,16 @@
  */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Monitor, LayoutGrid, X, ChevronRight, Pin, MoreHorizontal, Trash2, Users } from 'lucide-react';
+import {
+  Monitor,
+  LayoutGrid,
+  X,
+  ChevronRight,
+  Pin,
+  MoreHorizontal,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { useBreakout } from '@/contexts/useBreakout';
 import { useOrganization } from '@/contexts/useOrganization';
 import { useNavigate } from 'react-router-dom';
@@ -54,18 +63,18 @@ const MiniRoomFrame: React.FC<{
   onDelete?: () => void;
   onShowParticipants?: () => void;
   mode?: string;
-}> = ({ 
-  roomId, 
-  label, 
-  type, 
-  status, 
-  isCurrent, 
-  isPinned, 
-  onSelect, 
-  onPin, 
-  onDelete, 
-  onShowParticipants, 
-  mode 
+}> = ({
+  roomId,
+  label,
+  type,
+  status,
+  isCurrent,
+  isPinned,
+  onSelect,
+  onPin,
+  onDelete,
+  onShowParticipants,
+  mode,
 }) => {
   const frameW = FRAME_W / SCALE;
   const frameH = FRAME_H / SCALE;
@@ -135,21 +144,30 @@ const MiniRoomFrame: React.FC<{
 
           {/* Context Menu for non-main rooms */}
           {type !== 'MAIN' && onDelete && onShowParticipants && (
-            <div className="z-30 relative" onClick={(e) => e.stopPropagation()}>
+            <div className='z-30 relative' onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className='p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 transition-colors'>
                     <MoreHorizontal className='w-3 h-3' />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-[#0a0c14] border-white/10 text-white/80 z-[200]">
-                  <DropdownMenuItem onClick={onShowParticipants} className="hover:bg-white/10 cursor-pointer focus:bg-white/10 focus:text-white">
-                    <Users className="w-4 h-4 mr-2" />
-                    <span className="text-xs">Show Participants</span>
+                <DropdownMenuContent
+                  align='end'
+                  className='w-48 bg-[#0a0c14] border-white/10 text-white/80 z-[200]'
+                >
+                  <DropdownMenuItem
+                    onClick={onShowParticipants}
+                    className='hover:bg-white/10 cursor-pointer focus:bg-white/10 focus:text-white'
+                  >
+                    <Users className='w-4 h-4 mr-2' />
+                    <span className='text-xs'>Show Participants</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onDelete} className="text-red-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer focus:bg-red-500/20 focus:text-red-300">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    <span className="text-xs">Delete Room</span>
+                  <DropdownMenuItem
+                    onClick={onDelete}
+                    className='text-red-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer focus:bg-red-500/20 focus:text-red-300'
+                  >
+                    <Trash2 className='w-4 h-4 mr-2' />
+                    <span className='text-xs'>Delete Room</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -264,11 +282,16 @@ const GridParticipantsModal: React.FC<{
                   Room Participants
                 </p>
               </div>
-              <Button variant='ghost' size='icon' onClick={onClose} className='hover:bg-white/10 rounded-full h-8 w-8 !p-0'>
+              <Button
+                variant='ghost'
+                size='icon'
+                onClick={onClose}
+                className='hover:bg-white/10 rounded-full h-8 w-8 !p-0'
+              >
                 <X className='w-4 h-4 text-white/70' />
               </Button>
             </div>
-            
+
             <ScrollArea className='flex-1 p-4'>
               {isLoading ? (
                 <div className='flex justify-center items-center py-10'>
@@ -281,11 +304,22 @@ const GridParticipantsModal: React.FC<{
               ) : (
                 <div className='space-y-2'>
                   {participants.map((p) => (
-                    <div key={p.id} className='flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5'>
-                      <UserAvatar name={p.user?.display_name || 'Unknown'} avatarUrl={p.user?.avatar_url} className='w-8 h-8' />
+                    <div
+                      key={p.id}
+                      className='flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5'
+                    >
+                      <UserAvatar
+                        name={p.user?.display_name || 'Unknown'}
+                        avatarUrl={p.user?.avatar_url}
+                        className='w-8 h-8'
+                      />
                       <div>
-                        <div className='text-sm font-semibold text-white/90'>{p.user?.display_name || 'Unknown'}</div>
-                        <div className='text-[10px] text-white/40'>{p.role === 'HOST' ? 'Host' : 'Participant'}</div>
+                        <div className='text-sm font-semibold text-white/90'>
+                          {p.user?.display_name || 'Unknown'}
+                        </div>
+                        <div className='text-[10px] text-white/40'>
+                          {p.role === 'HOST' ? 'Host' : 'Participant'}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -332,7 +366,9 @@ const GridDeleteRoomModal: React.FC<{
               </div>
               <h2 className='text-lg font-bold text-white mb-2'>Delete Breakout Room</h2>
               <p className='text-sm text-white/50 leading-relaxed mb-6'>
-                Are you sure you want to close and permanently delete <span className='text-white font-semibold'>"{roomName}"</span>? All participants will be returned to the main lobby.
+                Are you sure you want to close and permanently delete{' '}
+                <span className='text-white font-semibold'>"{roomName}"</span>? All participants
+                will be returned to the main lobby.
               </p>
               <div className='flex flex-col sm:flex-row items-center gap-3'>
                 <Button
@@ -347,7 +383,7 @@ const GridDeleteRoomModal: React.FC<{
                   onClick={onConfirm}
                   disabled={isDeleting}
                   className='flex-[1.5] h-11 bg-white hover:bg-[#f3f4f6] border border-white/20 text-[#0a0a0a] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 rounded-full shadow-[0_4px_12px_rgba(255,255,255,0.1)] hover:scale-[1.02] transition-transform active:scale-[0.98] text-[10px]'
-                  rippleColor="rgba(0, 0, 0, 0.1)"
+                  rippleColor='rgba(0, 0, 0, 0.1)'
                 >
                   {isDeleting ? (
                     <div className='w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin' />
@@ -435,21 +471,21 @@ export const RoomsGridView: React.FC<RoomsGridViewProps> = ({ currentRoomId, org
   };
 
   const allRooms: RoomEntry[] = [
-    { 
-      id: orgId, 
-      label: 'Main Lobby', 
-      type: 'MAIN', 
-      status: 'LIVE', 
-      mode: currentOrganization?.mode 
+    {
+      id: orgId,
+      label: 'Main Lobby',
+      type: 'MAIN',
+      status: 'LIVE',
+      mode: currentOrganization?.mode,
     },
     ...breakouts.flatMap((b) => [
-      { 
-        id: b.id, 
-        label: b.name, 
-        type: 'PARENT' as const, 
-        status: b.status, 
-        breakout: b, 
-        mode: b.mode_override || currentOrganization?.mode 
+      {
+        id: b.id,
+        label: b.name,
+        type: 'PARENT' as const,
+        status: b.status,
+        breakout: b,
+        mode: b.mode_override || currentOrganization?.mode,
       },
       ...(b.child_rooms || []).map((c) => ({
         id: c.id,
@@ -457,7 +493,7 @@ export const RoomsGridView: React.FC<RoomsGridViewProps> = ({ currentRoomId, org
         type: 'CHILD' as const,
         status: c.status || 'LIVE',
         breakout: b,
-        mode: c.mode_override || b.mode_override || currentOrganization?.mode
+        mode: c.mode_override || b.mode_override || currentOrganization?.mode,
       })),
     ]),
   ];

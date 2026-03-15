@@ -4,7 +4,13 @@
  * The engine is responsible for applying moves, validating rules, and detecting wins.
  */
 
-import { GameEngineAdapter, GameConfig, GameMove, ValidationResult, WinResult } from '../shared/GameEngineAdapter';
+import {
+  GameEngineAdapter,
+  GameConfig,
+  GameMove,
+  ValidationResult,
+  WinResult,
+} from '../shared/GameEngineAdapter';
 import { BoardStateManager } from './BoardStateManager';
 import { BoardState, Connect4Config, Connect4Move } from './types';
 import { MoveValidator } from './MoveValidator';
@@ -24,7 +30,7 @@ export class Connect4Engine implements GameEngineAdapter {
     const players = (config.players || []) as string[];
     if (players.length < 2) {
       console.error('Connect4 requires exactly 2 players, but received:', players.length);
-      // We don't throw here to avoid crashing the UI. The engine will be in an invalid state 
+      // We don't throw here to avoid crashing the UI. The engine will be in an invalid state
       // but the component can handle it or wait for a proper update.
       return;
     }

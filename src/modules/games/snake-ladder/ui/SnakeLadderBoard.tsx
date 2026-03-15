@@ -37,7 +37,7 @@ export const SnakeLadderBoard: React.FC<SnakeLadderBoardProps> = ({ gameState, o
   };
 
   const renderTokens = (ctx: CanvasRenderingContext2D, players: PlayerState[]) => {
-    players.forEach(player => {
+    players.forEach((player) => {
       if (player.position > 0) {
         const { x, y } = positionToCoords(player.position);
         ctx.fillStyle = player.tokenColor;

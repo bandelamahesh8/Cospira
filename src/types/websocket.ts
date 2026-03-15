@@ -177,7 +177,7 @@ export interface GameState {
   id?: string;
   status?: 'waiting' | 'active' | 'paused' | 'finished';
   metadata?: Record<string, unknown>;
-  createdAt?: Date;
+  createdAt?: Date | string | number;
   updatedAt?: Date;
   timeouts?: Record<string, number>;
 }

@@ -406,10 +406,7 @@ export class BreakoutService {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
       return;
     }
-    const { error } = await supabase
-      .from('breakout_sessions')
-      .delete()
-      .eq('id', breakoutId);
+    const { error } = await supabase.from('breakout_sessions').delete().eq('id', breakoutId);
 
     if (error) throw error;
 
@@ -450,10 +447,7 @@ export class BreakoutService {
    * Delete an entire organization permanently.
    */
   static async deleteOrganization(orgId: string): Promise<void> {
-    const { error } = await supabase
-      .from('organizations')
-      .delete()
-      .eq('id', orgId);
+    const { error } = await supabase.from('organizations').delete().eq('id', orgId);
 
     if (error) throw error;
   }

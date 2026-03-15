@@ -68,6 +68,13 @@ export const PlayerAvatar = ({
       {!isOnline && (
         <div className='absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-slate-950' />
       )}
+
+      {/* Player name */}
+      <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max'>
+        <span className='text-[10px] font-bold text-white/50 uppercase tracking-widest leading-none'>
+          {name}
+        </span>
+      </div>
     </div>
   );
 };

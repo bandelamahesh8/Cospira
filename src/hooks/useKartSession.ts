@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import type { ResultPayload } from '@/types/kart';
 
-type SessionState = 'idle' | 'creating_session' | 'waiting_for_players' | 'launching' | 'in_race' | 'results';
+type SessionState =
+  | 'idle'
+  | 'creating_session'
+  | 'waiting_for_players'
+  | 'launching'
+  | 'in_race'
+  | 'results';
 
 export function useKartSession() {
   const [state, setState] = useState<SessionState>('idle');
@@ -29,7 +35,7 @@ export function useKartSession() {
   };
 
   const handleResult = (result: ResultPayload) => {
-    setResults(prev => [...prev, result]);
+    setResults((prev) => [...prev, result]);
     if (results.length + 1 >= expectedPlayers) {
       setState('results');
     }

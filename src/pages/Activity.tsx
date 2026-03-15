@@ -51,26 +51,30 @@ const ActivityPage = () => {
     if (!socket || !isConnected) return;
 
     setLoading(true);
-    socket.emit('get-user-history', { userId: user?.id }, (res: { success: boolean; history?: HistoryItem[] }) => {
-      if (res.success && res.history) {
-        const mappedActivities: ActivityType[] = res.history.map((item) => ({
-          id: item.id,
-          type: 'room',
-          title: item.name,
-          subtitle: item.isActive ? 'Active Session' : 'Past Session',
-          action: item.role === 'host' ? 'Hosted Room' : 'Joined Room',
-          timestamp: new Date(item.joinedAt || item.lastActive || Date.now()),
-          duration: 0,
-          participants: item.participantCount,
-          role: item.role,
-          roomId: item.id,
-        }));
+    socket.emit(
+      'get-user-history',
+      { userId: user?.id },
+      (res: { success: boolean; history?: HistoryItem[] }) => {
+        if (res.success && res.history) {
+          const mappedActivities: ActivityType[] = res.history.map((item) => ({
+            id: item.id,
+            type: 'room',
+            title: item.name,
+            subtitle: item.isActive ? 'Active Session' : 'Past Session',
+            action: item.role === 'host' ? 'Hosted Room' : 'Joined Room',
+            timestamp: new Date(item.joinedAt || item.lastActive || Date.now()),
+            duration: 0,
+            participants: item.participantCount,
+            role: item.role,
+            roomId: item.id,
+          }));
 
-        mappedActivities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-        setActivities(mappedActivities);
+          mappedActivities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+          setActivities(mappedActivities);
+        }
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
   }, [socket, isConnected]);
 
   const groupedActivities = groupActivitiesByDate(activities);

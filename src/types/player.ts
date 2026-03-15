@@ -7,7 +7,21 @@
 
 import { GameState, Move } from '../game-engine/core/GameEngine.interface';
 
-export type GameType = 'chess' | 'xoxo' | 'ludo' | 'snakeladder' | 'connect4' | 'checkers';
+export type GameType =
+  | 'xoxo'
+  | 'ultimate-xoxo'
+  | 'chess'
+  | 'chess-puzzle'
+  | 'ludo'
+  | 'snakeladder'
+  | 'connect4'
+  | 'checkers'
+  | 'battleship'
+  | 'uno'
+  | 'billiards'
+  | 'wordbattle'
+  | 'carrom'
+  | 'kart-racing';
 export type Rank = 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond' | 'Master' | 'Legend';
 export type MatchMode = 'casual' | 'ranked' | 'tournament' | 'private';
 

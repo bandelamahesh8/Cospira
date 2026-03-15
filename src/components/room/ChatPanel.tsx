@@ -300,7 +300,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                               </div>
                               {(isHost || currentUser?.isCoHost) &&
                                 fileItem.name &&
-                                /\.(mp4|webm|ogg|jpg|jpeg|png|gif|webp|svg|pdf|ppt|pptx|doc|docx|xls|xlsx)$/i.test(fileItem.name) && (
+                                /\.(mp4|webm|ogg|jpg|jpeg|png|gif|webp|svg|pdf|ppt|pptx|doc|docx|xls|xlsx)$/i.test(
+                                  fileItem.name
+                                ) && (
                                   <button
                                     onClick={() => presentFile(fileItem)}
                                     className='w-full mt-1 h-8 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-indigo-500/10'
@@ -366,7 +368,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     handleFileUpload(e);
                     e.target.value = '';
                   }}
-                  accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.webm,.ogg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pps,.ppsx,.txt"
+                  accept='.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.webm,.ogg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pps,.ppsx,.txt'
                 />
                 <button
                   type='button'

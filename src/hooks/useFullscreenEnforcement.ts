@@ -14,7 +14,7 @@ interface FullscreenEnforcement {
 }
 
 export const useFullscreenEnforcement = (
-  isActive: boolean, 
+  isActive: boolean,
   onKeyLimitExceeded?: (key: string) => void
 ): FullscreenEnforcement => {
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
@@ -30,7 +30,8 @@ export const useFullscreenEnforcement = (
       element.requestFullscreen().catch((err) => {
         console.error(`Error attempting to enable fullscreen: ${err.message}`);
         toast.error('Security Protocol Failure', {
-          description: 'Failed to engage fullscreen. Please enable it manually or check your browser settings.',
+          description:
+            'Failed to engage fullscreen. Please enable it manually or check your browser settings.',
         });
       });
     }
@@ -63,7 +64,7 @@ export const useFullscreenEnforcement = (
           }
           return next;
         });
-        
+
         toast.warning('Security Alert: Connection Exposed', {
           description: 'You have exited the secure fullscreen environment. Re-engage immediately.',
         });
@@ -91,16 +92,33 @@ export const useFullscreenEnforcement = (
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Extensive list of system/screenshot keys
-      const systemKeys = ['Alt', 'Meta', 'PrintScreen', 'Tab', 'ContextMenu', 'Control', 'Shift', 'Escape', 'OS'];
+      const systemKeys = [
+        'Alt',
+        'Meta',
+        'PrintScreen',
+        'Tab',
+        'ContextMenu',
+        'Control',
+        'Shift',
+        'Escape',
+        'OS',
+      ];
       const isPrintScreen = e.key === 'PrintScreen' || e.keyCode === 44 || e.key === 'Snapshot';
       const isWinShiftS = e.metaKey && e.shiftKey && e.key === 'S';
       const isAltPrtSc = e.altKey && isPrintScreen;
-      
-      if (systemKeys.includes(e.key) || isPrintScreen || isWinShiftS || isAltPrtSc || (e.ctrlKey && e.key === 't') || (e.ctrlKey && e.key === 'n')) {
-        const keyLabel = isWinShiftS ? 'Win+Shift+S' : (e.key || 'System Key');
+
+      if (
+        systemKeys.includes(e.key) ||
+        isPrintScreen ||
+        isWinShiftS ||
+        isAltPrtSc ||
+        (e.ctrlKey && e.key === 't') ||
+        (e.ctrlKey && e.key === 'n')
+      ) {
+        const keyLabel = isWinShiftS ? 'Win+Shift+S' : e.key || 'System Key';
         setPressedKey(keyLabel);
         setIsKeyWarningVisible(true);
-        
+
         setKeyChances((prev) => {
           const next = prev - 1;
           if (next <= 0) {
@@ -111,7 +129,7 @@ export const useFullscreenEnforcement = (
         });
 
         if (warningTimer) clearTimeout(warningTimer);
-        
+
         warningTimer = setTimeout(() => {
           setIsKeyWarningVisible(false);
           setPressedKey(null);
@@ -149,7 +167,7 @@ export const useFullscreenEnforcement = (
           }
           return next;
         });
-        
+
         toast.warning('Security Alert: App Switched', {
           description: 'Context switch detected. Multitasking is restricted in this mode.',
         });

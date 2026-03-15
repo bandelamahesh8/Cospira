@@ -10,7 +10,7 @@ import XXH from 'xxhashjs';
 import { CarromGameState } from '../types/game-state';
 
 // Use 64-bit xxHash for good collision resistance
-const HASHER = XXH.h64(0xCAFEBABE); // Fixed seed for determinism
+const HASHER = XXH.h64(0xcafebabe); // Fixed seed for determinism
 
 /**
  * Creates a deterministic hash of the game state
@@ -52,23 +52,33 @@ function serializeStateForHash(state: CarromGameState): string {
 
   // Physics state - striker
   const striker = state.physics.striker;
-  parts.push(`striker:id=${striker.id},pos=${striker.position.x},${striker.position.y},vel=${striker.velocity.x},${striker.velocity.y},angVel=${striker.angularVelocity},pocketed=${striker.pocketed}`);
+  parts.push(
+    `striker:id=${striker.id},pos=${striker.position.x},${striker.position.y},vel=${striker.velocity.x},${striker.velocity.y},angVel=${striker.angularVelocity},pocketed=${striker.pocketed}`
+  );
 
   // Physics state - coins (sorted by ID for determinism)
   const sortedCoins = [...state.physics.coins].sort((a, b) => a.id.localeCompare(b.id));
-  sortedCoins.forEach(coin => {
-    parts.push(`coin:id=${coin.id},type=${coin.type},pos=${coin.position.x},${coin.position.y},vel=${coin.velocity.x},${coin.velocity.y},angVel=${coin.angularVelocity},pocketed=${coin.pocketed}`);
+  sortedCoins.forEach((coin) => {
+    parts.push(
+      `coin:id=${coin.id},type=${coin.type},pos=${coin.position.x},${coin.position.y},vel=${coin.velocity.x},${coin.velocity.y},angVel=${coin.angularVelocity},pocketed=${coin.pocketed}`
+    );
   });
 
   // Board configuration (should be static, but include for completeness)
-  parts.push(`board:width=${state.board.width},height=${state.board.height},wallThickness=${state.board.wallThickness}`);
+  parts.push(
+    `board:width=${state.board.width},height=${state.board.height},wallThickness=${state.board.wallThickness}`
+  );
   parts.push(`board:strikerBaselineY=${state.board.strikerBaselineY}`);
-  parts.push(`board:strikerXRange=${state.board.strikerXRange.min},${state.board.strikerXRange.max}`);
+  parts.push(
+    `board:strikerXRange=${state.board.strikerXRange.min},${state.board.strikerXRange.max}`
+  );
 
   // Pockets (sorted by ID)
   const sortedPockets = [...state.board.pockets].sort((a, b) => a.id - b.id);
-  sortedPockets.forEach(pocket => {
-    parts.push(`pocket:id=${pocket.id},pos=${pocket.position.x},${pocket.position.y},radius=${pocket.radius}`);
+  sortedPockets.forEach((pocket) => {
+    parts.push(
+      `pocket:id=${pocket.id},pos=${pocket.position.x},${pocket.position.y},radius=${pocket.radius}`
+    );
   });
 
   // Join all parts with consistent separator

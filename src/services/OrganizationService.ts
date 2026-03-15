@@ -13,7 +13,6 @@ import {
 } from '@/types/organization';
 import { generateUUID } from '@/utils/uuid';
 
-
 // Re-cast the global supabase client.
 const db = supabase as any;
 
@@ -136,14 +135,14 @@ export class OrganizationService {
 
     const { data: org, error: orgError } = await db
       .from('organizations')
-      .insert({ 
-        name, 
-        slug, 
-        owner_id: user.id, 
-        mode, 
+      .insert({
+        name,
+        slug,
+        owner_id: user.id,
+        mode,
         status: 'active',
         lobby_name: advanced.lobby_name,
-        authorized_only: advanced.authorized_only
+        authorized_only: advanced.authorized_only,
       })
       .select()
       .single();
@@ -638,18 +637,21 @@ export class OrganizationService {
         } | null;
       } | null;
     }
-    return (data as unknown as TeamMemberEnrichedRow[]).map((tm) => ({
-      team_id: tm.team_id,
-      user_id: tm.user_id,
-      added_by: tm.added_by,
-      created_at: tm.created_at,
-      user: {
-        id: tm.user?.id || '',
-        email: tm.user?.email || '',
-        display_name: tm.user?.raw_user_meta_data?.display_name,
-        avatar_url: tm.user?.raw_user_meta_data?.avatar_url,
-      },
-    } as TeamMember));
+    return (data as unknown as TeamMemberEnrichedRow[]).map(
+      (tm) =>
+        ({
+          team_id: tm.team_id,
+          user_id: tm.user_id,
+          added_by: tm.added_by,
+          created_at: tm.created_at,
+          user: {
+            id: tm.user?.id || '',
+            email: tm.user?.email || '',
+            display_name: tm.user?.raw_user_meta_data?.display_name,
+            avatar_url: tm.user?.raw_user_meta_data?.avatar_url,
+          },
+        }) as TeamMember
+    );
   }
 
   static async addMemberToTeam(teamId: string, userId: string): Promise<void> {

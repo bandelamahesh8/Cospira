@@ -36,20 +36,22 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
           {/* Sidebar */}
           {showSidebar && (
             <Sidebar open={open} setOpen={setOpen}>
-              <SidebarBody className="border-r border-border h-full">
+              <SidebarBody className='border-r border-border h-full'>
                 <AppSidebar />
               </SidebarBody>
             </Sidebar>
           )}
 
           {/* Main Content */}
-          <main className={cn('flex-1 overflow-auto min-w-0', !noPadding && 'p-1 md:p-1', className)}>
+          <main
+            className={cn('flex-1 overflow-auto min-w-0', !noPadding && 'p-1 md:p-1', className)}
+          >
             <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="h-full"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className='h-full'
             >
-                {children}
+              {children}
             </motion.div>
           </main>
         </div>

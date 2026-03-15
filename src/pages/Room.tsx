@@ -32,32 +32,60 @@ import { copyToClipboard } from '@/utils/clipboard';
 const RoomControls = safeLazy(() => import('@/components/room/RoomControls'));
 const VideoGrid = safeLazy(() => import('@/components/room/VideoGrid'));
 const ChatPanel = safeLazy(() => import('@/components/room/ChatPanel'));
-const VirtualBrowser = safeLazy(() => import('@/components/VirtualBrowser').then(m => ({ default: m.VirtualBrowser })));
-const SoftOnboarding = safeLazy(() => import('@/components/room/SoftOnboarding').then(m => ({ default: m.SoftOnboarding })));
-const CaptionsOverlay = safeLazy(() => import('@/components/room/CaptionsOverlay').then(m => ({ default: m.CaptionsOverlay })));
+const VirtualBrowser = safeLazy(() =>
+  import('@/components/VirtualBrowser').then((m) => ({ default: m.VirtualBrowser }))
+);
+const SoftOnboarding = safeLazy(() =>
+  import('@/components/room/SoftOnboarding').then((m) => ({ default: m.SoftOnboarding }))
+);
+const CaptionsOverlay = safeLazy(() =>
+  import('@/components/room/CaptionsOverlay').then((m) => ({ default: m.CaptionsOverlay }))
+);
 const RoomModeSuggestion = safeLazy(() => import('@/components/room/RoomModeSuggestion'));
 const LateJoinBanner = safeLazy(() => import('@/components/room/LateJoinBanner'));
 const InviteModal = safeLazy(() => import('@/components/room/InviteModal'));
 const AIPoll = safeLazy(() => import('@/components/room/AIPoll'));
 const ManualPollModal = safeLazy(() => import('@/components/room/ManualPollModal'));
-const AuthPromptModal = safeLazy(() => import('@/components/room/AuthPromptModal').then(m => ({ default: m.AuthPromptModal })));
-const RoomTimerModal = safeLazy(() => import('@/components/room/RoomTimerModal').then(m => ({ default: m.RoomTimerModal })));
+const AuthPromptModal = safeLazy(() =>
+  import('@/components/room/AuthPromptModal').then((m) => ({ default: m.AuthPromptModal }))
+);
+const RoomTimerModal = safeLazy(() =>
+  import('@/components/room/RoomTimerModal').then((m) => ({ default: m.RoomTimerModal }))
+);
 const DispatchModal = safeLazy(() => import('@/components/room/DispatchModal'));
 const SuperiorSummaryModal = safeLazy(() => import('@/components/room/SuperiorSummaryModal'));
 const ParticipantsModal = safeLazy(() => import('@/components/room/ParticipantsModal'));
 const SynchronizedYouTubePlayer = safeLazy(() => import('@/components/SynchronizedYouTubePlayer'));
 const OTTGridModal = safeLazy(() => import('@/components/OTTGridModal'));
-const GameHubModal = safeLazy(() => import('@/components/games/GameSelector').then(m => ({ default: m.GameHubModal })));
-const AbandonGameModal = safeLazy(() => import('@/components/games/GameSelector').then(m => ({ default: m.AbandonGameModal })));
-const GameArenaContainer = safeLazy(() => import('@/components/games/GameArenaContainer').then(m => ({ default: m.GameArenaContainer })));
+const GameHubModal = safeLazy(() =>
+  import('@/components/games/GameSelector').then((m) => ({ default: m.GameHubModal }))
+);
+const AbandonGameModal = safeLazy(() =>
+  import('@/components/games/GameSelector').then((m) => ({ default: m.AbandonGameModal }))
+);
+const GameArenaContainer = safeLazy(() =>
+  import('@/components/games/GameArenaContainer').then((m) => ({ default: m.GameArenaContainer }))
+);
 const FeedbackModal = safeLazy(() => import('@/components/FeedbackModal'));
 const SettingsModal = safeLazy(() => import('@/components/SettingsModal'));
-const SecurityDecryptionModal = safeLazy(() => import('@/components/room/SecurityDecryptionModal').then(m => ({ default: m.SecurityDecryptionModal })));
-const TranscriptionOverlay = safeLazy(() => import('@/components/room/TranscriptionOverlay').then(m => ({ default: m.TranscriptionOverlay })));
+const SecurityDecryptionModal = safeLazy(() =>
+  import('@/components/room/SecurityDecryptionModal').then((m) => ({
+    default: m.SecurityDecryptionModal,
+  }))
+);
+const TranscriptionOverlay = safeLazy(() =>
+  import('@/components/room/TranscriptionOverlay').then((m) => ({
+    default: m.TranscriptionOverlay,
+  }))
+);
 const RoomsGridView = safeLazy(() => import('@/components/room/RoomsGridView'));
 const HeaderTimer = safeLazy(() => import('@/components/room/HeaderTimer'));
-const SecurityOverlay = safeLazy(() => import('@/components/room/SecurityOverlay').then(m => ({ default: m.SecurityOverlay })));
-const FilePresenter = safeLazy(() => import('@/components/room/FilePresenter').then(m => ({ default: m.FilePresenter })));
+const SecurityOverlay = safeLazy(() =>
+  import('@/components/room/SecurityOverlay').then((m) => ({ default: m.SecurityOverlay }))
+);
+const FilePresenter = safeLazy(() =>
+  import('@/components/room/FilePresenter').then((m) => ({ default: m.FilePresenter }))
+);
 import { useFullscreenEnforcement } from '@/hooks/useFullscreenEnforcement';
 import { UltraSecureBlocker } from '@/components/room/UltraSecureBlocker';
 import { KeyWarningOverlay } from '@/components/room/KeyWarningOverlay';
@@ -192,13 +220,17 @@ const Room = () => {
 
   const fetchPollHistory = useCallback(() => {
     if (!socket || !roomId) return;
-    socket.emit('get-poll-history', { roomId }, (res: { success: boolean, history?: PollData[], error?: string }) => {
-      if (res.success && res.history) {
-        setPollHistory(res.history);
-      } else if (res.error) {
-        toast.error('History Error', { description: res.error });
+    socket.emit(
+      'get-poll-history',
+      { roomId },
+      (res: { success: boolean; history?: PollData[]; error?: string }) => {
+        if (res.success && res.history) {
+          setPollHistory(res.history);
+        } else if (res.error) {
+          toast.error('History Error', { description: res.error });
+        }
       }
-    });
+    );
   }, [socket, roomId]);
   const [shortcutHint, setShortcutHint] = useState<string | null>(null);
   const [shortcutUsed, setShortcutUsed] = useState<Set<string>>(new Set());
@@ -227,11 +259,13 @@ const Room = () => {
   const handleToggleGhost = useCallback(() => {
     const newGhostState = !isGhostMode;
     setLocalGhostToggle(newGhostState);
-    
+
     if (newGhostState) {
       if (isAudioEnabled) toggleAudio();
       if (isVideoEnabled) toggleVideo();
-      toast.success('Ghost Mode Activated', { description: 'You are now invisible to participants.' });
+      toast.success('Ghost Mode Activated', {
+        description: 'You are now invisible to participants.',
+      });
     } else {
       toast.success('Ghost Mode Deactivated', { description: 'You are no longer hidden.' });
     }
@@ -257,7 +291,7 @@ const Room = () => {
       });
     }
   }, [roomId, hasJoined, isWaiting, checkRoom]);
-  
+
   // Auto-decrypt if no password is required (prevents stuck screen in Ultra Secure mode)
   useEffect(() => {
     if (preFetchedRoomInfo?.success && preFetchedRoomInfo?.requiresPassword === false) {
@@ -271,7 +305,7 @@ const Room = () => {
 
       // Check if roomId is an ID or a Slug
       const org = organizations.find((o) => o.id === roomId || o.slug === roomId);
-      
+
       if (org && isExplicitOrg) {
         // Only auto-select org if it's explicitly an org room via URL param
         setCurrentOrganization(org);
@@ -294,7 +328,7 @@ const Room = () => {
               } else {
                 setIsBreakoutRoom(false);
                 // Don't clear if it was set by organizationName from socket (legacy)
-                if (!organizationName) setCurrentOrganization(null); 
+                if (!organizationName) setCurrentOrganization(null);
               }
             })
             .catch((err) => {
@@ -329,18 +363,18 @@ const Room = () => {
     return hasJoined && isUltraSecure && !isHost && !isSuperHost;
   }, [hasJoined, isUltraSecure, isHost, isSuperHost]);
 
-  const { 
-    chances: securityChances, 
+  const {
+    chances: securityChances,
     keyChances,
-    isBlocked: isSecurityBlocked, 
+    isBlocked: isSecurityBlocked,
     isKeyWarningVisible,
     pressedKey,
-    requestFullscreen 
+    requestFullscreen,
   } = useFullscreenEnforcement(isSecurityEnforced, (key) => {
     if (socket) {
       socket.emit('security:suspicious-activity', {
         roomId,
-        reason: `User exhausted key warnings (Last blocked key: ${key})`
+        reason: `User exhausted key warnings (Last blocked key: ${key})`,
       });
     }
   });
@@ -396,10 +430,10 @@ const Room = () => {
     };
 
     if (isSecurityEnforced) {
-      setWindowProtection(true).catch(err => {
+      setWindowProtection(true).catch((err) => {
         console.error('Security Protocol Error:', err);
-        toast.error('Security Protocol Error', { 
-          description: 'Failed to engage OS-level screenshot blocking.' 
+        toast.error('Security Protocol Error', {
+          description: 'Failed to engage OS-level screenshot blocking.',
         });
       });
     } else {
@@ -410,13 +444,13 @@ const Room = () => {
     return () => {
       setWindowProtection(false);
     };
-  }, [isSecurityEnforced, isUltraSecure, isDecrypted]); 
+  }, [isSecurityEnforced, isUltraSecure, isDecrypted]);
 
   // Global "Secure Mask" for immediate blackout during screenshot attempts - Only for non-hosts
   const [isMaskActive, setIsMaskActive] = useState(false);
   useEffect(() => {
     if (!isSecurityEnforced || isKeyWarningVisible === false) return;
-    
+
     // If PrtSc or other sensitive keys are pressed, blackout for 300ms
     if (pressedKey === 'PrintScreen' || pressedKey === 'PrtSc') {
       setIsMaskActive(true);
@@ -905,7 +939,7 @@ const Room = () => {
     gameState?.isActive ||
     isVirtualBrowserActive ||
     isBrowserStarting ||
-    Array.from(remoteScreenStreams.values()).some(s => s !== null);
+    Array.from(remoteScreenStreams.values()).some((s) => s !== null);
   const currentUser = users.find((u) => u.id === (authUser?.id || effectiveUserId));
   const canShareScreen = isHost || currentUser?.isCoHost || false;
   const localUserName = currentUser?.name || authUser?.user_metadata?.display_name || 'You';
@@ -1050,7 +1084,8 @@ const Room = () => {
                       className='flex items-center gap-2 group cursor-pointer transition-all hover:scale-[1.01] active:opacity-80'
                     >
                       <h1 className='text-[16px] md:text-[18px] lg:text-[20px] font-black uppercase text-white tracking-tight truncate max-w-[120px] sm:max-w-[180px] md:max-w-[280px] lg:max-w-md'>
-                        {((currentOrganization && (isMainOrgRoom || isBreakoutRoom)) || organizationName) ? (
+                        {(currentOrganization && (isMainOrgRoom || isBreakoutRoom)) ||
+                        organizationName ? (
                           <span className='flex items-center gap-2'>
                             <span className='text-white/40 font-medium'>
                               #{currentOrganization?.name || organizationName}
@@ -1076,7 +1111,8 @@ const Room = () => {
             ) : (
               <div className='flex items-center gap-2'>
                 <h1 className='text-[16px] md:text-[18px] lg:text-[20px] font-black uppercase text-white tracking-tight truncate max-w-[120px] sm:max-w-[180px] md:max-w-[280px] lg:max-w-md'>
-                  {((currentOrganization && (isMainOrgRoom || isBreakoutRoom)) || organizationName) ? (
+                  {(currentOrganization && (isMainOrgRoom || isBreakoutRoom)) ||
+                  organizationName ? (
                     <span className='flex items-center gap-2'>
                       <span className='text-white/40 font-medium'>
                         #{currentOrganization?.name || organizationName}
@@ -1154,14 +1190,14 @@ const Room = () => {
               {showViewMenu && (
                 <>
                   {/* Invisible overlay for capturing outside clicks */}
-                  <div 
-                    className='fixed inset-0 z-[120] bg-transparent' 
+                  <div
+                    className='fixed inset-0 z-[120] bg-transparent'
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowViewMenu(false);
-                    }} 
+                    }}
                   />
-                  
+
                   {/* Dropdown Container */}
                   <div className='absolute top-12 right-0 w-48 bg-[#0c0f14]/95 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl p-2 z-[130] flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200'>
                     <button
@@ -1177,14 +1213,14 @@ const Room = () => {
                           : 'text-white/50 hover:bg-white/5 hover:text-white'
                       }`}
                     >
-                      <div className="w-4 h-4 flex items-center justify-center pointer-events-none">
+                      <div className='w-4 h-4 flex items-center justify-center pointer-events-none'>
                         {viewMode === 'single' ? (
                           <span className='w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' />
                         ) : (
-                          <div className="w-1.5 h-1.5 rounded-full border border-white/20" />
+                          <div className='w-1.5 h-1.5 rounded-full border border-white/20' />
                         )}
                       </div>
-                      <span className="pointer-events-none">Current Room</span>
+                      <span className='pointer-events-none'>Current Room</span>
                     </button>
 
                     <button
@@ -1200,13 +1236,17 @@ const Room = () => {
                           : 'text-white/50 hover:bg-white/5 hover:text-white'
                       }`}
                     >
-                      <div className="w-4 h-4 flex items-center justify-center pointer-events-none">
+                      <div className='w-4 h-4 flex items-center justify-center pointer-events-none'>
                         <LayoutGrid
                           size={12}
-                          className={viewMode === 'grid' ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'text-white/30'}
+                          className={
+                            viewMode === 'grid'
+                              ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]'
+                              : 'text-white/30'
+                          }
                         />
                       </div>
-                      <span className="pointer-events-none">All Rooms (Grid)</span>
+                      <span className='pointer-events-none'>All Rooms (Grid)</span>
                     </button>
                   </div>
                 </>
@@ -1215,49 +1255,59 @@ const Room = () => {
           )}
 
           {/* Ghost Toggle Button for Super Hosts */}
-          {((isHost && isMainOrgRoom) || isSuperHost || currentUser?.isSuperHost || authUser?.user_metadata?.is_superhost) && (
-             <TooltipProvider>
-                <Tooltip delayDuration={200}>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleToggleGhost}
-                      className={`flex h-9 px-3 rounded-xl items-center gap-2 border text-[10px] font-black uppercase tracking-widest transition-all group ${
-                        isGhostMode
-                          ? 'bg-purple-500/20 border-purple-500/40 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
-                          : 'bg-white/5 border-white/5 text-white/40 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <Ghost size={14} className={isGhostMode ? 'animate-pulse' : ''} />
-                      <span className="hidden xl:inline">{isGhostMode ? 'Ghost: ON' : 'Ghost: OFF'}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className='bg-black/95 border-white/10 text-xs text-center p-2 rounded-xl shadow-2xl z-[200]'>
-                    <p className='font-bold text-purple-400 mb-0.5'>Ghost Mode</p>
-                    <p className='text-white/40'>{isGhostMode ? 'Click to reveal yourself' : 'Click to observe silently'}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+          {((isHost && isMainOrgRoom) ||
+            isSuperHost ||
+            currentUser?.isSuperHost ||
+            authUser?.user_metadata?.is_superhost) && (
+            <TooltipProvider>
+              <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleToggleGhost}
+                    className={`flex h-9 px-3 rounded-xl items-center gap-2 border text-[10px] font-black uppercase tracking-widest transition-all group ${
+                      isGhostMode
+                        ? 'bg-purple-500/20 border-purple-500/40 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                        : 'bg-white/5 border-white/5 text-white/40 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <Ghost size={14} className={isGhostMode ? 'animate-pulse' : ''} />
+                    <span className='hidden xl:inline'>
+                      {isGhostMode ? 'Ghost: ON' : 'Ghost: OFF'}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className='bg-black/95 border-white/10 text-xs text-center p-2 rounded-xl shadow-2xl z-[200]'>
+                  <p className='font-bold text-purple-400 mb-0.5'>Ghost Mode</p>
+                  <p className='text-white/40'>
+                    {isGhostMode ? 'Click to reveal yourself' : 'Click to observe silently'}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
 
           {/* Manual Poll Button - Authorized Users Only */}
-          {((isHost && isMainOrgRoom) || isSuperHost || currentUser?.isSuperHost || authUser?.user_metadata?.is_superhost) && (
-             <TooltipProvider>
-                <Tooltip delayDuration={200}>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => setShowManualPollModal(true)}
-                      className="flex h-9 px-3 rounded-xl items-center gap-2 border bg-white/5 border-white/5 text-white/40 hover:text-indigo-400 hover:bg-white/10 hover:border-indigo-500/20 transition-all group"
-                    >
-                      <BarChart3 size={14} className="group-hover:scale-110 transition-transform" />
-                      <span className="hidden xl:inline">Poll</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className='bg-black/95 border-white/10 text-xs text-center p-2 rounded-xl shadow-2xl z-[200]'>
-                    <p className='font-bold text-indigo-400 mb-0.5'>Protocol Poll</p>
-                    <p className='text-white/40'>Deploy a new consensus protocol</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+          {((isHost && isMainOrgRoom) ||
+            isSuperHost ||
+            currentUser?.isSuperHost ||
+            authUser?.user_metadata?.is_superhost) && (
+            <TooltipProvider>
+              <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowManualPollModal(true)}
+                    className='flex h-9 px-3 rounded-xl items-center gap-2 border bg-white/5 border-white/5 text-white/40 hover:text-indigo-400 hover:bg-white/10 hover:border-indigo-500/20 transition-all group'
+                  >
+                    <BarChart3 size={14} className='group-hover:scale-110 transition-transform' />
+                    <span className='hidden xl:inline'>Poll</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className='bg-black/95 border-white/10 text-xs text-center p-2 rounded-xl shadow-2xl z-[200]'>
+                  <p className='font-bold text-indigo-400 mb-0.5'>Protocol Poll</p>
+                  <p className='text-white/40'>Deploy a new consensus protocol</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
 
           <SettingsModal
@@ -1269,7 +1319,6 @@ const Room = () => {
               </button>
             }
           />
-
         </div>
       </motion.header>
 
@@ -1280,14 +1329,13 @@ const Room = () => {
           localUserName={localUserName}
           isAudioEnabled={isGhostMode ? false : isAudioEnabled}
           isVideoEnabled={isGhostMode ? false : isVideoEnabled}
-          localUserId={isGhostMode ? undefined : (authUser?.id || effectiveUserId || '')}
+          localUserId={isGhostMode ? undefined : authUser?.id || effectiveUserId || ''}
           localUserPhotoUrl={authUser?.user_metadata?.photo_url || null}
           localUserGender={authUser?.user_metadata?.gender || 'other'}
           users={users}
           remoteStreams={remoteStreams}
           revealNames={activeConfig.features.revealNames}
         />
-
       )}
 
       {/* ────────────────────────────────────────────────────
@@ -1516,7 +1564,7 @@ const Room = () => {
                             autoPlay
                             muted
                             playsInline
-                            webkit-playsinline="true"
+                            webkit-playsinline='true'
                             ref={(v) => {
                               if (v && v.srcObject !== localScreenStream) {
                                 v.srcObject = localScreenStream;
@@ -1531,12 +1579,12 @@ const Room = () => {
                             autoPlay
                             playsInline
                             muted
-                            webkit-playsinline="true"
+                            webkit-playsinline='true'
                             ref={(v) => {
                               if (v && v.srcObject !== s) {
                                 v.srcObject = s;
                                 // Force play to avoid some browsers staying paused on black
-                                v.play().catch(err => {
+                                v.play().catch((err) => {
                                   if (err.name !== 'AbortError') {
                                     console.warn('[Room] Remote screen share play failed:', err);
                                   }
@@ -1553,23 +1601,26 @@ const Room = () => {
                     )}
 
                     {/* YouTube Player - Priority 4 */}
-                    {youtubeVideoId && !hasScreenShare && !isPresentingFile && !isVirtualBrowserActive && (
-                      <div className='w-full h-full md:aspect-video bg-black border border-white/5 rounded-2xl md:rounded-[1.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)]'>
-                        <Suspense
-                          fallback={
-                            <div className='flex items-center justify-center h-full text-[10px] font-black uppercase tracking-[0.5em] animate-pulse italic'>
-                              Connecting Sync Node...
-                            </div>
-                          }
-                        >
-                          <SynchronizedYouTubePlayer
-                            videoId={youtubeVideoId}
-                            initialTime={youtubeCurrentTime}
-                            isHost={isHost || !!currentUser?.isCoHost}
-                          />
-                        </Suspense>
-                      </div>
-                    )}
+                    {youtubeVideoId &&
+                      !hasScreenShare &&
+                      !isPresentingFile &&
+                      !isVirtualBrowserActive && (
+                        <div className='w-full h-full md:aspect-video bg-black border border-white/5 rounded-2xl md:rounded-[1.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)]'>
+                          <Suspense
+                            fallback={
+                              <div className='flex items-center justify-center h-full text-[10px] font-black uppercase tracking-[0.5em] animate-pulse italic'>
+                                Connecting Sync Node...
+                              </div>
+                            }
+                          >
+                            <SynchronizedYouTubePlayer
+                              videoId={youtubeVideoId}
+                              initialTime={youtubeCurrentTime}
+                              isHost={isHost || !!currentUser?.isCoHost}
+                            />
+                          </Suspense>
+                        </div>
+                      )}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -1591,7 +1642,7 @@ const Room = () => {
                   users={users}
                   isSocialMode={isSocialMode}
                   isSearching={isSearching}
-                  localUserId={isGhostMode ? undefined : (authUser?.id || effectiveUserId || '')}
+                  localUserId={isGhostMode ? undefined : authUser?.id || effectiveUserId || ''}
                   localUserPhotoUrl={
                     authUser?.user_metadata?.photo_url || currentUser?.photoUrl || undefined
                   }
@@ -1744,8 +1795,6 @@ const Room = () => {
           />
         )}
       </Suspense>
-
-
 
       <AuthPromptModal
         open={authPromptOpen}
@@ -2005,14 +2054,18 @@ const Room = () => {
         pollHistory={pollHistory}
         onFetchHistory={fetchPollHistory}
         onSubmit={(data) => {
-          socket?.emit('create-poll', {
-            roomId: roomId!,
-            ...data,
-          }, (res: { success: boolean, error?: string }) => {
-            if (!res.success) {
-              toast.error('Deployment Failed', { description: res.error });
+          socket?.emit(
+            'create-poll',
+            {
+              roomId: roomId!,
+              ...data,
+            },
+            (res: { success: boolean; error?: string }) => {
+              if (!res.success) {
+                toast.error('Deployment Failed', { description: res.error });
+              }
             }
-          });
+          );
         }}
       />
 
@@ -2025,7 +2078,7 @@ const Room = () => {
       <ParticipantsModal isOpen={isParticipantsOpen} onClose={() => setIsParticipantsOpen(false)} />
 
       {activePoll && !isPollDismissed && (
-        <motion.div 
+        <motion.div
           drag
           dragMomentum={false}
           className='fixed bottom-32 right-8 z-[80] w-full max-w-sm px-4 pointer-events-auto cursor-move'
@@ -2046,14 +2099,18 @@ const Room = () => {
       )}
 
       {/* Ultra Secure Fullscreen Enforcement Blocker */}
-      <UltraSecureBlocker 
-        isVisible={isSecurityBlocked} 
-        chances={securityChances} 
-        onRequestFullscreen={requestFullscreen} 
+      <UltraSecureBlocker
+        isVisible={isSecurityBlocked}
+        chances={securityChances}
+        onRequestFullscreen={requestFullscreen}
       />
 
       {/* Warning Toast for Key Masking */}
-      <KeyWarningOverlay isVisible={isKeyWarningVisible} pressedKey={pressedKey} availableChances={keyChances} />
+      <KeyWarningOverlay
+        isVisible={isKeyWarningVisible}
+        pressedKey={pressedKey}
+        availableChances={keyChances}
+      />
 
       {/* Global Secure Mask (100% Black) */}
       <AnimatePresence>
@@ -2062,7 +2119,7 @@ const Room = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[12000] bg-black"
+            className='fixed inset-0 z-[12000] bg-black'
           />
         )}
       </AnimatePresence>

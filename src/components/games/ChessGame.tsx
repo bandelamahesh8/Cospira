@@ -20,7 +20,7 @@ import { PlayerAvatar } from './chess/PlayerAvatar';
 import { CooldownOverlay } from './chess/CooldownOverlay';
 import { ReplayTimeline } from './chess/ReplayTimeline';
 import { BlunderWarning } from './chess/BlunderWarning';
-import { loadSettings, type FeatureToggles } from './chess/SettingsPanel';
+import { loadSettings, type FeatureToggles } from './chess/SettingsUtils';
 import { CHESS_CONFIG } from '@/lib/chess/config';
 import { performanceMonitor } from '@/lib/chess/performance';
 import { chessSounds } from '@/lib/chess/sounds';

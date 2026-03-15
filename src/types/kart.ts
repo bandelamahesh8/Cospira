@@ -1,5 +1,5 @@
 export interface LaunchPayload {
-  type: "COSPIRA_LAUNCH";
+  type: 'COSPIRA_LAUNCH';
   joinCode: string;
   isHost: boolean;
   player: {
@@ -14,12 +14,12 @@ export interface LaunchPayload {
 }
 
 export interface ReadyPayload {
-  type: "COSPIRA_READY";
+  type: 'COSPIRA_READY';
   ugsPlayerId: string;
 }
 
 export interface ResultPayload {
-  type: "COSPIRA_RESULT";
+  type: 'COSPIRA_RESULT';
   playerId: string;
   position: number;
   bestLapMs: number;
@@ -28,5 +28,5 @@ export interface ResultPayload {
 }
 
 export interface ExitPayload {
-  type: "COSPIRA_EXIT";
+  type: 'COSPIRA_EXIT';
 }

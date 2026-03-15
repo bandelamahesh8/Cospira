@@ -38,7 +38,6 @@ export const JoinRoomRequestSchema = z.object({
   }),
 });
 
-
 export const CreateRoomRequestSchema = z.object({
   roomId: z.string(),
   roomName: z.string(),

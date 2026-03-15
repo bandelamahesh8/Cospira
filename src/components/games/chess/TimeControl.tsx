@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Clock, Play, Pause } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+export type { TimeControlPreset } from './SettingsUtils';
 
 interface TimeControlProps {
   initialTime: number; // seconds
@@ -22,7 +23,6 @@ export function TimeControl({
   onMove,
 }: TimeControlProps) {
   const [timeLeft, setTimeLeft] = useState(initialTime);
-  const [isPaused, setIsPaused] = useState(false);
 
   // Reset time when game starts
   useEffect(() => {
@@ -38,7 +38,7 @@ export function TimeControl({
 
   // Timer countdown
   useEffect(() => {
-    if (!isActive || !isMyTurn || isPaused) return;
+    if (!isActive || !isMyTurn) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -52,7 +52,7 @@ export function TimeControl({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, isMyTurn, isPaused, onTimeout]);
+  }, [isActive, isMyTurn, onTimeout]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -111,13 +111,3 @@ export function TimeControl({
     </Card>
   );
 }
-
-// Preset time controls
-export const TIME_CONTROLS = {
-  bullet: { time: 60, increment: 0, name: 'Bullet (1+0)' },
-  blitz: { time: 180, increment: 2, name: 'Blitz (3+2)' },
-  rapid: { time: 600, increment: 0, name: 'Rapid (10+0)' },
-  classical: { time: 1800, increment: 0, name: 'Classical (30+0)' },
-} as const;
-
-export type TimeControlPreset = keyof typeof TIME_CONTROLS;

@@ -161,11 +161,14 @@ export class SFUManager {
     // Configure with STUN/TURN servers
     this.sendTransport = this.device.createSendTransport({
       ...(transportParams as TransportOptions),
-      iceServers: this.iceServers.length > 0 ? this.iceServers : [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun.services.mozilla.com' },
-      ],
+      iceServers:
+        this.iceServers.length > 0
+          ? this.iceServers
+          : [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun.services.mozilla.com' },
+            ],
       iceTransportPolicy: 'all',
     });
 
@@ -177,8 +180,12 @@ export class SFUManager {
         this.connectionState = 'connected';
       } else if (state === 'failed') {
         this.connectionState = 'failed';
-        logger.error('[SFUManager] Send transport ICE connection FAILED. This usually happens when UDP ports are blocked (e.g. by ngrok or a firewall).');
-        toast.error('Media connection failed. If you are using ngrok, please check UDP port forwarding.');
+        logger.error(
+          '[SFUManager] Send transport ICE connection FAILED. This usually happens when UDP ports are blocked (e.g. by ngrok or a firewall).'
+        );
+        toast.error(
+          'Media connection failed. If you are using ngrok, please check UDP port forwarding.'
+        );
       } else if (state === 'closed') {
         this.connectionState = 'closed';
       }
@@ -231,10 +238,10 @@ export class SFUManager {
     // Configure with STUN/TURN servers
     this.recvTransport = this.device.createRecvTransport({
       ...(transportParams as TransportOptions),
-      iceServers: this.iceServers.length > 0 ? this.iceServers : [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-      ],
+      iceServers:
+        this.iceServers.length > 0
+          ? this.iceServers
+          : [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
       iceTransportPolicy: 'all',
     });
 
@@ -243,7 +250,9 @@ export class SFUManager {
       logger.info(`[SFUManager] Recv transport state: ${state}`);
 
       if (state === 'failed') {
-        logger.error('[SFUManager] Recv transport ICE connection FAILED. Remote media tracks will not play.');
+        logger.error(
+          '[SFUManager] Recv transport ICE connection FAILED. Remote media tracks will not play.'
+        );
       } else if (state === 'closed') {
         logger.info('[SFUManager] Recv transport closed');
       }
@@ -277,8 +286,8 @@ export class SFUManager {
       }, 15000);
 
       // Detect if we are running through a tunnel (ngrok, dev tunnels, etc.)
-      const isTunnel = 
-        window.location.hostname.includes('ngrok') || 
+      const isTunnel =
+        window.location.hostname.includes('ngrok') ||
         window.location.hostname.includes('devtunnels.ms') ||
         window.location.hostname.includes('cloudflare');
 
@@ -395,17 +404,17 @@ export class SFUManager {
         // Screen sharing optimization: prioritize clarity (resolution) over framerate
         // and force TCP for tunnels to bypass UDP blocks.
         encodings = [
-          { 
-            rid: 'r0', 
+          {
+            rid: 'r0',
             maxBitrate: 2500000, // Slightly higher for clear PPTs
             scaleResolutionDownBy: 1.0,
-            maxFramerate: 30 
-          }
+            maxFramerate: 30,
+          },
         ];
         codecOptions = {
           videoGoogleStartBitrate: 1000,
         };
-        
+
         // Use browser hint if available
         if ('contentHint' in track) {
           (track as { contentHint?: string }).contentHint = 'text';
@@ -624,13 +633,13 @@ export class SFUManager {
 
       // Request keyframe for video tracks to prevent initial black/blank screens
       if (kind === 'video') {
-         try {
-           // Use a safe cast to check for requestKeyFrame
-           const consumerWithKeyFrame = consumer as { requestKeyFrame?: () => void };
-           consumerWithKeyFrame.requestKeyFrame?.();
-         } catch (_err) {
-           logger.debug('Keyframe request not supported for this consumer');
-         }
+        try {
+          // Use a safe cast to check for requestKeyFrame
+          const consumerWithKeyFrame = consumer as { requestKeyFrame?: () => void };
+          consumerWithKeyFrame.requestKeyFrame?.();
+        } catch (_err) {
+          logger.debug('Keyframe request not supported for this consumer');
+        }
       }
 
       // Notify app
@@ -805,13 +814,13 @@ export class SFUManager {
   // ============================================
   async repair() {
     logger.info('[SFUManager] Repairing media connection...');
-    
+
     // 1. Kickstart producers
     for (const [source, producer] of this.producers.entries()) {
       if (!producer.closed) {
         try {
           await producer.pause();
-          await new Promise(r => setTimeout(r, 100));
+          await new Promise((r) => setTimeout(r, 100));
           await producer.resume();
           logger.info(`[SFUManager] Kicked producer: ${source}`);
         } catch (err) {

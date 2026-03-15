@@ -171,7 +171,13 @@ const ParticipantsModal: React.FC<ParticipantsModalProps> = ({ isOpen, onClose }
                             )}
                           </div>
                           <div className='text-[10px] text-white/30 truncate max-w-[150px]'>
-                            {user.isSuperHost ? 'Super Host' : user.isHost ? 'Host' : user.isCoHost ? 'Co-Host' : 'Participant'}
+                            {user.isSuperHost
+                              ? 'Super Host'
+                              : user.isHost
+                                ? 'Host'
+                                : user.isCoHost
+                                  ? 'Co-Host'
+                                  : 'Participant'}
                           </div>
                         </div>
                       </div>

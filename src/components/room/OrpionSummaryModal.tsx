@@ -30,7 +30,6 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
   const [isServerOffline, setIsServerOffline] = useState(false);
   const [isCertError, setIsCertError] = useState(false);
 
-
   const fetchSummary = useCallback(async () => {
     setIsLoading(true);
     setData(null);
@@ -78,7 +77,8 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
       const isNetworkError = error instanceof TypeError;
 
       // SSL cert errors: TypeError on an https:// URL (not a timeout)
-      const looksLikeCertError = isNetworkError && getApiUrl('/').startsWith('https://') && !isAborted;
+      const looksLikeCertError =
+        isNetworkError && getApiUrl('/').startsWith('https://') && !isAborted;
 
       if (looksLikeCertError) {
         setIsCertError(true);
@@ -279,8 +279,9 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
                           🔗 Open Backend in New Tab to Accept Certificate
                         </a>
                         <p className='text-[10px] text-white/30 text-center'>
-                          Click "Advanced" → "Proceed to {getApiUrl('/').replace('https://', '').replace(/\/$/, '')}{' '}
-                          (unsafe)" in your browser, then come back and retry.
+                          Click "Advanced" → "Proceed to{' '}
+                          {getApiUrl('/').replace('https://', '').replace(/\/$/, '')} (unsafe)" in
+                          your browser, then come back and retry.
                         </p>
                         <Button
                           onClick={fetchSummary}

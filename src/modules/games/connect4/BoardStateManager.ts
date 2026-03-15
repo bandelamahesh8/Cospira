@@ -20,7 +20,9 @@ export class BoardStateManager {
     this.state = {
       rows: DEFAULT_ROWS,
       cols: DEFAULT_COLS,
-      grid: Array.from({ length: DEFAULT_ROWS }, () => Array.from({ length: DEFAULT_COLS }, () => 0 as CellValue)),
+      grid: Array.from({ length: DEFAULT_ROWS }, () =>
+        Array.from({ length: DEFAULT_COLS }, () => 0 as CellValue)
+      ),
       currentPlayer: 1,
       status: 'waiting',
       winner: null,
@@ -39,7 +41,9 @@ export class BoardStateManager {
     this.state = {
       rows: DEFAULT_ROWS,
       cols: DEFAULT_COLS,
-      grid: Array.from({ length: DEFAULT_ROWS }, () => Array.from({ length: DEFAULT_COLS }, () => 0 as CellValue)),
+      grid: Array.from({ length: DEFAULT_ROWS }, () =>
+        Array.from({ length: DEFAULT_COLS }, () => 0 as CellValue)
+      ),
       currentPlayer: 1,
       status: 'waiting',
       winner: null,
@@ -76,7 +80,11 @@ export class BoardStateManager {
     return this.getState();
   }
 
-  updateStatus(status: BoardState['status'], winner: 1 | 2 | null = null, winningCells: [number, number][] | null = null): BoardState {
+  updateStatus(
+    status: BoardState['status'],
+    winner: 1 | 2 | null = null,
+    winningCells: [number, number][] | null = null
+  ): BoardState {
     this.state = {
       ...this.state,
       status,

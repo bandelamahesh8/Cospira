@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Video,
@@ -19,11 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-interface RandomMatchPanelProps {
-  onMatch: (config: { mode: 'video' | 'chat'; interests: string[]; intent: string }) => void;
-}
-
-export const RandomMatchPanel = ({ onMatch }: RandomMatchPanelProps) => {
+export const RandomMatchPanel = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState<'config' | 'permissions'>('config');
 
@@ -57,13 +53,7 @@ export const RandomMatchPanel = ({ onMatch }: RandomMatchPanelProps) => {
   };
 
   // Auto-check permissions when entering 'permissions' step
-  useEffect(() => {
-    if (step === 'permissions') {
-      checkMediaPermissions();
-    }
-  }, [step]);
-
-  const checkMediaPermissions = async () => {
+  const checkMediaPermissions = useCallback(async () => {
     setIsChecking(true);
     try {
       const constraints = {
@@ -84,7 +74,14 @@ export const RandomMatchPanel = ({ onMatch }: RandomMatchPanelProps) => {
     } finally {
       setIsChecking(false);
     }
-  };
+  }, [mode]);
+
+  // Auto-check permissions when entering 'permissions' step
+  useEffect(() => {
+    if (step === 'permissions') {
+      checkMediaPermissions();
+    }
+  }, [step, checkMediaPermissions]);
 
   const finalizeConnection = () => {
     if (!ageConfirmed) {
@@ -258,7 +255,9 @@ export const RandomMatchPanel = ({ onMatch }: RandomMatchPanelProps) => {
                     ].map((item) => (
                       <button
                         key={item.id}
-                        onClick={() => setIntent(item.id as any)}
+                        onClick={() =>
+                          setIntent(item.id as 'casual' | 'focus' | 'network' | 'play')
+                        }
                         className={`flex flex-col items-center justify-center gap-2 rounded-xl border transition-all ${intent === item.id ? `${item.activeBg} ${item.border}` : 'bg-[#11141A] border-white/5 hover:border-white/10'}`}
                       >
                         <item.icon

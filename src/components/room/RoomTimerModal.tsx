@@ -92,7 +92,12 @@ export const RoomTimerModal: React.FC<RoomTimerModalProps> = ({ isOpen, onClose,
   };
 
   const handleApply = () => {
-    logger.info('[RoomTimerModal] Applying timer settings:', { duration: minutes, label, type, action });
+    logger.info('[RoomTimerModal] Applying timer settings:', {
+      duration: minutes,
+      label,
+      type,
+      action,
+    });
     if (onSetTimer) {
       onSetTimer(minutes, label, type, action);
     }

@@ -46,7 +46,7 @@ export class CarromPhysicsEngine {
   }
 
   initializeBoard(boardConfig: BoardConfig): void {
-    this.boardBodies.forEach(b => World.remove(this.world, b));
+    this.boardBodies.forEach((b) => World.remove(this.world, b));
     this.boardBodies = [];
 
     const { width, height, wallThickness, pockets } = boardConfig;
@@ -58,7 +58,7 @@ export class CarromPhysicsEngine {
       isStatic: true,
       restitution: fromFixed(BOARD_RESTITUTION),
       friction: 0.1,
-      collisionFilter: { category: CollisionCategory.BOARD }
+      collisionFilter: { category: CollisionCategory.BOARD },
     };
 
     const walls = [
@@ -68,13 +68,13 @@ export class CarromPhysicsEngine {
       Bodies.rectangle(w + wt / 2, h / 2, wt, h + wt * 2, wallOptions),
     ];
 
-    const pocketBodies = pockets.map(p => {
+    const pocketBodies = pockets.map((p) => {
       const pos = vec2FromFixed(p.position);
       return Bodies.circle(pos.x, pos.y, fromFixed(p.radius), {
         isStatic: true,
         isSensor: true,
         label: `pocket_${p.id}`,
-        collisionFilter: { category: CollisionCategory.POCKET }
+        collisionFilter: { category: CollisionCategory.POCKET },
       });
     });
 
@@ -90,14 +90,19 @@ export class CarromPhysicsEngine {
       density: fromFixed(physicsBody.mass),
       label: physicsBody.type,
       collisionFilter: {
-        category: physicsBody.type === 'striker' ? CollisionCategory.STRIKER : CollisionCategory.COIN,
-        mask: CollisionCategory.BOARD | CollisionCategory.COIN | CollisionCategory.STRIKER | CollisionCategory.POCKET
-      }
+        category:
+          physicsBody.type === 'striker' ? CollisionCategory.STRIKER : CollisionCategory.COIN,
+        mask:
+          CollisionCategory.BOARD |
+          CollisionCategory.COIN |
+          CollisionCategory.STRIKER |
+          CollisionCategory.POCKET,
+      },
     });
 
     Body.setVelocity(body, vec2FromFixed(physicsBody.velocity));
     Body.setAngularVelocity(body, fromFixed(physicsBody.angularVelocity));
-    
+
     this.bodies.set(physicsBody.id, body);
     World.add(this.world, body);
     return body;
@@ -113,7 +118,7 @@ export class CarromPhysicsEngine {
 
   syncStateFromGameState(state: CarromGameState): void {
     this.syncBody(state.physics.striker);
-    state.physics.coins.forEach(c => this.syncBody(c));
+    state.physics.coins.forEach((c) => this.syncBody(c));
   }
 
   private syncBody(config: PhysicsBody): void {
@@ -121,7 +126,7 @@ export class CarromPhysicsEngine {
     if (!body && !config.pocketed) {
       body = this.createBody(config);
     }
-    
+
     if (body) {
       if (config.pocketed) {
         this.removeBody(config.id);
@@ -142,10 +147,13 @@ export class CarromPhysicsEngine {
   }
 
   step(): void {
-    this.bodies.forEach(body => {
+    this.bodies.forEach((body) => {
       const speed = Vector.magnitude(body.velocity);
       if (speed > fromFixed(MAX_LINEAR_VELOCITY)) {
-        const limited = Vector.mult(Vector.normalise(body.velocity), fromFixed(MAX_LINEAR_VELOCITY));
+        const limited = Vector.mult(
+          Vector.normalise(body.velocity),
+          fromFixed(MAX_LINEAR_VELOCITY)
+        );
         Body.setVelocity(body, limited);
       }
     });
@@ -185,7 +193,7 @@ export class CarromPhysicsEngine {
   checkPocketCollisions(): Array<{ bodyId: string; pocketId: number }> {
     const collisions: Array<{ bodyId: string; pocketId: number }> = [];
     this.bodies.forEach((body, bodyId) => {
-      this.boardBodies.forEach(boardBody => {
+      this.boardBodies.forEach((boardBody) => {
         if (boardBody.isSensor && boardBody.label?.startsWith('pocket_')) {
           const dist = Vector.magnitude(Vector.sub(body.position, boardBody.position));
           if (dist < (body as CircleBody).circleRadius + (boardBody as CircleBody).circleRadius) {

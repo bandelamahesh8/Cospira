@@ -1,14 +1,65 @@
 import { chromium } from 'playwright-extra';
 import stealth from 'puppeteer-extra-plugin-stealth';
-import logger from '../logger.js';
+import logger from '../shared/logger.js';
 
 chromium.use(stealth());
 
 class VirtualBrowserManager {
   constructor(io) {
     this.io = io;
-    this.sessions = new Map(); // roomId -> { browser, session, page, lastActivity }
+    this.sessions = new Map(); // roomId -> { context, page, lastActivity }
     this.navDebounceTimers = new Map(); // roomId -> timeout handle (debounce navigation)
+    this.sharedBrowser = null;
+    this.maxContexts = Number(process.env.MAX_BROWSER_CONTEXTS) || 20;
+    this.activeContexts = 0;
+    
+    // Auto-cleanup idle sessions every minute
+    setInterval(() => this.cleanupIdleSessions(), 60000);
+  }
+
+  async cleanupIdleSessions() {
+    const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+    const now = Date.now();
+
+    for (const [roomId, session] of this.sessions.entries()) {
+      if (now - session.lastActivity > IDLE_TIMEOUT) {
+        logger.info(`[VirtualBrowser] Timing out idle session for room: ${roomId}`);
+        await this.stopSession(roomId);
+      }
+    }
+  }
+
+  async initSharedBrowser() {
+    if (this.sharedBrowser) return;
+
+    logger.info('Initializing shared Chromium browser for virtual sessions');
+
+    this.sharedBrowser = await chromium.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--disable-gpu',
+        '--hide-scrollbars',
+        '--mute-audio',
+        '--disable-notifications',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-breakpad',
+        '--disable-component-extensions-with-background-pages',
+        '--disable-extensions',
+        '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+        '--disable-ipc-flooding-protection',
+        '--disable-renderer-backgrounding',
+        '--enable-features=NetworkService,NetworkServiceInProcess',
+        '--force-color-profile=srgb',
+      ]
+    });
+
+    logger.info('Shared browser initialized');
   }
 
   async startSession(roomId, initialUrl = 'https://www.google.com') {
@@ -16,37 +67,17 @@ class VirtualBrowserManager {
       return this.sessions.get(roomId);
     }
 
+    if (this.activeContexts >= this.maxContexts) {
+      throw new Error('Maximum browser contexts reached');
+    }
+
+    await this.initSharedBrowser();
+
     try {
-      logger.info(`Starting Advanced Virtual Browser for room ${roomId}`);
+      logger.info(`Starting virtual browser session for room ${roomId}`);
 
-      // 1. Launch Browser with Performance Flags
-      const browser = await chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--disable-gpu',
-          '--hide-scrollbars',
-          '--mute-audio',
-          '--disable-notifications',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-breakpad',
-          '--disable-component-extensions-with-background-pages',
-          '--disable-extensions',
-          '--disable-features=TranslateUI,BlinkGenPropertyTrees',
-          '--disable-ipc-flooding-protection',
-          '--disable-renderer-backgrounding',
-          '--enable-features=NetworkService,NetworkServiceInProcess',
-          '--force-color-profile=srgb',
-        ]
-      });
-
-      // 2. Create Context with Stealth & Viewport
-      const context = await browser.newContext({
+      // Create isolated context from shared browser
+      const context = await this.sharedBrowser.newContext({
         viewport: { width: 1280, height: 720 },
         deviceScaleFactor: 1,
         isMobile: false,
@@ -75,7 +106,6 @@ class VirtualBrowserManager {
       });
       
       const session = {
-        browser,
         context,
         page,
         client,
@@ -124,11 +154,12 @@ class VirtualBrowserManager {
       });
 
       this.sessions.set(roomId, session);
+      this.activeContexts++;
 
       // Cleanup listener
-      browser.on('disconnected', () => this.cleanupSession(roomId));
+      context.on('close', () => this.cleanupSession(roomId));
 
-      logger.info(`✅ Advanced Browser Session Active: ${roomId}`);
+      logger.info(`✅ Virtual Browser Session Active: ${roomId} (${this.activeContexts}/${this.maxContexts} contexts)`);
       return session;
 
     } catch (error) {
@@ -300,7 +331,8 @@ class VirtualBrowserManager {
 
     try {
       this.io.to(roomId).emit('browser-closed');
-      await session.browser.close();
+      await session.context.close();
+      this.activeContexts = Math.max(0, this.activeContexts - 1);
     } catch (e) {
        // ignore
     }

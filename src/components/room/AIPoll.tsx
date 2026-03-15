@@ -36,7 +36,6 @@ const AIPoll: React.FC<AIPollProps> = (props) => {
     correctOption,
   } = props;
 
-
   const [votedIndex, setVotedIndex] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [showVoters, setShowVoters] = useState(false);
@@ -65,7 +64,6 @@ const AIPoll: React.FC<AIPollProps> = (props) => {
   }, [expiresAt]);
 
   const handleVote = (index: number) => {
-
     if (votedIndex !== null || isExpired) return;
     setVotedIndex(index);
     onVote(index);
@@ -82,32 +80,40 @@ const AIPoll: React.FC<AIPollProps> = (props) => {
 
         <div className='relative z-10 flex items-center justify-between gap-8'>
           <div className='flex items-center gap-4 flex-1 min-w-0'>
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shrink-0 ${isQuiz ? 'bg-purple-500/10 border-purple-500/20' : 'bg-indigo-500/10 border-indigo-500/20'}`}>
+            <div
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center border shrink-0 ${isQuiz ? 'bg-purple-500/10 border-purple-500/20' : 'bg-indigo-500/10 border-indigo-500/20'}`}
+            >
               <BarChart3 className={`w-5 h-5 ${isQuiz ? 'text-purple-400' : 'text-indigo-400'}`} />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap ${isQuiz ? 'text-purple-400' : 'text-indigo-400'}`}>
+            <div className='min-w-0'>
+              <div className='flex items-center gap-3'>
+                <h3
+                  className={`text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap ${isQuiz ? 'text-purple-400' : 'text-indigo-400'}`}
+                >
                   {isQuiz ? 'Objective Query' : 'Live Consensus'}
                 </h3>
                 <div className='flex items-center gap-1.5'>
-                  <div className={`w-1.5 h-1.5 rounded-full ${isExpired ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full ${isExpired ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`}
+                  />
                   <span className='text-[9px] font-bold text-white/40 uppercase tracking-wider'>
                     {isExpired ? (isQuiz ? 'Protocol Resolved' : 'Closed') : timeLeft}
                   </span>
                 </div>
               </div>
-              <p className='text-base font-bold leading-tight text-white mt-1 truncate'>{question}</p>
+              <p className='text-base font-bold leading-tight text-white mt-1 truncate'>
+                {question}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className='flex items-center gap-3 shrink-0'>
             {(isHostOrSuperHost || !onlySelectOption) && (
-              <button 
+              <button
                 onClick={() => isHostOrSuperHost && setShowVoters(!showVoters)}
                 className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border transition-all ${
-                  showVoters 
-                    ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' 
+                  showVoters
+                    ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
                     : 'text-white/40 bg-white/5 border-white/5 hover:bg-white/10'
                 }`}
               >
@@ -153,44 +159,52 @@ const AIPoll: React.FC<AIPollProps> = (props) => {
                   `}
                   >
                     {/* Progress Background */}
-                    {(votedIndex !== null || isExpired) && (isHostOrSuperHost || !onlySelectOption) && (
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percentage}%` }}
-                        transition={{ duration: 1, ease: 'easeOut' }}
-                        className={`absolute inset-y-0 left-0 z-0 ${shouldReveal && isCorrect ? 'bg-emerald-500/10' : 'bg-white/5'}`}
-                      />
-                    )}
+                    {(votedIndex !== null || isExpired) &&
+                      (isHostOrSuperHost || !onlySelectOption) && (
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage}%` }}
+                          transition={{ duration: 1, ease: 'easeOut' }}
+                          className={`absolute inset-y-0 left-0 z-0 ${shouldReveal && isCorrect ? 'bg-emerald-500/10' : 'bg-white/5'}`}
+                        />
+                      )}
 
                     <div className='relative z-10 flex justify-between items-center gap-4'>
-                      <div className="flex items-center gap-2">
+                      <div className='flex items-center gap-2'>
                         <span
                           className={`text-sm font-bold ${
-                            shouldReveal && isCorrect 
-                              ? 'text-emerald-400' 
-                              : isVoted ? 'text-white' : 'text-white/70 group-hover:text-white'
+                            shouldReveal && isCorrect
+                              ? 'text-emerald-400'
+                              : isVoted
+                                ? 'text-white'
+                                : 'text-white/70 group-hover:text-white'
                           }`}
                         >
                           {option}
                         </span>
                         {shouldReveal && isCorrect && (
-                          <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                          <span className='text-[8px] font-black bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-tighter'>
                             Correct
                           </span>
                         )}
                       </div>
                       <div className='flex items-center gap-3'>
-                        {(votedIndex !== null || isExpired) && (isHostOrSuperHost || !onlySelectOption) && (
-                          <span className={`text-[10px] font-black font-mono ${shouldReveal && isCorrect ? 'text-emerald-400/60' : 'text-white/40'}`}>
-                            {percentage}%
-                          </span>
-                        )}
+                        {(votedIndex !== null || isExpired) &&
+                          (isHostOrSuperHost || !onlySelectOption) && (
+                            <span
+                              className={`text-[10px] font-black font-mono ${shouldReveal && isCorrect ? 'text-emerald-400/60' : 'text-white/40'}`}
+                            >
+                              {percentage}%
+                            </span>
+                          )}
                         {isVoted && (
                           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
                             {shouldReveal && !isCorrect ? (
                               <X className='w-4 h-4 text-red-400' />
                             ) : (
-                              <CheckCircle2 className={`w-4 h-4 ${shouldReveal && isCorrect ? 'text-emerald-400' : 'text-indigo-400'}`} />
+                              <CheckCircle2
+                                className={`w-4 h-4 ${shouldReveal && isCorrect ? 'text-emerald-400' : 'text-indigo-400'}`}
+                              />
                             )}
                           </motion.div>
                         )}
@@ -224,12 +238,12 @@ const AIPoll: React.FC<AIPollProps> = (props) => {
       <div className='bg-white/5 px-8 py-4 border-t border-white/5 flex items-center justify-between'>
         <div className='flex items-center gap-6'>
           <span className='text-[9px] font-black uppercase tracking-widest text-white/40'>
-            {isExpired ? 'Protocol Ended' : (isQuiz ? 'Assessment Active' : 'Voting Active')}
+            {isExpired ? 'Protocol Ended' : isQuiz ? 'Assessment Active' : 'Voting Active'}
           </span>
-          <div className="flex items-center gap-4">
+          <div className='flex items-center gap-4'>
             {isHostOrSuperHost && !isExpired && (
               <button
-                type="button"
+                type='button'
                 onClick={() => onEndPoll?.()}
                 className='text-[9px] font-bold text-red-400 hover:text-red-300 transition-colors uppercase tracking-widest'
               >
@@ -238,7 +252,7 @@ const AIPoll: React.FC<AIPollProps> = (props) => {
             )}
             {isExpired && (
               <button
-                type="button"
+                type='button'
                 onClick={() => onDismiss?.()}
                 className='text-[9px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-widest'
               >

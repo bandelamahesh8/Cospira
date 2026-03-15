@@ -9,23 +9,23 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
       await navigator.clipboard.writeText(text);
       return true;
     }
-    
+
     // 2. Fallback to document.execCommand('copy') for non-secure contexts (HTTP over LAN)
     const textArea = document.createElement('textarea');
     textArea.value = text;
-    
+
     // Ensure the textarea is not visible
     textArea.style.position = 'fixed';
     textArea.style.left = '-999999px';
     textArea.style.top = '-999999px';
     document.body.appendChild(textArea);
-    
+
     textArea.focus();
     textArea.select();
-    
+
     const success = document.execCommand('copy');
     document.body.removeChild(textArea);
-    
+
     return success;
   } catch (err) {
     console.error('[Clipboard] Failed to copy:', err);

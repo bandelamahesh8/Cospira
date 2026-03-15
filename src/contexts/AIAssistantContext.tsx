@@ -24,7 +24,11 @@ export const AIAssistantProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const { user } = useAuth();
   const { currentOrganization } = useOrganization();
   const breakout = useBreakout();
-  const { breakouts = [], lobbyUsers = [], batchAssignParticipants = async () => {} } = breakout || {};
+  const {
+    breakouts = [],
+    lobbyUsers = [],
+    batchAssignParticipants = async () => {},
+  } = breakout || {};
 
   const [isAutoMatchmaking, setIsAutoMatchmaking] = useState(false);
 

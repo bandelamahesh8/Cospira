@@ -323,7 +323,11 @@ export const ParticipantStrip: React.FC<ParticipantStripProps> = ({
               <div className='flex items-center gap-2'>
                 <div className='w-1.5 h-1.5 rounded-full bg-primary animate-pulse' />
                 <span className='text-[10px] font-black uppercase tracking-widest text-white/60'>
-                  {pinnedParticipant.isLocal ? 'You' : !revealNames ? 'Participant' : pinnedParticipant.name}
+                  {pinnedParticipant.isLocal
+                    ? 'You'
+                    : !revealNames
+                      ? 'Participant'
+                      : pinnedParticipant.name}
                 </span>
               </div>
               <div className='flex items-center gap-2 pointer-events-auto'>
@@ -346,11 +350,21 @@ export const ParticipantStrip: React.FC<ParticipantStripProps> = ({
             <div className='relative aspect-video bg-black/40'>
               <VideoTile
                 stream={pinnedParticipant.stream}
-                username={!revealNames && !pinnedParticipant.isLocal ? 'Participant' : pinnedParticipant.name}
+                username={
+                  !revealNames && !pinnedParticipant.isLocal
+                    ? 'Participant'
+                    : pinnedParticipant.name
+                }
                 isLocal={pinnedParticipant.isLocal}
                 isMuted={pinnedParticipant.isMuted}
-                photoUrl={!revealNames && !pinnedParticipant.isLocal ? undefined : pinnedParticipant.photoUrl}
-                gender={!revealNames && !pinnedParticipant.isLocal ? undefined : pinnedParticipant.gender}
+                photoUrl={
+                  !revealNames && !pinnedParticipant.isLocal
+                    ? undefined
+                    : pinnedParticipant.photoUrl
+                }
+                gender={
+                  !revealNames && !pinnedParticipant.isLocal ? undefined : pinnedParticipant.gender
+                }
                 seed={pinnedParticipant.id}
                 isVideoEnabled={pinnedParticipant.isVideoOn}
                 hideName

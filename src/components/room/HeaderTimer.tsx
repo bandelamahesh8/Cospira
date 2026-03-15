@@ -285,7 +285,7 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
           isCountdown ? `${config.glow}` : 'bg-white/5 border-white/5 hover:bg-white/10'
         }`}
       >
-        <div 
+        <div
           className={`flex items-center gap-2 px-3 py-1.5 ${onClick ? 'cursor-pointer hover:bg-white/5 active:bg-white/10' : 'cursor-default'}`}
           onClick={onClick}
         >
@@ -318,7 +318,11 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
           <div className={`flex flex-col ${compact ? 'min-w-0' : 'min-w-[100px]'}`}>
             <AnimatePresence mode='wait'>
               <motion.div
-                key={isCountdown ? `${activeTimer?.isPaused ? 'paused' : 'running'}-${label}` : 'elapsed-mode'}
+                key={
+                  isCountdown
+                    ? `${activeTimer?.isPaused ? 'paused' : 'running'}-${label}`
+                    : 'elapsed-mode'
+                }
                 initial={{ opacity: 0, filter: 'blur(10px)', y: 10 }}
                 animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
                 exit={{ opacity: 0, filter: 'blur(10px)', y: -10 }}
@@ -342,9 +346,7 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
           </div>
 
           {!compact && !activeTimer && (
-            <Rocket
-              className='w-3.5 h-3.5 ml-1 transition-all duration-500 text-white/10 group-hover:text-emerald-500/40'
-            />
+            <Rocket className='w-3.5 h-3.5 ml-1 transition-all duration-500 text-white/10 group-hover:text-emerald-500/40' />
           )}
         </div>
 
@@ -362,7 +364,9 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
                   title='Resume Timer'
                 >
                   <Play className='w-3 h-3 fill-current' />
-                  <span className='text-[9px] font-black uppercase tracking-[0.15em] group-hover:text-emerald-300'>Resume</span>
+                  <span className='text-[9px] font-black uppercase tracking-[0.15em] group-hover:text-emerald-300'>
+                    Resume
+                  </span>
                 </button>
                 <button
                   onClick={(e) => {
@@ -373,7 +377,9 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
                   title='Stop Timer'
                 >
                   <X className='w-3 h-3 stroke-[3px]' />
-                  <span className='text-[9px] font-black uppercase tracking-[0.15em] group-hover:text-red-400'>Stop</span>
+                  <span className='text-[9px] font-black uppercase tracking-[0.15em] group-hover:text-red-400'>
+                    Stop
+                  </span>
                 </button>
               </div>
             ) : (
@@ -386,7 +392,9 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
                 title='Pause Timer'
               >
                 <Pause className='w-3 h-3 fill-current' />
-                <span className='text-[9px] font-black uppercase tracking-[0.15em] group-hover:text-amber-300'>Pause</span>
+                <span className='text-[9px] font-black uppercase tracking-[0.15em] group-hover:text-amber-300'>
+                  Pause
+                </span>
               </button>
             )}
           </div>

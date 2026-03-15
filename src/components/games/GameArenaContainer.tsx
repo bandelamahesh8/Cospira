@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
  * shown below video area with turn indicator.
  */
 export const GameArenaContainer = () => {
-  const { gameState, users, effectiveUserId } = useWebSocket();
+  const { gameState, effectiveUserId } = useWebSocket();
   const { user: authUser } = useAuth();
 
   if (!gameState?.isActive || !gameState.type) return null;
@@ -74,7 +74,7 @@ export const GameArenaContainer = () => {
           </div>
         </div>
         <div className='flex items-center gap-1.5'>
-          {players.map((p, i) => (
+          {players.map((p) => (
             <div
               key={p.id}
               className={cn(

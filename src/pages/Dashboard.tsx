@@ -709,7 +709,11 @@ const Dashboard = () => {
 
         {/* Recent Rooms List */}
         <div className='mt-8'>
-          <RecentRoomsCard filterType="private" title="Private Rooms" subtitle="Your Private Network Log" />
+          <RecentRoomsCard
+            filterType='private'
+            title='Private Rooms'
+            subtitle='Your Private Network Log'
+          />
         </div>
       </div>
     </div>

@@ -1,13 +1,7 @@
-import { ReactNode, forwardRef } from "react";
-import { motion } from "framer-motion";
+import { ReactNode, forwardRef } from 'react';
+import { motion } from 'framer-motion';
 
-type TransitionVariant =
-  | "fade"
-  | "slideLeft"
-  | "slideRight"
-  | "scale"
-  | "rotate"
-  | "slideUp";
+type TransitionVariant = 'fade' | 'slideLeft' | 'slideRight' | 'scale' | 'rotate' | 'slideUp';
 
 interface PageTransitionProps {
   children: ReactNode;
@@ -48,7 +42,7 @@ const transitionVariants = {
 };
 
 const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
-  ({ children, variant = "fade" }, ref) => {
+  ({ children, variant = 'fade' }, ref) => {
     const selectedVariant = transitionVariants[variant] || transitionVariants.fade;
 
     return (
@@ -58,7 +52,7 @@ const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
         animate={selectedVariant.animate}
         exit={selectedVariant.exit}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="min-h-screen w-full"
+        className='min-h-screen w-full'
       >
         {children}
       </motion.div>
@@ -66,6 +60,6 @@ const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
   }
 );
 
-PageTransition.displayName = "PageTransition";
+PageTransition.displayName = 'PageTransition';
 
 export default PageTransition;

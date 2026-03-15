@@ -74,7 +74,9 @@ const AISummaryService = {
           ? highlights
           : ['Session active — data packets processed.', 'Telemetry stream captured successfully.'],
       actionItems:
-        actionItems.length > 0 ? actionItems : ['Monitor session stream for future action protocols.'],
+        actionItems.length > 0
+          ? actionItems
+          : ['Monitor session stream for future action protocols.'],
       sentiment,
     };
   },

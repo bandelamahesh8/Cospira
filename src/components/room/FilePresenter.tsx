@@ -15,11 +15,15 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
   const isImage = file.type?.startsWith('image/');
   const isVideo = file.type?.startsWith('video/');
   const isPDF = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf');
-  const isOffice = /msword|wordprocessingml|ms-excel|spreadsheetml|ms-powerpoint|presentationml|officedocument/.test(file.type || '') || 
-                   /\.(doc|docx|xls|xlsx|ppt|pptx|pps|ppsx)$/i.test(file.name || '');
+  const isOffice =
+    /msword|wordprocessingml|ms-excel|spreadsheetml|ms-powerpoint|presentationml|officedocument/.test(
+      file.type || ''
+    ) || /\.(doc|docx|xls|xlsx|ppt|pptx|pps|ppsx)$/i.test(file.name || '');
 
   const isDirectOffice = /\.(docx|pptx|xlsx|ppt|pps|ppsx)$/i.test(file.name || '');
-  const [viewerType, setViewerType] = useState<'google' | 'microsoft'>(isDirectOffice ? 'microsoft' : 'google');
+  const [viewerType, setViewerType] = useState<'google' | 'microsoft'>(
+    isDirectOffice ? 'microsoft' : 'google'
+  );
   const [loadError, setLoadError] = useState(false);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const MANIFESTATION_TIMEOUT = 12000; // 12 seconds
@@ -37,7 +41,7 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
     // Timeout if asset takes too long (e.g. ngrok issues or viewer lag)
     loadingTimeoutRef.current = setTimeout(() => {
       // Use the set state version with a callback to get the absolute current value
-      setIsAssetLoading(current => {
+      setIsAssetLoading((current) => {
         if (current) setLoadError(true);
         return current;
       });
@@ -53,24 +57,25 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
     if (!isAssetLoading) return;
 
     const timer = setTimeout(() => {
-      console.warn('[FilePresenter] Asset manifestation timeout - entering vision mode automatically');
+      console.warn(
+        '[FilePresenter] Asset manifestation timeout - entering vision mode automatically'
+      );
       setIsAssetLoading(false);
     }, 5000); // 5 second hard limit for perceived lag
 
     return () => clearTimeout(timer);
   }, [isAssetLoading]);
 
-
   const getFileUrl = useCallback(() => {
     if (file.content) return file.content;
     if (!file.url) return '';
-    
+
     let fullUrl = '';
     if (file.url.startsWith('http') || file.url.startsWith('data:')) {
       fullUrl = file.url;
     } else {
       fullUrl = getApiUrl(file.url);
-      
+
       // Add timestamp to avoid caching issues during dev
       const separator = fullUrl.includes('?') ? '&' : '?';
       fullUrl = `${fullUrl}${separator}t=${Date.now()}`;
@@ -82,7 +87,7 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
       const separator = fullUrl.includes('?') ? '&' : '?';
       return `${fullUrl}${separator}ngrok-skip-browser-warning=1`;
     }
-    
+
     return fullUrl;
   }, [file.url, file.content]);
 
@@ -96,7 +101,6 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
       !url.startsWith('https')
     );
   };
-
 
   return (
     <div className='w-full h-full flex flex-col relative group overflow-hidden bg-[#0a0a0c]'>
@@ -120,10 +124,9 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
                   {loadError ? 'Sync Latency Detected' : 'Cluster Manifestation'}
                 </h4>
                 <p className='text-[10px] font-medium text-white/30 uppercase tracking-widest animate-pulse max-w-xs'>
-                  {loadError 
-                    ? "External engine delay. Cluster synchronization in progress..."
-                    : "Calibrating view protocols..."
-                  }
+                  {loadError
+                    ? 'External engine delay. Cluster synchronization in progress...'
+                    : 'Calibrating view protocols...'}
                 </p>
               </div>
 
@@ -145,35 +148,41 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
                 </button>
               </div>
             </div>
-              {loadError && (
-                <div className='mt-8 flex flex-col gap-4 w-full max-w-[240px]'>
-                  {isOffice && (
-                    <button 
-                      onClick={() => setViewerType(prev => prev === 'google' ? 'microsoft' : 'google')}
-                      className='h-12 px-6 bg-primary/20 border border-primary/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/30 transition-all'
-                    >
-                      Switch to {viewerType === 'google' ? 'Office' : 'Google'} Viewer
-                    </button>
-                  )}
-                  <a
-                    href={getFileUrl()}
-                    download={file.name}
-                    className='h-12 px-6 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/60 hover:bg-white/10 transition-all flex items-center justify-center gap-2'
+            {loadError && (
+              <div className='mt-8 flex flex-col gap-4 w-full max-w-[240px]'>
+                {isOffice && (
+                  <button
+                    onClick={() =>
+                      setViewerType((prev) => (prev === 'google' ? 'microsoft' : 'google'))
+                    }
+                    className='h-12 px-6 bg-primary/20 border border-primary/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/30 transition-all'
                   >
-                    <Download className='w-4 h-4' /> Download Locally
-                  </a>
-                </div>
-              )}
+                    Switch to {viewerType === 'google' ? 'Office' : 'Google'} Viewer
+                  </button>
+                )}
+                <a
+                  href={getFileUrl()}
+                  download={file.name}
+                  className='h-12 px-6 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/60 hover:bg-white/10 transition-all flex items-center justify-center gap-2'
+                >
+                  <Download className='w-4 h-4' /> Download Locally
+                </a>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
       {/* Background Glow */}
       <div className='absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none' />
-      
-      {/* Grid Pattern */}
-      <div className='absolute inset-0 opacity-[0.03] pointer-events-none' 
-           style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
 
+      {/* Grid Pattern */}
+      <div
+        className='absolute inset-0 opacity-[0.03] pointer-events-none'
+        style={{
+          backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)',
+          backgroundSize: '32px 32px',
+        }}
+      />
 
       {/* Close Button */}
       <div className='absolute top-10 right-10 z-50'>
@@ -192,7 +201,7 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
         <AnimatePresence mode='wait'>
           {isImage ? (
             <motion.div
-              key="image"
+              key='image'
               initial={{ opacity: 0, scale: 0.9, filter: 'blur(20px)' }}
               animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
               exit={{ opacity: 0, scale: 0.95, filter: 'blur(20px)' }}
@@ -264,12 +273,12 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
               {/* Background Glow for White Docs */}
               <div className='absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-blue-500/5 pointer-events-none' />
 
-
               <div className='absolute inset-0 overflow-hidden bg-slate-100 flex items-center justify-center'>
                 <iframe
-                  src={viewerType === 'google' 
-                    ? `https://docs.google.com/viewer?url=${encodeURIComponent(getFileUrl())}&embedded=true`
-                    : `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(getFileUrl())}&wdOrigin=BROWSERLINK&ms_ext=true`
+                  src={
+                    viewerType === 'google'
+                      ? `https://docs.google.com/viewer?url=${encodeURIComponent(getFileUrl())}&embedded=true`
+                      : `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(getFileUrl())}&wdOrigin=BROWSERLINK&ms_ext=true`
                   }
                   className='w-full h-full border-none'
                   title={file.name}
@@ -294,11 +303,10 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
                   </div>
                 )}
               </div>
-
             </motion.div>
           ) : (
             <motion.div
-              key="fallback"
+              key='fallback'
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -306,27 +314,27 @@ export const FilePresenter: React.FC<FilePresenterProps> = ({ file, onClose }) =
             >
               {/* Decorative scanline */}
               <div className='absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent h-20 w-full animate-scanline pointer-events-none' />
-              
+
               <div className='w-36 h-36 bg-primary/5 border-2 border-primary/20 rounded-[3rem] flex items-center justify-center relative overflow-hidden group/box shadow-inner'>
-                <motion.div 
-                   animate={{ rotate: 360 }}
-                   transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                   className='absolute inset-0 border-2 border-dashed border-primary/10 rounded-[3rem] scale-110'
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                  className='absolute inset-0 border-2 border-dashed border-primary/10 rounded-[3rem] scale-110'
                 />
                 <Box className='w-16 h-16 text-primary relative z-10' />
               </div>
-              
+
               <div className='space-y-4'>
                 <h4 className='text-3xl font-black uppercase italic tracking-tighter text-white'>
                   {isOffice ? 'Office Manifestation' : 'Complex Data Stream'}
                 </h4>
                 <p className='text-sm font-medium text-slate-400 max-w-md mx-auto leading-relaxed'>
-                  {isOffice 
-                    ? "This office document is formatted for local execution. Projected streams are currently non-renderable. Acquire the asset to view."
+                  {isOffice
+                    ? 'This office document is formatted for local execution. Projected streams are currently non-renderable. Acquire the asset to view.'
                     : "This object's architecture is too complex for 2D manifestation in this viewport. Acquire the full asset to process locally."}
                 </p>
               </div>
-              
+
               <div className='flex flex-col gap-4 w-full max-w-xs'>
                 <a
                   href={getFileUrl()}

@@ -100,8 +100,8 @@ export const ROOM_MODE_CONFIGS: Record<RoomMode, RoomModeConfig> = {
       autoFraming: false,
       chat: true,
       games: false,
-      virtualBrowser: true, 
-      screenShare: true, 
+      virtualBrowser: true,
+      screenShare: true,
       screenRecording: false, // NO recording allowed
       transcription: true,
       aiSummary: false, // User Requirement: No AI tools
