@@ -41,6 +41,4 @@ def reached_end(points): checks weather a points has reached end point that is 1
 
 def play(): It asked for player name and then dice is roll randomly between (1,6)
 
-How to install this
 
-git clone https://github.com/shreya9347/Snake-and-Ladder-game
