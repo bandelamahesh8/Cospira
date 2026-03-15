@@ -1,10 +1,10 @@
 import logger from '../../shared/logger.js';
-import BrowserPool from '../browser/BrowserPool.js';
+import BrowserPool from '../../browser/BrowserPool.js';
 import { getRoom, saveRoom } from '../../shared/redis.js';
-import { sanitizeRoomId } from '../utils/sanitize.js';
-import { parseIntent, validateAction } from '../services/ai/BrowserIntentParser.js';
-import BrowserActionExecutor from '../services/ai/BrowserActionExecutor.js';
-import llmService from '../services/ai/LLMService.js';
+import { sanitizeRoomId } from '../../utils/sanitize.js';
+import { parseIntent, validateAction } from '../../api/services/ai/BrowserIntentParser.js';
+import BrowserActionExecutor from '../../api/services/ai/BrowserActionExecutor.js';
+import llmService from '../../api/services/ai/LLMService.js';
 
 // Initialize browser pool (singleton)
 const browserPool = new BrowserPool({

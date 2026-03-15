@@ -5,8 +5,8 @@
  * Phase 2: Room Memory
  */
 
-import roomTimelineService from '../services/RoomTimelineService.js';
-import roomService from '../services/RoomService.js';
+import roomTimelineService from '../../api/services/RoomTimelineService.js';
+import roomService from '../../api/services/RoomService.js';
 import logger from '../../shared/logger.js';
 
 export default function registerTimelineHandlers(io, socket) {

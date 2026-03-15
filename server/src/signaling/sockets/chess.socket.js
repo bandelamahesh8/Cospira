@@ -1,4 +1,4 @@
-import { chessServer } from '../game-servers/ChessServer.js';
+import { chessServer } from '../../game-servers/ChessServer.js';
 import logger from '../../shared/logger.js';
 
 export default function registerChessHandlers(io, socket) {

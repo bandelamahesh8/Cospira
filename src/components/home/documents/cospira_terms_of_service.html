@@ -1,0 +1,243 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .page { max-width: 780px; margin: 0 auto; padding: 2rem 1.5rem 4rem; font-family: var(--font-sans); color: var(--color-text-primary); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; background: var(--color-background-secondary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 4px 10px; margin-bottom: 1.5rem; }
+  .hero-title { font-size: 32px; font-weight: 500; line-height: 1.2; margin-bottom: 0.75rem; }
+  .hero-sub { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 2.5rem; }
+  .divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 2rem 0; }
+  .toc { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); padding: 1.25rem 1.5rem; margin-bottom: 2.5rem; }
+  .toc-title { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 0.75rem; }
+  .toc-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .toc-list li { display: flex; align-items: center; gap: 8px; }
+  .toc-num { font-size: 11px; color: var(--color-text-tertiary); min-width: 18px; }
+  .toc-link { font-size: 14px; color: var(--color-text-secondary); text-decoration: none; cursor: pointer; }
+  .toc-link:hover { color: var(--color-text-primary); }
+  .section { margin-bottom: 2.5rem; scroll-margin-top: 1rem; }
+  .section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 1rem; }
+  .section-num { font-size: 12px; color: var(--color-text-tertiary); font-weight: 500; }
+  .section-title { font-size: 18px; font-weight: 500; }
+  .section-body { font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; }
+  .section-body p { margin-bottom: 0.75rem; }
+  .section-body p:last-child { margin-bottom: 0; }
+  .item-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 0.75rem 0; }
+  .item-list li { font-size: 14px; color: var(--color-text-secondary); line-height: 1.7; padding-left: 1rem; position: relative; }
+  .item-list li::before { content: "–"; position: absolute; left: 0; color: var(--color-text-tertiary); }
+  .highlight-box { border-left: 2px solid var(--color-border-secondary); padding: 0.75rem 1rem; margin: 1rem 0; }
+  .highlight-box p { font-size: 14px; color: var(--color-text-secondary); line-height: 1.7; margin: 0; }
+  .contact-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem 1.5rem; margin-top: 1rem; }
+  .contact-card .name { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+  .contact-card .role { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 0.75rem; }
+  .contact-card .email { font-size: 13px; color: var(--color-text-secondary); }
+  .footer-note { font-size: 12px; color: var(--color-text-tertiary); text-align: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 0.5px solid var(--color-border-tertiary); line-height: 1.6; }
+  .strong { color: var(--color-text-primary); font-weight: 500; }
+</style>
+
+<div class="page">
+  <span class="badge">Legal</span>
+  <h1 class="hero-title">Terms of Service</h1>
+  <p class="hero-sub">Effective date: March 16, 2026 &nbsp;·&nbsp; Last updated: March 16, 2026</p>
+
+  <div class="toc">
+    <p class="toc-title">Contents</p>
+    <ul class="toc-list">
+      <li><span class="toc-num">01</span><span class="toc-link" onclick="document.getElementById('s1').scrollIntoView({behavior:'smooth'})">Acceptance of terms</span></li>
+      <li><span class="toc-num">02</span><span class="toc-link" onclick="document.getElementById('s2').scrollIntoView({behavior:'smooth'})">Who can use Cospira</span></li>
+      <li><span class="toc-num">03</span><span class="toc-link" onclick="document.getElementById('s3').scrollIntoView({behavior:'smooth'})">Your account</span></li>
+      <li><span class="toc-num">04</span><span class="toc-link" onclick="document.getElementById('s4').scrollIntoView({behavior:'smooth'})">What you can do</span></li>
+      <li><span class="toc-num">05</span><span class="toc-link" onclick="document.getElementById('s5').scrollIntoView({behavior:'smooth'})">What you cannot do</span></li>
+      <li><span class="toc-num">06</span><span class="toc-link" onclick="document.getElementById('s6').scrollIntoView({behavior:'smooth'})">Your content</span></li>
+      <li><span class="toc-num">07</span><span class="toc-link" onclick="document.getElementById('s7').scrollIntoView({behavior:'smooth'})">Cospira's intellectual property</span></li>
+      <li><span class="toc-num">08</span><span class="toc-link" onclick="document.getElementById('s8').scrollIntoView({behavior:'smooth'})">Shared sessions & real-time activity</span></li>
+      <li><span class="toc-num">09</span><span class="toc-link" onclick="document.getElementById('s9').scrollIntoView({behavior:'smooth'})">Termination</span></li>
+      <li><span class="toc-num">10</span><span class="toc-link" onclick="document.getElementById('s10').scrollIntoView({behavior:'smooth'})">Disclaimers & limitation of liability</span></li>
+      <li><span class="toc-num">11</span><span class="toc-link" onclick="document.getElementById('s11').scrollIntoView({behavior:'smooth'})">Governing law</span></li>
+      <li><span class="toc-num">12</span><span class="toc-link" onclick="document.getElementById('s12').scrollIntoView({behavior:'smooth'})">Changes to these terms</span></li>
+      <li><span class="toc-num">13</span><span class="toc-link" onclick="document.getElementById('s13').scrollIntoView({behavior:'smooth'})">Contact us</span></li>
+    </ul>
+  </div>
+
+  <div class="section" id="s1">
+    <div class="section-header"><span class="section-num">01</span><h2 class="section-title">Acceptance of terms</h2></div>
+    <div class="section-body">
+      <p>Welcome to Cospira. By accessing or using our platform, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree, please do not use Cospira.</p>
+      <p>These terms form a legally binding agreement between you and Cospira. "Cospira," "we," "our," and "us" refer to the Cospira platform and its operators. "You" refers to the individual or entity using the platform.</p>
+      <div class="highlight-box">
+        <p>By creating an account or using Cospira in any way, you confirm that you have read, understood, and agree to these terms.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s2">
+    <div class="section-header"><span class="section-num">02</span><h2 class="section-title">Who can use Cospira</h2></div>
+    <div class="section-body">
+      <p>Cospira is open to anyone and everyone — as long as they have emotions to share. That means:</p>
+      <ul class="item-list">
+        <li>You must be at least 13 years of age to create an account</li>
+        <li>If you are between 13 and 18, you must have parental or guardian consent</li>
+        <li>You must be a human being (automated bots and non-human entities are not permitted)</li>
+        <li>You must not have been previously suspended or removed from Cospira for violations</li>
+        <li>Your use must comply with all applicable laws in your jurisdiction</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s3">
+    <div class="section-header"><span class="section-num">03</span><h2 class="section-title">Your account</h2></div>
+    <div class="section-body">
+      <p>When you create a Cospira account, you are responsible for:</p>
+      <ul class="item-list">
+        <li>Providing accurate and truthful information during registration</li>
+        <li>Keeping your login credentials secure and confidential</li>
+        <li>All activity that occurs under your account</li>
+        <li>Notifying us immediately at <span class="strong">support@cospira.app</span> if you suspect unauthorized access</li>
+      </ul>
+      <p style="margin-top: 0.75rem;">You may not share, sell, or transfer your account to another person. Each account is personal and non-transferable.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s4">
+    <div class="section-header"><span class="section-num">04</span><h2 class="section-title">What you can do</h2></div>
+    <div class="section-body">
+      <p>Cospira gives you the ability to:</p>
+      <ul class="item-list">
+        <li>Create and join shared sessions to browse, watch, explore, and build with others in real time</li>
+        <li>Invite other users to your sessions and collaborate freely</li>
+        <li>Share content, links, and media within the platform</li>
+        <li>Customize your profile and session preferences</li>
+        <li>Access all features available under your current plan</li>
+      </ul>
+      <p style="margin-top: 0.75rem;">We want Cospira to be a place where people genuinely connect. Use it for that.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s5">
+    <div class="section-header"><span class="section-num">05</span><h2 class="section-title">What you cannot do</h2></div>
+    <div class="section-body">
+      <p>To keep Cospira safe and real for everyone, the following are strictly prohibited:</p>
+      <ul class="item-list">
+        <li>Harassing, threatening, or abusing other users in any form</li>
+        <li>Sharing illegal, obscene, or harmful content including anything involving minors</li>
+        <li>Impersonating another person, brand, or entity</li>
+        <li>Using Cospira to distribute spam, malware, or phishing content</li>
+        <li>Attempting to hack, scrape, reverse-engineer, or disrupt the platform</li>
+        <li>Using automated bots, scripts, or non-human tools to interact with the platform</li>
+        <li>Violating the intellectual property rights of others</li>
+        <li>Using Cospira for any unlawful commercial activity without prior written consent</li>
+        <li>Attempting to circumvent any safety, security, or access controls</li>
+      </ul>
+      <div class="highlight-box">
+        <p>Violations may result in immediate account suspension or permanent ban, at our sole discretion.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s6">
+    <div class="section-header"><span class="section-num">06</span><h2 class="section-title">Your content</h2></div>
+    <div class="section-body">
+      <p>Anything you create, share, or post on Cospira — messages, links, media, or session activity — is your content. You retain full ownership of it.</p>
+      <p>By using Cospira, you grant us a limited, non-exclusive, royalty-free license to store, display, and transmit your content solely for the purpose of operating the platform and delivering the service to you and your session participants.</p>
+      <p>We do not claim ownership of your content, and we will never use it for advertising or sell it to third parties. You can delete your content at any time. Upon account deletion, your content is removed within 30 days.</p>
+      <p>You are solely responsible for the content you share. By posting it, you confirm it does not violate any laws or third-party rights.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s7">
+    <div class="section-header"><span class="section-num">07</span><h2 class="section-title">Cospira's intellectual property</h2></div>
+    <div class="section-body">
+      <p>The Cospira name, logo, platform design, codebase, and all related materials are the exclusive intellectual property of Cospira and its operators. All rights are reserved.</p>
+      <ul class="item-list">
+        <li>You may not copy, reproduce, or distribute any part of Cospira without written permission</li>
+        <li>You may not use the Cospira name or logo in any way that implies endorsement</li>
+        <li>You may not build competing products using any part of the Cospira platform or codebase</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s8">
+    <div class="section-header"><span class="section-num">08</span><h2 class="section-title">Shared sessions & real-time activity</h2></div>
+    <div class="section-body">
+      <p>Cospira's core feature is real-time shared sessions. When you participate in a session with others, you acknowledge that:</p>
+      <ul class="item-list">
+        <li>Other participants in your session can see your activity, cursor, and interactions in real time</li>
+        <li>Session hosts have the ability to remove participants or end sessions at any time</li>
+        <li>Cospira is not responsible for the behavior of other users within your sessions</li>
+        <li>You should only invite people you trust into private sessions</li>
+        <li>Public sessions may be visible to or joined by other Cospira users</li>
+      </ul>
+      <p style="margin-top: 0.75rem;">Real-time interaction is the heart of Cospira. Treat others the way you would want to be treated in a shared space.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s9">
+    <div class="section-header"><span class="section-num">09</span><h2 class="section-title">Termination</h2></div>
+    <div class="section-body">
+      <p>You may delete your account at any time through your account settings. We will process your request and remove your data within 30 days.</p>
+      <p>We reserve the right to suspend or permanently terminate your account if you violate these terms, engage in harmful behavior, or pose a risk to other users or the platform — without prior notice in serious cases.</p>
+      <p>Upon termination, your right to access and use Cospira ceases immediately. Provisions of these terms that by their nature should survive termination — including ownership clauses, disclaimers, and limitations of liability — will continue to apply.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s10">
+    <div class="section-header"><span class="section-num">10</span><h2 class="section-title">Disclaimers & limitation of liability</h2></div>
+    <div class="section-body">
+      <p>Cospira is provided on an "as is" and "as available" basis. We make no warranties, express or implied, that the platform will be uninterrupted, error-free, or free of viruses or other harmful components.</p>
+      <p>To the fullest extent permitted by law, Cospira and its operators shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of — or inability to use — the platform.</p>
+      <p>Our total liability to you for any claim arising from these terms or your use of Cospira shall not exceed the amount you paid us, if any, in the 12 months preceding the claim.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s11">
+    <div class="section-header"><span class="section-num">11</span><h2 class="section-title">Governing law</h2></div>
+    <div class="section-body">
+      <p>These terms are governed by and construed in accordance with the laws of India, without regard to its conflict of law provisions. Any disputes arising from these terms or your use of Cospira shall be subject to the exclusive jurisdiction of the courts located in India.</p>
+      <p>If any provision of these terms is found to be unenforceable, the remaining provisions will continue in full force and effect.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s12">
+    <div class="section-header"><span class="section-num">12</span><h2 class="section-title">Changes to these terms</h2></div>
+    <div class="section-body">
+      <p>We may update these Terms of Service as Cospira grows and evolves. When we make material changes, we will notify you via email or an in-app notice at least 7 days before the changes take effect.</p>
+      <p>The "last updated" date at the top of this page reflects the most recent revision. Continued use of Cospira after changes take effect constitutes your acceptance of the updated terms.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s13">
+    <div class="section-header"><span class="section-num">13</span><h2 class="section-title">Contact us</h2></div>
+    <div class="section-body">
+      <p>Questions about these terms? We're always reachable.</p>
+      <div class="contact-card">
+        <p class="name">Bandela Mahesh</p>
+        <p class="role">Founder, Cospira</p>
+        <p class="email">legal@cospira.app</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="footer-note">© 2026 Cospira. All rights reserved.<br>These terms are governed by applicable Indian law and international platform regulations.</p>
+</div>

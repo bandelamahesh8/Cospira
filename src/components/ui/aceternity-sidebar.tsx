@@ -10,6 +10,7 @@ interface Links {
   label: string;
   href: string;
   icon: React.JSX.Element | React.ReactNode;
+  badge?: string;
 }
 
 interface SidebarContextProps {
@@ -180,7 +181,14 @@ export const SidebarLink = ({
         }}
         className='text-zinc-400 font-bold group-hover/sidebar:text-white text-sm tracking-tight transition duration-200 whitespace-pre inline-block !p-0 !m-0'
       >
-        {link.label}
+        <span className='flex items-center gap-2'>
+          {link.label}
+          {link.badge && (
+            <span className='px-1.5 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30 text-[8px] font-black uppercase tracking-widest text-indigo-400'>
+              {link.badge}
+            </span>
+          )}
+        </span>
       </motion.span>
     </Link>
   );

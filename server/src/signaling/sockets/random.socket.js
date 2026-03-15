@@ -1,7 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../shared/logger.js';
-import eventLogger from '../services/EventLogger.js';
+import eventLogger from '../../api/services/EventLogger.js';
 
 // Simple in-memory queue for prototype (Phase 1)
 // In production, use Redis List/Set

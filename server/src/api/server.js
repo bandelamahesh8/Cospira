@@ -11,10 +11,10 @@ import logger from '../shared/logger.js';
 import { initRedis } from '../shared/redis.js';
 
 // Routes
-import roomRoutes from '../routes/rooms.js';
-import authRoutes from '../routes/auth.js';
-import gameRoutes from '../routes/game.js';
-import aiKernelRoutes from '../routes/aiKernel.js';
+import roomRoutes from './routes/rooms.js';
+import authRoutes from './routes/auth.js';
+import gameRoutes from './routes/game.js';
+import aiKernelRoutes from './routes/aiKernel.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

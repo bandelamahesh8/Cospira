@@ -1,8 +1,8 @@
 import logger from '../../shared/logger.js';
-import eventLogger from '../services/EventLogger.js';
+import eventLogger from '../../api/services/EventLogger.js';
 import { getRoom, saveRoom } from '../../shared/redis.js';
-import { sanitizeRoomId } from '../utils/sanitize.js';
-import SnakeLadderEngine from '../game/SnakeLadderEngine.js';
+import { sanitizeRoomId } from '../../utils/sanitize.js';
+import SnakeLadderEngine from '../../game/SnakeLadderEngine.js';
 import { Chess } from 'chess.js';
 
 const TURN_LIMIT = 30000; // 30 seconds

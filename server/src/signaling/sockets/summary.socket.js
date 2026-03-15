@@ -4,9 +4,9 @@
  * Handles real-time summary generation, action items, and decisions.
  */
 
-import meetingSummarizerService from '../services/MeetingSummarizerService.js';
-import roomService from '../services/RoomService.js';
-import eventLogger from '../services/EventLogger.js';
+import meetingSummarizerService from '../../api/services/MeetingSummarizerService.js';
+import roomService from '../../api/services/RoomService.js';
+import eventLogger from '../../api/services/EventLogger.js';
 import logger from '../../shared/logger.js';
 
 export default function registerSummaryHandlers(io, socket) {

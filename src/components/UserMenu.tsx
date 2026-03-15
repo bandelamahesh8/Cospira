@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Shield, Lock, Pencil, Info, Rocket } from 'lucide-react';
+import { LogOut, Shield, Lock, Pencil, Rocket } from 'lucide-react';
 import { useEffect } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { formatActivityTimestamp } from '@/utils/activityHelpers';
@@ -176,18 +176,6 @@ const UserMenu = () => {
           </DropdownMenuItem>
         </NeuralInformer>
 
-        <NeuralInformer
-          title='System Information'
-          description='Detailed metadata regarding the Cospira project, its neural architecture, and the team behind the mesh.'
-        >
-          <DropdownMenuItem
-            onClick={() => navigate('/about')}
-            className='group flex items-center gap-2 p-2 rounded-lg focus:bg-white/5 cursor-pointer text-white/50 hover:text-white text-left'
-          >
-            <Info className='w-3.5 h-3.5' />
-            <span className='text-xs font-medium'>About Cospira</span>
-          </DropdownMenuItem>
-        </NeuralInformer>
 
         <DropdownMenuItem
           onClick={signOut}

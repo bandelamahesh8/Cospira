@@ -5,11 +5,11 @@
  * Integrated with RoomIntelligenceService and MongoDB Room Model.
  */
 
-import roomIntelligenceService from '../services/RoomIntelligenceService.js';
-import roomService from '../services/RoomService.js';
-import eventLogger from '../services/EventLogger.js';
+import roomIntelligenceService from '../../api/services/RoomIntelligenceService.js';
+import roomService from '../../api/services/RoomService.js';
+import eventLogger from '../../api/services/EventLogger.js';
 import logger from '../../shared/logger.js';
-import { getModeConfig, ROOM_MODES } from '../services/ai/RoomClassifier.js';
+import { getModeConfig, ROOM_MODES } from '../../api/services/ai/RoomClassifier.js';
 
 export default function registerRoomIntelligenceHandlers(io, socket) {
   

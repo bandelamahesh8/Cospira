@@ -11,12 +11,12 @@
  */
 
 import logger from '../../shared/logger.js';
-import { Room } from '../models/Room.js';
-import policyEngine    from '../services/PolicyEngine.js';
-import authorityEngine from '../services/AuthorityEngine.js';
-import stateMachine    from '../services/RoomStateMachine.js';
-import roomKernel      from '../services/RoomKernel.js';
-import commandNetwork  from '../services/CommandNetwork.js';
+import { Room } from '../../api/models/Room.js';
+import policyEngine    from '../../api/services/PolicyEngine.js';
+import authorityEngine from '../../api/services/AuthorityEngine.js';
+import stateMachine    from '../../api/services/RoomStateMachine.js';
+import roomKernel      from '../../api/services/RoomKernel.js';
+import commandNetwork  from '../../api/services/CommandNetwork.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export function registerPolicySockets(io, socket) {

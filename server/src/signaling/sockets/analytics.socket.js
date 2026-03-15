@@ -1,7 +1,7 @@
 import logger from '../../shared/logger.js';
-import analyticsService from '../services/ai/AnalyticsService.js';
-import eventLogger from '../services/EventLogger.js';
-import { UserAnalyticsSetting } from '../models/UserAnalyticsSetting.js';
+import analyticsService from '../../api/services/ai/AnalyticsService.js';
+import eventLogger from '../../api/services/EventLogger.js';
+import { UserAnalyticsSetting } from '../../api/models/UserAnalyticsSetting.js';
 
 /**
  * Register Analytics Socket Handlers

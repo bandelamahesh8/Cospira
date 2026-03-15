@@ -4,8 +4,8 @@
  * Handles presence tracking and media quality reporting.
  */
 
-import roomService from '../services/RoomService.js';
-import eventLogger from '../services/EventLogger.js';
+import roomService from '../../api/services/RoomService.js';
+import eventLogger from '../../api/services/EventLogger.js';
 import logger from '../../shared/logger.js';
 
 export default function registerQualityHandlers(io, socket) {

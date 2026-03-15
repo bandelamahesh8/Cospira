@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -639,9 +639,21 @@ const Auth = () => {
                 </form>
               </CardContent>
 
-              <CardFooter className='pt-2 pb-8 flex flex-col items-center'>
-                <div className='flex items-center gap-2 text-[8px] text-white/10 uppercase font-bold tracking-[0.2em]'>
-                  <span>Your identity is protected</span>
+              <CardFooter className='pt-2 pb-10 flex flex-col items-center gap-6'>
+                <div className='flex flex-col items-center gap-3'>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/10">
+                    By logging in or creating an account, you agree to
+                  </p>
+                  <div className='flex items-center gap-4 text-[9px] font-bold uppercase tracking-[0.15em] text-white/20'>
+                    <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                    <div className="w-1 h-1 rounded-full bg-white/5" />
+                    <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+                  </div>
+                </div>
+                
+                <div className='flex items-center gap-2 text-[8px] text-white/5 uppercase font-bold tracking-[0.2em]'>
+                  <Shield className="w-2.5 h-2.5" />
+                  <span>Secure Protocol Active // Identity Protected</span>
                 </div>
               </CardFooter>
             </Card>

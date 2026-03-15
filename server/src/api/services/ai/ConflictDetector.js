@@ -1,5 +1,5 @@
 import agentBus from './AgentBus.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class ConflictDetector {
     constructor() {

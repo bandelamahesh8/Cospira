@@ -1,0 +1,158 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Courier New',monospace}
+.wrap{padding:1.5rem 0;color:var(--color-text-primary)}
+.section-tag{font-size:11px;letter-spacing:3px;color:var(--color-text-secondary);text-transform:uppercase;margin-bottom:6px}
+.section-title{font-size:22px;font-weight:500;margin-bottom:1.5rem;color:var(--color-text-primary)}
+.tier-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:2rem}
+.tier{border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1.25rem;background:var(--color-background-primary);position:relative;overflow:hidden}
+.tier-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.tier-name{font-size:15px;font-weight:500;margin-bottom:12px}
+.tier-item{font-size:12px;color:var(--color-text-secondary);padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);line-height:1.5}
+.tier-item:last-child{border-bottom:none}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:8px;flex-shrink:0}
+.tier-item-row{display:flex;align-items:flex-start;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.tier-item-row:last-child{border-bottom:none}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap;margin-left:auto;flex-shrink:0}
+.effect-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:2rem}
+.effect-card{border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1.25rem;background:var(--color-background-primary)}
+.effect-title{font-size:13px;font-weight:500;margin-bottom:6px}
+.effect-desc{font-size:12px;color:var(--color-text-secondary);line-height:1.6}
+.code-block{background:var(--color-background-secondary);border-radius:8px;padding:12px;font-size:11px;color:var(--color-text-secondary);font-family:'Courier New',monospace;line-height:1.8;margin-top:8px;border:0.5px solid var(--color-border-tertiary)}
+.highlight{color:#7F77DD}
+.highlight2{color:#1D9E75}
+.highlight3{color:#D85A30}
+.stack-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:2rem}
+.stack-pill{font-size:12px;border:0.5px solid var(--color-border-tertiary);border-radius:20px;padding:5px 14px;background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.timeline{margin-bottom:2rem}
+.tl-item{display:flex;gap:16px;padding-bottom:20px;position:relative}
+.tl-item:not(:last-child)::before{content:'';position:absolute;left:15px;top:30px;bottom:0;width:0.5px;background:var(--color-border-tertiary)}
+.tl-num{width:30px;height:30px;border-radius:50%;border:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0;background:var(--color-background-primary);z-index:1}
+.tl-body{}
+.tl-phase{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--color-text-secondary);margin-bottom:3px}
+.tl-name{font-size:14px;font-weight:500;margin-bottom:4px}
+.tl-desc{font-size:12px;color:var(--color-text-secondary);line-height:1.6}
+</style>
+
+<div class="wrap">
+
+<p class="section-tag">upgrade roadmap</p>
+<p class="section-title">From 8.2 → 10 / 10</p>
+
+<div class="tier-grid">
+  <div class="tier" style="border-color:#534AB7">
+    <div class="tier-label" style="color:#534AB7">Layer 1 — 3D scene</div>
+    <div class="tier-name">WebGL Core</div>
+    <div class="tier-item-row"><span class="dot" style="background:#534AB7;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">Three.js hero — floating room orb with live particle mesh that reacts to mouse</span></div>
+    <div class="tier-item-row"><span class="dot" style="background:#534AB7;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">GLSL shader on the background — ripple waveform that pulses with audio levels</span></div>
+    <div class="tier-item-row"><span class="dot" style="background:#534AB7;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">R3F (React Three Fiber) for component-level 3D rendering</span></div>
+    <div class="tier-item-row"><span class="dot" style="background:#534AB7;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">Drei helpers: environment maps, bloom post-processing, lens flare</span></div>
+  </div>
+  <div class="tier" style="border-color:#0F6E56">
+    <div class="tier-label" style="color:#0F6E56">Layer 2 — Motion</div>
+    <div class="tier-name">Physics & Scroll</div>
+    <div class="tier-item-row"><span class="dot" style="background:#0F6E56;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">GSAP ScrollTrigger — sections pinned with 3D parallax depth</span></div>
+    <div class="tier-item-row"><span class="dot" style="background:#0F6E56;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">Framer Motion layout animations for pricing cards flip on hover</span></div>
+    <div class="tier-item-row"><span class="dot" style="background:#0F6E56;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">Lenis smooth scroll with momentum physics</span></div>
+    <div class="tier-item-row"><span class="dot" style="background:#0F6E56;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">Custom cursor that morphs shape near CTAs and video regions</span></div>
+  </div>
+  <div class="tier" style="border-color:#993C1D">
+    <div class="tier-label" style="color:#993C1D">Layer 3 — Polish</div>
+    <div class="tier-name">Typography & FX</div>
+    <div class="tier-item-row"><span class="dot" style="background:#993C1D;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">SplitType + GSAP — hero text shatters into 3D tiles on load</span></div>
+    <div class="tier-item-row"><span class="dot" style="background:#993C1D;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">Variable font with weight axis animated by scroll progress</span></div>
+    <div class="tier-item-row"><span class="dot" style="background:#993C1D;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">Noise overlay grain texture at 12% opacity for film depth</span></div>
+    <div class="tier-item-row"><span class="dot" style="background:#993C1D;margin-top:4px"></span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.5">Real-time stats counter with eased number animation on enter</span></div>
+  </div>
+</div>
+
+<p class="section-tag">5 killer 3d interactions</p>
+<p class="section-title" style="margin-bottom:1rem">Signature moments</p>
+
+<div class="effect-grid">
+  <div class="effect-card">
+    <div class="effect-title">01 — Magnetic Room Portal</div>
+    <div class="effect-desc">Hero button "Start Private Room" spawns a 3D portal ring. Mouse proximity warps surrounding particles toward it. Click triggers a camera dolly into the portal before routing.</div>
+    <div class="code-block"><span class="highlight">useFrame</span>((state) => {<br>&nbsp;&nbsp;ring.rotation.z += <span class="highlight2">0.004</span><br>&nbsp;&nbsp;ring.material.opacity = <span class="highlight3">lerp</span>(ring.material.opacity, hovered ? <span class="highlight2">1</span> : <span class="highlight2">0.4</span>, <span class="highlight2">0.08</span>)<br>})</div>
+  </div>
+  <div class="effect-card">
+    <div class="effect-title">02 — Particle Voice Mesh</div>
+    <div class="effect-desc">In the hero, 4,000 particles form a human face silhouette. When "COMMAND" appears, particles explode outward then reform. Mouse drag rotates the mesh on all 3 axes.</div>
+    <div class="code-block"><span class="highlight">BufferGeometry</span> + <span class="highlight3">PointsMaterial</span><br>positions[i] = <span class="highlight2">lerp</span>(chaos[i], face[i], progress)<br>uniforms.uTime.value += delta</div>
+  </div>
+  <div class="effect-card">
+    <div class="effect-title">03 — Depth-Scroll Tunnel</div>
+    <div class="effect-desc">Between hero and features, a scroll-pinned section shows a 3D tunnel of glowing rings. User scrolls through at their own pace — each ring reveals a feature bullet as it passes the camera.</div>
+    <div class="code-block">ScrollTrigger.create({<br>&nbsp;&nbsp;pin: <span class="highlight2">true</span>, scrub: <span class="highlight2">1</span>,<br>&nbsp;&nbsp;onUpdate: (self) => {<br>&nbsp;&nbsp;&nbsp;&nbsp;camera.position.z = <span class="highlight3">lerp</span>(<span class="highlight2">80</span>, <span class="highlight2">0</span>, self.progress)<br>&nbsp;&nbsp;}})  </div>
+  </div>
+  <div class="effect-card">
+    <div class="effect-title">04 — Game Card Hologram</div>
+    <div class="effect-desc">Game arcade cards use CSS 3D preserve-3d with a tilt that tracks mouse. On hover, a holographic shimmer shader sweeps across the face. Cards "pop" 24px toward viewer on focus.</div>
+    <div class="code-block"><span class="highlight">transform</span>: perspective(800px)<br>&nbsp;&nbsp;rotateX(<span class="highlight3">calc</span>(var(--dy) * 12deg))<br>&nbsp;&nbsp;rotateY(<span class="highlight3">calc</span>(var(--dx) * 12deg))<br>&nbsp;&nbsp;translateZ(<span class="highlight2">24px</span>)</div>
+  </div>
+  <div class="effect-card">
+    <div class="effect-title">05 — Pricing Morph</div>
+    <div class="effect-desc">Pricing cards use WebGL plane geometry. Switching tiers morphs the card mesh via vertex displacement — numbers count up/down with spring physics. Background responds with a ripple.</div>
+    <div class="code-block">useSpring({ val: price, config: {<br>&nbsp;&nbsp;tension: <span class="highlight2">200</span>, friction: <span class="highlight2">20</span> }})<br>mesh.material.uniforms<br>&nbsp;&nbsp;.uDisplace.value = <span class="highlight3">eased</span></div>
+  </div>
+  <div class="effect-card">
+    <div class="effect-title">06 — Ambient Room Presence</div>
+    <div class="effect-desc">A persistent 3D orb floats in the corner showing live active room count. It breathes (scale pulse), glows brighter as count rises, and casts a real-time soft light on surrounding elements.</div>
+    <div class="code-block"><span class="highlight">pointLight</span> intensity =<br>&nbsp;&nbsp;<span class="highlight3">map</span>(activeRooms, <span class="highlight2">0</span>, <span class="highlight2">20000</span>, <span class="highlight2">0.4</span>, <span class="highlight2">2.0</span>)<br>orb.scale.setScalar(<span class="highlight2">1</span> + Math.sin(t) * <span class="highlight2">0.05</span>)</div>
+  </div>
+</div>
+
+<p class="section-tag">tech stack</p>
+<p class="section-title" style="margin-bottom:0.75rem">Recommended libraries</p>
+<div class="stack-row">
+  <span class="stack-pill">React Three Fiber</span>
+  <span class="stack-pill">@react-three/drei</span>
+  <span class="stack-pill">@react-three/postprocessing</span>
+  <span class="stack-pill">GSAP + ScrollTrigger</span>
+  <span class="stack-pill">Framer Motion</span>
+  <span class="stack-pill">Lenis</span>
+  <span class="stack-pill">SplitType</span>
+  <span class="stack-pill">Shader Park</span>
+  <span class="stack-pill">Theatre.js</span>
+  <span class="stack-pill">Zustand</span>
+</div>
+
+<p class="section-tag">implementation phases</p>
+<p class="section-title" style="margin-bottom:1.25rem">Build sequence</p>
+<div class="timeline">
+  <div class="tl-item">
+    <div class="tl-num">1</div>
+    <div class="tl-body">
+      <div class="tl-phase">Week 1</div>
+      <div class="tl-name">3D scene foundation</div>
+      <div class="tl-desc">Set up R3F canvas overlay, particle system, GLSL background shader, Lenis scroll integration</div>
+    </div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-num">2</div>
+    <div class="tl-body">
+      <div class="tl-phase">Week 2</div>
+      <div class="tl-name">Scroll choreography</div>
+      <div class="tl-desc">GSAP ScrollTrigger tunnel, pinned sections, text split animations, parallax depth layers</div>
+    </div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-num">3</div>
+    <div class="tl-body">
+      <div class="tl-phase">Week 3</div>
+      <div class="tl-name">Interactive cards + cursor</div>
+      <div class="tl-desc">Game card holograms, magnetic CTA portal, custom morphing cursor, pricing spring morph</div>
+    </div>
+  </div>
+  <div class="tl-item" style="padding-bottom:0">
+    <div class="tl-num">4</div>
+    <div class="tl-body">
+      <div class="tl-phase">Week 4</div>
+      <div class="tl-name">Performance + polish</div>
+      <div class="tl-desc">LOD optimization, mobile fallbacks (CSS-only mode), Theatre.js animation sequencing, final grain + bloom pass</div>
+    </div>
+  </div>
+</div>
+
+</div>

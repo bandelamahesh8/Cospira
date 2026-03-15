@@ -12,7 +12,7 @@ import { VoiceTranscript } from '../models/VoiceTranscript.js';
 import logger from '../../shared/logger.js';
 import { getRoom } from '../../shared/redis.js';
 import orpionService from '../services/OrpionService.js';
-import { deleteRoomUploads } from '../utils/fileCleanup.js';
+import { deleteRoomUploads } from '../../utils/fileCleanup.js';
 
 const router = express.Router();
 

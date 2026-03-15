@@ -7,7 +7,7 @@
  * Outputs ENGAGEMENT_ALERT insights — never auto-intervenes.
  */
 
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 import { AI_INSIGHT_TYPES } from './BreakoutAIPolicy.js';
 // ingest is passed as parameter — not imported statically — to break circular deps
 

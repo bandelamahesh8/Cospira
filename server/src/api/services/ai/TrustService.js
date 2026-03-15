@@ -1,5 +1,5 @@
 import conflictDetector from './ConflictDetector.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class TrustService {
     constructor() {

@@ -16,19 +16,19 @@ import jwt from 'jsonwebtoken';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import client from 'prom-client'; // Prometheus client
-import logger from './logger.js'; // Winston logger
-import { createRoomSchema, joinRoomSchema, messageSchema } from './validation.js';
-import { initRedis, getRoom, saveRoom, deleteRoom, getActiveRooms, hasRoom, getUser, saveUser, deleteUser, getSystemConfig, saveSystemConfig, removeInactiveRooms } from './redis.js';
-import SFUHandler from './sfu/SFUHandler.js';
+import logger from './shared/logger.js'; // Winston logger
+import { createRoomSchema, joinRoomSchema, messageSchema } from './shared/validation.js';
+import { initRedis, getRoom, saveRoom, deleteRoom, getActiveRooms, hasRoom, getUser, saveUser, deleteUser, getSystemConfig, saveSystemConfig, removeInactiveRooms } from './shared/redis.js';
+import SFUHandler from './signaling/sfu/SFUHandler.js';
 import crypto from 'crypto';
 import { cleanupUploads } from './cleanup.js';
 import { deleteRoomUploads } from './utils/fileCleanup.js';
 import SnakeLadderEngine from './game/SnakeLadderEngine.js';
-import registerSocketHandlers from './sockets/index.js';
-import autoCloseService from './services/AutoCloseService.js';
+import registerSocketHandlers from './signaling/sockets/index.js';
+import autoCloseService from './api/services/AutoCloseService.js';
 import { Chess } from 'chess.js';
-import connectMongoDB from './mongo.js';
-import { supabase } from './supabase.js';
+import connectMongoDB from './shared/mongo.js';
+import { supabase } from './shared/supabase.js';
 
 // Initialize Supabase Storage Bucket
 // Triggering manifest...
@@ -56,35 +56,35 @@ if (supabase) {
     }
   }).catch(err => logger.warn('[Supabase] Bucket initialization exception:', err.message));
 }
-import roomRoutes from './routes/rooms.js';
-import authRoutes from './routes/auth.js';
-import aiMemoryRoutes from './routes/aiMemory.js';
-import aiContextRoutes from './routes/aiContext.js';
-import aiReasoningRoutes from './routes/aiReasoning.js';
-import aiPersonalityRoutes from './routes/aiPersonality.js';
-import aiAgentRoutes from './routes/aiAgents.js';
-import aiConflictRoutes from './routes/aiConflicts.js';
-import aiTrustRoutes from './routes/aiTrust.js';
-import aiEthicsRoutes from './routes/aiEthics.js';
-import aiTimelineRoutes from './routes/aiTimeline.js';
-import aiTwinRoutes from './routes/aiTwin.js';
-import aiSimulationRoutes from './routes/aiSimulation.js';
-import aiOptimizeRoutes from './routes/aiOptimize.js';
-import aiKernelRoutes from './routes/aiKernel.js';
-import aiPlatformRoutes from './routes/aiPlatform.js';
-import aiEnterpriseRoutes from './routes/aiEnterprise.js';
-import aiPluginsRoutes from './routes/aiPlugins.js';
-import aiAutonomousRoutes from './routes/aiAutonomous.js';
-import aiOSRoutes from './routes/aiOS.js';
-import agentManager from './services/ai/AgentManager.js';
-import aios from './services/ai/AIOS.js';
-import observerAgent from './services/ai/agents/ObserverAgent.js';
-import analyzerAgent from './services/ai/agents/AnalyzerAgent.js';
-import predictorAgent from './services/ai/agents/PredictorAgent.js';
-import consensusService from './services/ai/ConsensusService.js';
-import friendsRoutes from './routes/friends.js';
-import tournamentRoutes from './routes/tournaments.js';
-import gameRoutes from './routes/game.js';
+import roomRoutes from './api/routes/rooms.js';
+import authRoutes from './api/routes/auth.js';
+import aiMemoryRoutes from './api/routes/aiMemory.js';
+import aiContextRoutes from './api/routes/aiContext.js';
+import aiReasoningRoutes from './api/routes/aiReasoning.js';
+import aiPersonalityRoutes from './api/routes/aiPersonality.js';
+import aiAgentRoutes from './api/routes/aiAgents.js';
+import aiConflictRoutes from './api/routes/aiConflicts.js';
+import aiTrustRoutes from './api/routes/aiTrust.js';
+import aiEthicsRoutes from './api/routes/aiEthics.js';
+import aiTimelineRoutes from './api/routes/aiTimeline.js';
+import aiTwinRoutes from './api/routes/aiTwin.js';
+import aiSimulationRoutes from './api/routes/aiSimulation.js';
+import aiOptimizeRoutes from './api/routes/aiOptimize.js';
+import aiKernelRoutes from './api/routes/aiKernel.js';
+import aiPlatformRoutes from './api/routes/aiPlatform.js';
+import aiEnterpriseRoutes from './api/routes/aiEnterprise.js';
+import aiPluginsRoutes from './api/routes/aiPlugins.js';
+import aiAutonomousRoutes from './api/routes/aiAutonomous.js';
+import aiOSRoutes from './api/routes/aiOS.js';
+import agentManager from './api/services/ai/AgentManager.js';
+import aios from './api/services/ai/AIOS.js';
+import observerAgent from './api/services/ai/agents/ObserverAgent.js';
+import analyzerAgent from './api/services/ai/agents/AnalyzerAgent.js';
+import predictorAgent from './api/services/ai/agents/PredictorAgent.js';
+import consensusService from './api/services/ai/ConsensusService.js';
+import friendsRoutes from './api/routes/friends.js';
+import tournamentRoutes from './api/routes/tournaments.js';
+import gameRoutes from './api/routes/game.js';
 import httpProxy from 'http-proxy';
 
 const proxy = httpProxy.createProxyServer({
@@ -812,7 +812,7 @@ app.post('/api/create-room', async (req, res) => {
     };
     
     // Sync to Supabase (uses the same room shape)
-    await import('./services/SupabaseRoomService.js').then(m => m.syncCreateRoom(newRoom));
+    await import('./api/services/SupabaseRoomService.js').then(m => m.syncCreateRoom(newRoom));
 
     await saveRoom(newRoom);
     io.emit('room-created', {
@@ -888,7 +888,7 @@ registerSocketHandlers(io, sfuHandler);
 autoCloseService.start(io);
 
 // Initialize Matchmaking Service
-import { matchmakingService } from './services/MatchmakingService.js';
+import { matchmakingService } from './api/services/MatchmakingService.js';
 // Note: Matchmaking is handled via socket events in matchmaking.socket.js
 // The service doesn't have a start() method - it's a singleton that manages the queue
 /*

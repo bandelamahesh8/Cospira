@@ -1,5 +1,5 @@
 import trustService from './TrustService.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class RiskBehaviorModel {
     /**

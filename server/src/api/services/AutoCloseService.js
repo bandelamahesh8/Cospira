@@ -1,7 +1,7 @@
 import logger from '../../shared/logger.js';
 import { getRoom, deleteRoom, getActiveRooms } from '../../shared/redis.js';
 import eventLogger from './EventLogger.js';
-import { deleteRoomUploads } from '../utils/fileCleanup.js';
+import { deleteRoomUploads } from '../../utils/fileCleanup.js';
 
 class AutoCloseService {
     constructor() {

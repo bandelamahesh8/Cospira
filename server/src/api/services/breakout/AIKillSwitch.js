@@ -13,8 +13,8 @@
  *   if (!await AIKillSwitch.isEnabled(orgId)) return;
  */
 
-import { supabase } from '../../supabase.js';
-import logger from '../../logger.js';
+import { supabase } from '../../../shared/supabase.js';
+import logger from '../../../shared/logger.js';
 
 class AIKillSwitch {
   constructor() {

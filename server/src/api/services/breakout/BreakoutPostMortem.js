@@ -11,10 +11,10 @@
  * ULTRA: ai_audit_events written. No raw content stored.
  */
 
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 import { AI_INSIGHT_TYPES, checkAICapability } from './BreakoutAIPolicy.js';
 // ingest passed as parameter — not imported statically — to break circular deps
-import { supabase } from '../../supabase.js';
+import { supabase } from '../../../shared/supabase.js';
 import llmService from '../ai/LLMService.js';
 
 class BreakoutPostMortem {

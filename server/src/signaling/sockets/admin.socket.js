@@ -4,7 +4,7 @@
  * Secure handlers for high-level administration and intelligence.
  */
 
-import adminIntelligenceService from '../services/AdminIntelligenceService.js';
+import adminIntelligenceService from '../../api/services/AdminIntelligenceService.js';
 import logger from '../../shared/logger.js';
 
 const ADMIN_KEY = process.env.ADMIN_KEY || 'Mahesh@7648';

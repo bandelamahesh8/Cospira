@@ -12,7 +12,7 @@
  * ULTRA: risk alerts always written to ai_audit_events.
  */
 
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 import { AI_INSIGHT_TYPES } from './BreakoutAIPolicy.js';
 // NOTE: ingest is passed as a parameter — NOT imported statically — to break circular deps
 // BreakoutAIIngest lazy-imports this file; a static import back would cause a circular graph.

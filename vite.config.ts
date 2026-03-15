@@ -10,6 +10,7 @@ const securityDir = 'C:\\Users\\mahes\\Downloads\\PROJECTS\\COSPIRA_PROJECT\\SEC
 export default defineConfig(({ mode: _mode }) => ({
     envDir: securityDir,
   plugins: [react()],
+  assetsInclude: ['**/*.glb'],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

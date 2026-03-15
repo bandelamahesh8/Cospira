@@ -1,9 +1,9 @@
 
-import { Transcript } from '../models/Transcript.js';
+import { Transcript } from '../../api/models/Transcript.js';
 import logger from '../../shared/logger.js';
 
-import LLMService from '../services/ai/LLMService.js';
-import assistantService from '../services/AssistantService.js';
+import LLMService from '../../api/services/ai/LLMService.js';
+import assistantService from '../../api/services/AssistantService.js';
 
 export default function registerAIHandlers(io, socket) {
   
@@ -22,7 +22,7 @@ export default function registerAIHandlers(io, socket) {
       if (!roomId || !text) return;
 
       // Import content moderator
-      const { moderateContent, SEVERITY } = await import('../services/ai/ContentModerator.js');
+      const { moderateContent, SEVERITY } = await import('../../api/services/ai/ContentModerator.js');
 
       // Moderate transcript content
       const moderationResult = moderateContent(text, {

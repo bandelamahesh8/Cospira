@@ -2,7 +2,7 @@ import trustService from './TrustService.js';
 import conflictDetector from './ConflictDetector.js';
 import agentManager from './AgentManager.js';
 import aiPersonalityService from './PersonalityService.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class OptimizationEngine {
     constructor() {

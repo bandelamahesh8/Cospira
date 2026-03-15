@@ -2,8 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import logger from '../../shared/logger.js';
 import { getRoom, saveRoom, getUser } from '../../shared/redis.js';
 import { messageSchema } from '../../shared/validation.js';
-import eventLogger from '../services/EventLogger.js';
-import { syncMessage } from '../services/SupabaseRoomService.js';
+import eventLogger from '../../api/services/EventLogger.js';
+import { syncMessage } from '../../api/services/SupabaseRoomService.js';
 
 export default function registerChatHandlers(io, socket) {
   socket.on('send-message', async (payload, callback) => {
@@ -19,7 +19,7 @@ export default function registerChatHandlers(io, socket) {
       if (!user) return callback?.({ success: false, error: 'User not found' });
 
       // PHASE 5: Centralized Moderation & Bot Detection
-      const { default: moderationService } = await import('../services/ModerationService.js');
+      const { default: moderationService } = await import('../../api/services/ModerationService.js');
       
       const botCheck = await moderationService.checkBotActivity(roomId, user.id, 'chat');
       if (botCheck.bot && botCheck.severity === 'critical') {
@@ -49,7 +49,7 @@ export default function registerChatHandlers(io, socket) {
 
       // PHASE 7: AI Assistant Integration
       if (message.content.startsWith('/') || message.content.toLowerCase().includes('assistant')) {
-          const { default: assistantService } = await import('../services/AssistantService.js');
+          const { default: assistantService } = await import('../../api/services/AssistantService.js');
           const assistantResponse = await assistantService.processCommand(roomId, user.id, message.content);
           
           if (assistantResponse) {

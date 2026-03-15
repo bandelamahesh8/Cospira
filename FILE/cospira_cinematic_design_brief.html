@@ -1,0 +1,676 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+.root{font-family:'Syne',sans-serif;background:#060610;border-radius:16px;overflow:hidden;color:#ddd8ff;min-height:600px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 28px 16px;border-bottom:1px solid rgba(255,255,255,0.05);flex-wrap:wrap;gap:10px}
+.topbar-brand{font-size:13px;font-weight:800;color:#fff;letter-spacing:-0.02em}
+.topbar-sub{font-family:'DM Mono',monospace;font-size:9px;color:#3d3860;text-transform:uppercase;letter-spacing:0.14em;margin-top:2px}
+.level-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;background:linear-gradient(135deg,rgba(124,58,237,0.25),rgba(79,70,229,0.15));border:1px solid rgba(124,58,237,0.4);border-radius:999px;font-family:'DM Mono',monospace;font-size:10px;color:#c4b5fd;letter-spacing:0.06em}
+.level-dot{width:6px;height:6px;border-radius:50%;background:#a78bfa;animation:lp 2s ease-in-out infinite}
+@keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.3;transform:scale(0.6)}}
+
+.nav{display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.04);overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.ntab{padding:11px 16px;font-family:'DM Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.1em;cursor:pointer;color:#3d3860;border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.15s;flex-shrink:0}
+.ntab:hover{color:#8b7dcc}
+.ntab.on{color:#c4b5fd;border-bottom-color:#7c3aed}
+
+.content{padding:0}
+.module{display:none}
+.module.on{display:block}
+
+.mod-header{padding:24px 28px 0}
+.mod-num{font-family:'DM Mono',monospace;font-size:9px;color:#5a4a8a;text-transform:uppercase;letter-spacing:0.16em;margin-bottom:6px}
+.mod-title{font-size:22px;font-weight:800;color:#f0eeff;letter-spacing:-0.03em;line-height:1.2;margin-bottom:4px}
+.mod-role{font-size:11px;font-family:'DM Mono',monospace;color:#4a4068}
+
+.sections{padding:20px 28px 28px;display:flex;flex-direction:column;gap:16px}
+
+.block{background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden}
+.block-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;user-select:none}
+.block-label{font-size:12px;font-weight:700;color:#c4b5fd;display:flex;align-items:center;gap:8px}
+.block-icon{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.block-caret{font-size:10px;color:#4a4068;transition:transform 0.2s}
+.block-caret.open{transform:rotate(180deg)}
+.block-body{padding:14px 16px;display:none;flex-direction:column;gap:10px}
+.block-body.open{display:flex}
+
+.spec-row{display:flex;flex-direction:column;gap:4px}
+.spec-key{font-family:'DM Mono',monospace;font-size:9px;color:#5a4a8a;text-transform:uppercase;letter-spacing:0.12em}
+.spec-val{font-size:12px;color:#a89fdd;line-height:1.55}
+.spec-val code{background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.25);border-radius:4px;padding:1px 6px;font-family:'DM Mono',monospace;font-size:10px;color:#c4b5fd}
+.spec-val b{color:#e0d8ff;font-weight:700}
+
+.tag-line{display:flex;flex-wrap:wrap;gap:5px}
+.tag{padding:3px 9px;border-radius:999px;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0.05em}
+.t-purple{background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);color:#c4b5fd}
+.t-green{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);color:#6ee7b7}
+.t-blue{background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc}
+.t-amber{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);color:#fbbf24}
+.t-red{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#fca5a5}
+.t-cyan{background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.2);color:#67e8f9}
+
+.phase-row{display:flex;gap:8px;flex-direction:column}
+.phase{display:flex;gap:10px;align-items:flex-start;padding:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px}
+.phase-num{width:24px;height:24px;border-radius:6px;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.35);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:10px;color:#a78bfa;font-weight:500;flex-shrink:0;margin-top:1px}
+.phase-content{}
+.phase-title{font-size:12px;font-weight:700;color:#e0d8ff;margin-bottom:3px}
+.phase-desc{font-size:11px;color:#6a6090;line-height:1.5}
+.phase-desc code{background:rgba(124,58,237,0.12);border-radius:3px;padding:0 5px;font-family:'DM Mono',monospace;font-size:10px;color:#a78bfa}
+
+.code-block{background:#030308;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px 14px;font-family:'DM Mono',monospace;font-size:10px;line-height:1.7;color:#7a70a8;overflow-x:auto}
+.code-block .kw{color:#a78bfa}
+.code-block .fn{color:#67e8f9}
+.code-block .str{color:#86efac}
+.code-block .num{color:#fca5a5}
+.code-block .cmt{color:#3d3860;font-style:italic}
+
+.prompt-output{background:#030308;border:1px solid rgba(124,58,237,0.25);border-radius:12px;padding:20px;font-family:'DM Mono',monospace;font-size:11px;line-height:1.75;color:#8a82b8;white-space:pre-wrap;word-break:break-word;max-height:480px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(124,58,237,0.3) transparent}
+.prompt-output .h{color:#e0d8ff;font-weight:700}
+.prompt-output .s{color:#a78bfa}
+.prompt-output .v{color:#67e8f9}
+.prompt-output .g{color:#86efac}
+.prompt-output .c{color:#3d3860}
+
+.action-bar{display:flex;gap:8px;padding:0 28px 24px;flex-wrap:wrap}
+.btn-fire{flex:1;min-width:160px;padding:12px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none;border-radius:10px;color:#fff;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:0.02em}
+.btn-fire:hover{opacity:0.88;transform:translateY(-1px)}
+.btn-copy{padding:12px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#8b85aa;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.18s}
+.btn-copy:hover{background:rgba(255,255,255,0.09);color:#c4b5fd}
+.toast{position:absolute;bottom:20px;right:20px;background:rgba(124,58,237,0.9);color:#fff;font-family:'DM Mono',monospace;font-size:11px;padding:8px 16px;border-radius:8px;opacity:0;transform:translateY(8px);transition:all 0.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+.divider{height:1px;background:rgba(255,255,255,0.04);margin:4px 0}
+
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:12px;padding:10px 0}
+.tl-line{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:20px}
+.tl-dot{width:10px;height:10px;border-radius:50%;border:2px solid #7c3aed;background:#060610;flex-shrink:0}
+.tl-connector{width:2px;flex:1;background:rgba(124,58,237,0.2);margin:3px 0}
+.tl-body{padding-bottom:6px}
+.tl-time{font-family:'DM Mono',monospace;font-size:9px;color:#5a4a8a;margin-bottom:3px}
+.tl-title{font-size:12px;font-weight:700;color:#e0d8ff;margin-bottom:2px}
+.tl-desc{font-size:11px;color:#5a5480;line-height:1.5}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mini-card{padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px}
+.mc-label{font-family:'DM Mono',monospace;font-size:9px;color:#4a4068;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px}
+.mc-val{font-size:12px;font-weight:700;color:#c4b5fd}
+
+</style>
+
+<div class="root" id="root" style="position:relative">
+<div class="topbar">
+  <div>
+    <div class="topbar-brand">COSPIRA — Cinematic Design Brief</div>
+    <div class="topbar-sub">Advanced Creative Directive · Prompt Architecture v3.0</div>
+  </div>
+  <div class="level-badge"><div class="level-dot"></div>PRINCIPAL LEVEL</div>
+</div>
+
+<div class="nav" id="nav">
+  <div class="ntab on" onclick="tab(0)">Overview</div>
+  <div class="ntab" onclick="tab(1)">Motion System</div>
+  <div class="ntab" onclick="tab(2)">3D & Depth</div>
+  <div class="ntab" onclick="tab(3)">Interaction Layer</div>
+  <div class="ntab" onclick="tab(4)">Section Architecture</div>
+  <div class="ntab" onclick="tab(5)">Typography & Color</div>
+  <div class="ntab" onclick="tab(6)">Performance Rules</div>
+  <div class="ntab" onclick="tab(7)">Full Prompt</div>
+</div>
+
+<!-- ── MODULE 0: OVERVIEW ── -->
+<div class="module on" id="m0">
+  <div class="mod-header">
+    <div class="mod-num">Module 00 · Brief Identity</div>
+    <div class="mod-title">The Cinematic Digital Experience</div>
+    <div class="mod-role">Principal Creative Director · Creative Technologist · Senior Motion Designer</div>
+  </div>
+  <div class="sections">
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(124,58,237,0.2)">◈</div>Creative Director's Intent</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="spec-row"><div class="spec-key">Platform Concept</div><div class="spec-val">Cospira is not a meeting tool. It is a real-time operating environment — video, games, AI, co-browsing, watch-together — all in a single room. The homepage must feel like <b>entering a system that is already alive.</b> Not a brochure. A portal.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">The One Thing a Visitor Must Feel</div><div class="spec-val"><b>"This platform is running. It is watching. It is faster than anything I have used before."</b> Every animation, every latency, every micro-interaction must reinforce this feeling.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Reference Axis</div><div class="spec-val">The intersection of <b>Linear.app's restraint</b>, <b>Vercel's technical confidence</b>, and <b>Resend's editorial density</b> — executed with the motion ambition of <b>Awwwards SOTD-level creative development.</b></div></div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(6,182,212,0.15)">⊞</div>Aesthetic System</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="grid2">
+          <div class="mini-card"><div class="mc-label">Theme</div><div class="mc-val">Obsidian Intelligence</div></div>
+          <div class="mini-card"><div class="mc-label">Mode</div><div class="mc-val">Dark-first, Light variant</div></div>
+          <div class="mini-card"><div class="mc-label">Texture</div><div class="mc-val">Film grain + Glassmorphism</div></div>
+          <div class="mini-card"><div class="mc-label">Depth Model</div><div class="mc-val">7-layer parallax stack</div></div>
+          <div class="mini-card"><div class="mc-label">Motion Signature</div><div class="mc-val">Spring physics, no easing curves</div></div>
+          <div class="mini-card"><div class="mc-label">Primary Accent</div><div class="mc-val">Indigo ↔ Violet spectrum</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(245,158,11,0.15)">◉</div>Technology Stack Directive</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="tag-line">
+          <span class="tag t-purple">GSAP 3 + ScrollTrigger</span>
+          <span class="tag t-blue">Three.js r160</span>
+          <span class="tag t-cyan">Lenis Smooth Scroll</span>
+          <span class="tag t-green">Web Animations API</span>
+          <span class="tag t-amber">CSS Custom Properties</span>
+          <span class="tag t-red">requestAnimationFrame loops</span>
+          <span class="tag t-purple">IntersectionObserver v2</span>
+          <span class="tag t-blue">CSS @property (Houdini)</span>
+          <span class="tag t-cyan">OffscreenCanvas</span>
+          <span class="tag t-green">ResizeObserver</span>
+        </div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Constraint</div><div class="spec-val">Single HTML file. No build tools. All libraries from <code>cdnjs.cloudflare.com</code>. Must maintain <b>60fps on mid-range devices</b>. All animations respect <code>prefers-reduced-motion</code>.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODULE 1: MOTION SYSTEM ── -->
+<div class="module" id="m1">
+  <div class="mod-header">
+    <div class="mod-num">Module 01 · Motion Architecture</div>
+    <div class="mod-title">The Complete Motion System</div>
+    <div class="mod-role">From first pixel render to final scroll position — every state is choreographed</div>
+  </div>
+  <div class="sections">
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(124,58,237,0.2)">▶</div>Stage 1 — Preloader Sequence</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-line"><div class="tl-dot"></div><div class="tl-connector"></div></div><div class="tl-body"><div class="tl-time">0ms — 200ms</div><div class="tl-title">Black frame hold</div><div class="tl-desc">Full black. No flash. Browser paint completes silently. <code>document.body</code> is <code>visibility: hidden</code> until JS confirms all critical resources loaded.</div></div></div>
+          <div class="tl-item"><div class="tl-line"><div class="tl-dot"></div><div class="tl-connector"></div></div><div class="tl-body"><div class="tl-time">200ms — 800ms</div><div class="tl-title">Wordmark construction</div><div class="tl-desc">"COSPIRA" renders character by character using <code>clipPath</code> reveal. Each letter slides up from 120% Y with 40ms stagger. Spring: stiffness 280, damping 22.</div></div></div>
+          <div class="tl-item"><div class="tl-line"><div class="tl-dot"></div><div class="tl-connector"></div></div><div class="tl-body"><div class="tl-time">800ms — 1600ms</div><div class="tl-title">Progress arc + counter</div><div class="tl-desc">SVG arc traces 0°→360° in 800ms. Numeric counter increments 0→100 using <code>GSAP.to({val})</code> with <code>snap: 1</code>. Counter uses tabular-nums font variant for stability.</div></div></div>
+          <div class="tl-item"><div class="tl-line"><div class="tl-dot"></div><div class="tl-connector"></div></div><div class="tl-body"><div class="tl-time">1600ms — 2200ms</div><div class="tl-title">Portal open transition</div><div class="tl-desc">Preloader div scales to <code>scaleX(0)</code> using a staggered wipe (left panel then right panel) over 600ms. <code>ease: "expo.inOut"</code>. Page content already positioned behind it, revealed by the wipe.</div></div></div>
+          <div class="tl-item"><div class="tl-line"><div class="tl-dot"></div></div><div class="tl-body"><div class="tl-time">2200ms+</div><div class="tl-title">Hero entrance fires</div><div class="tl-desc">GSAP timeline begins. <code>ScrollTrigger.refresh()</code> called after a single rAF to let layout settle before scroll positions are calculated.</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(16,185,129,0.15)">↓</div>Stage 2 — Scroll Motion Grammar</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="phase-row">
+          <div class="phase"><div class="phase-num">A</div><div class="phase-content"><div class="phase-title">Scrub animations (position-locked)</div><div class="phase-desc">All section transitions use <code>scrub: 1.2</code> — the animation progress is a direct function of scroll position with 1.2s lag. User controls the playhead. No auto-play surprises.</div></div></div>
+          <div class="phase"><div class="phase-num">B</div><div class="phase-content"><div class="phase-title">Section pin sequences</div><div class="phase-desc">Game Arcade, Watch Together, and How It Works sections pin with <code>pin: true, pinSpacing: true</code>. Content animates while viewport is locked. Gives the illusion of 3D depth on a flat scroll.</div></div></div>
+          <div class="phase"><div class="phase-num">C</div><div class="phase-content"><div class="phase-title">Staggered grid reveals</div><div class="phase-desc">Every card grid uses <code>gsap.from(".card", {stagger: 0.08, y: 40, opacity: 0})</code> triggered by <code>IntersectionObserver</code> at threshold 0.1. First card at 0ms. Last card at N×80ms.</div></div></div>
+          <div class="phase"><div class="phase-num">D</div><div class="phase-content"><div class="phase-title">Horizontal scroll strip</div><div class="phase-desc">Game arcade section uses <code>ScrollTrigger</code> horizontal pinning. As user scrolls down, the game cards slide left. Velocity tied to vertical scroll delta. Exit: vertical scroll resumes.</div></div></div>
+          <div class="phase"><div class="phase-num">E</div><div class="phase-content"><div class="phase-title">Text character splitting</div><div class="phase-desc">All H1/H2 headings are processed through a character splitter on DOM ready. Each <code>span.char</code> has <code>data-index</code>. Reveal uses <code>clipPath: inset(0 100% 0 0)</code> → <code>inset(0 0% 0 0)</code> with 18ms inter-character stagger.</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(99,102,241,0.2)">≋</div>Lenis Smooth Scroll Configuration</div>
+        <div class="block-caret">▾</div>
+      </div>
+      <div class="block-body">
+        <div class="code-block"><span class="kw">const</span> lenis = <span class="kw">new</span> <span class="fn">Lenis</span>({
+  duration: <span class="num">1.4</span>,
+  easing: (t) => <span class="fn">Math.min</span>(<span class="num">1</span>, <span class="num">1.001</span> - <span class="fn">Math.pow</span>(<span class="num">2</span>, <span class="num">-10</span> * t)),
+  direction: <span class="str">'vertical'</span>,
+  gestureDirection: <span class="str">'vertical'</span>,
+  smooth: <span class="kw">true</span>,
+  mouseMultiplier: <span class="num">1.2</span>,
+  smoothTouch: <span class="kw">false</span>, <span class="cmt">// native on mobile</span>
+  touchMultiplier: <span class="num">2.0</span>,
+  infinite: <span class="kw">false</span>,
+});
+
+<span class="cmt">// Hook into GSAP ticker for frame-perfect sync</span>
+gsap.ticker.add((time) => lenis.<span class="fn">raf</span>(time * <span class="num">1000</span>));
+gsap.ticker.lagSmoothing(<span class="num">0</span>);</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODULE 2: 3D & DEPTH ── -->
+<div class="module" id="m2">
+  <div class="mod-header">
+    <div class="mod-num">Module 02 · 3D & Spatial Design</div>
+    <div class="mod-title">Three.js Hero & Parallax Architecture</div>
+    <div class="mod-role">The spatial layer that makes the screen feel like a window, not a wall</div>
+  </div>
+  <div class="sections">
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(6,182,212,0.15)">◻</div>Three.js Hero Asset — The Neural Mesh</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="spec-row"><div class="spec-key">Concept</div><div class="spec-val">A dynamic 3D particle mesh representing Cospira's real-time connection network. <b>Nodes</b> = participants. <b>Edges</b> = live connections. The mesh breathes, pulses, and reacts to the mouse — never static, never repeating.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Geometry</div><div class="spec-val">1,200 nodes using <code>THREE.Points</code> with <code>BufferGeometry</code>. Edges rendered as <code>THREE.LineSegments</code>. Node positions stored in a <code>Float32Array</code> and updated each frame via Simplex noise displacement. Max edge distance: 120 units (proximity-based connection).</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Mouse Parallax Response</div><div class="spec-val">Camera positioned at Z=400. On <code>mousemove</code>: camera.x lerps toward <code>mouseNDC.x * 30</code>, camera.y toward <code>mouseNDC.y * -20</code>. Lerp factor: 0.04 per frame. Result: 3D perspective shift without camera rotation — the mesh appears to float in front of the content.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Mobile Behaviour</div><div class="spec-val">On touch devices, replace mouse parallax with <code>DeviceOrientationEvent</code> beta/gamma. Clamp: ±15°. If permission denied or unavailable: ambient oscillation at 0.0008 rad/frame using a sine wave on both axes.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Scroll Behaviour</div><div class="spec-val">As user scrolls past hero section, mesh.position.z advances from 0 → -300 (depth recession) and opacity fades 1 → 0. Triggered via <code>ScrollTrigger.create</code> with <code>scrub: 1.5</code>. Creates a "diving into" the platform sensation.</div></div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(124,58,237,0.2)">⬡</div>7-Layer Parallax Architecture</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="phase-row">
+          <div class="phase"><div class="phase-num">L1</div><div class="phase-content"><div class="phase-title">Static noise grain (CSS pseudo)</div><div class="phase-desc">Fixed SVG filter: <code>feTurbulence baseFrequency="0.65"</code> + <code>feColorMatrix</code> for monochrome grain. <code>mix-blend-mode: overlay</code>. Opacity 0.025. Animates at 8fps via CSS <code>@keyframes</code> offset.</div></div></div>
+          <div class="phase"><div class="phase-num">L2</div><div class="phase-content"><div class="phase-title">Deep background glow (0.05x scroll)</div><div class="phase-desc">Two radial gradients: indigo-900/12 at top-left, violet-900/10 at bottom-right. Translate at 5% of scroll delta. Near-static — creates the sense of a light source infinitely far away.</div></div></div>
+          <div class="phase"><div class="phase-num">L3</div><div class="phase-content"><div class="phase-title">Three.js mesh canvas (0.15x scroll)</div><div class="phase-desc">Canvas positioned absolute, <code>pointer-events: none</code>. Translates at 15% of scroll delta on top of its own internal camera drift. Creates double-parallax on the primary hero asset.</div></div></div>
+          <div class="phase"><div class="phase-num">L4</div><div class="phase-content"><div class="phase-title">Geometric accents (0.3x scroll)</div><div class="phase-desc">6–8 CSS-drawn geometric shapes (rings, dots, partial arcs) positioned absolutely around the hero. Translate at 30% delta. Stagger their entrance reveals with 80ms intervals.</div></div></div>
+          <div class="phase"><div class="phase-num">L5</div><div class="phase-content"><div class="phase-title">Subheadline + live ticker (0.55x scroll)</div><div class="phase-desc">Text content block. Moves at 55% of scroll delta. Fades out by scroll position 0.3× viewport height.</div></div></div>
+          <div class="phase"><div class="phase-num">L6</div><div class="phase-content"><div class="phase-title">Primary headline (0.8x scroll)</div><div class="phase-desc">Display type. Moves slowest of all text layers — creates the illusion that the headline is physically closer to the viewer than the subtext.</div></div></div>
+          <div class="phase"><div class="phase-num">L7</div><div class="phase-content"><div class="phase-title">CTA cluster (1.0x scroll — anchored)</div><div class="phase-desc">Standard scroll speed. CTAs appear to be "resting" on the page surface while everything around them floats at different depths.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODULE 3: INTERACTION LAYER ── -->
+<div class="module" id="m3">
+  <div class="mod-header">
+    <div class="mod-num">Module 03 · Interaction & UX Micromoments</div>
+    <div class="mod-title">The Tactile Digital Layer</div>
+    <div class="mod-role">Every hover, click, and cursor movement must feel like touching a physical object</div>
+  </div>
+  <div class="sections">
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(6,182,212,0.15)">⊹</div>Custom Cursor System — 4 Morphing States</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="phase-row">
+          <div class="phase"><div class="phase-num">①</div><div class="phase-content"><div class="phase-title">Default State — Dual Ring</div><div class="phase-desc">Outer ring (28px): 1px indigo border, follows at 80ms lag (lerp 0.12). Inner dot (6px): tracks true cursor at 0ms lag. Gap between them visualises cursor velocity — rings compress at speed.</div></div></div>
+          <div class="phase"><div class="phase-num">②</div><div class="phase-content"><div class="phase-title">CTA Hover — Text Morph</div><div class="phase-desc">On hover over any <code>.cta</code> element: outer ring scales to 64px, fills to <code>rgba(255,255,255,0.08)</code>. Inner dot fades. A context word appears inside the ring: <code>ENTER</code> on primary CTAs, <code>PLAY</code> on game cards, <code>WATCH</code> on video features. Text morphs using <code>clipPath</code> wipe.</div></div></div>
+          <div class="phase"><div class="phase-num">③</div><div class="phase-content"><div class="phase-title">Link Hover — Inversion</div><div class="phase-desc">On hover over text links: cursor inverts. Outer ring fills solid white. Inner dot becomes dark. Uses <code>mix-blend-mode: difference</code> on the cursor element — automatically inverts whatever colour is beneath it without any JS colour detection.</div></div></div>
+          <div class="phase"><div class="phase-num">④</div><div class="phase-content"><div class="phase-title">Drag / Scroll Zones — Arrow Morph</div><div class="phase-desc">Over the horizontal game arcade strip: cursor morphs to a horizontal double-arrow (← →) at 36px. Over the Three.js canvas: cursor disappears and the inner dot becomes a 3px crosshair matching the mesh colour.</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(124,58,237,0.2)">◉</div>Magnetic Hover System</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="spec-row"><div class="spec-key">Implementation</div><div class="spec-val">Every <code>.magnetic</code> element (buttons, nav links, social icons) has a detection zone 1.5× its bounding box. On <code>mousemove</code> within zone: element translates toward cursor at 28% of cursor offset. Spring return on <code>mouseleave</code> using <code>gsap.to</code> with <code>stiffness: 200, damping: 18</code>.</div></div>
+        <div class="divider"></div>
+        <div class="code-block"><span class="kw">function</span> <span class="fn">initMagnetic</span>(el) {
+  <span class="kw">const</span> strength = <span class="num">0.28</span>;
+  el.<span class="fn">addEventListener</span>(<span class="str">'mousemove'</span>, (e) => {
+    <span class="kw">const</span> r = el.<span class="fn">getBoundingClientRect</span>();
+    <span class="kw">const</span> dx = e.clientX - (r.left + r.width / <span class="num">2</span>);
+    <span class="kw">const</span> dy = e.clientY - (r.top + r.height / <span class="num">2</span>);
+    gsap.<span class="fn">to</span>(el, { x: dx * strength, y: dy * strength,
+      duration: <span class="num">0.3</span>, ease: <span class="str">'power2.out'</span> });
+  });
+  el.<span class="fn">addEventListener</span>(<span class="str">'mouseleave'</span>, () => {
+    gsap.<span class="fn">to</span>(el, { x: <span class="num">0</span>, y: <span class="num">0</span>,
+      duration: <span class="num">0.6</span>, ease: <span class="str">'elastic.out(1, 0.4)'</span> });
+  });
+}</div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(16,185,129,0.15)">⚡</div>Haptic-Like Click Feedback</div>
+        <div class="block-caret">▾</div>
+      </div>
+      <div class="block-body">
+        <div class="phase-row">
+          <div class="phase"><div class="phase-num">A</div><div class="phase-content"><div class="phase-title">Ripple origin burst</div><div class="phase-desc">On click: inject a <code>div.ripple</code> at cursor position inside the button. Scale 0→1.8 in 400ms, opacity 1→0 in 400ms. <code>pointer-events: none</code>. Colour: 30% opacity of button's accent colour.</div></div></div>
+          <div class="phase"><div class="phase-num">B</div><div class="phase-content"><div class="phase-title">Button compression + spring return</div><div class="phase-desc"><code>transform: scale(0.94)</code> on <code>:active</code>. Released via <code>gsap.to</code> with <code>ease: "elastic.out(1.2, 0.5)"</code> — slight overshoot creates physical spring feel.</div></div></div>
+          <div class="phase"><div class="phase-num">C</div><div class="phase-content"><div class="phase-title">Navigator vibration (mobile)</div><div class="phase-desc"><code>navigator.vibrate([8])</code> on primary CTA click on mobile. 8ms — imperceptible as a notification, perceptible as confirmation. Wrap in try-catch; fail silently if not supported.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODULE 4: SECTION ARCHITECTURE ── -->
+<div class="module" id="m4">
+  <div class="mod-header">
+    <div class="mod-num">Module 04 · Page Section Architecture</div>
+    <div class="mod-title">20 Sections — Each With a Unique Motion Signature</div>
+    <div class="mod-role">No two sections reveal the same way. Each one has its own entry choreography.</div>
+  </div>
+  <div class="sections">
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(124,58,237,0.2)">▸</div>Section Entry Signatures</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="phase-row">
+          <div class="phase"><div class="phase-num">S1</div><div class="phase-content"><div class="phase-title">HERO — Neural mesh + split-text cascade</div><div class="phase-desc">Three.js mesh fades in (opacity 0→1, 1200ms). Headline characters reveal with <code>clipPath</code> wipe at 18ms stagger. Subheadline types in via character opacity stagger. Live ticker fades in last.</div></div></div>
+          <div class="phase"><div class="phase-num">S2</div><div class="phase-content"><div class="phase-title">DIFFERENTIATOR — Horizontal line draw</div><div class="phase-desc">SVG horizontal rule draws left-to-right as section enters. Text blocks slide up from Y+60 with stagger 0.12s. Background switches to a subtly lighter surface to mark the narrative shift.</div></div></div>
+          <div class="phase"><div class="phase-num">S3</div><div class="phase-content"><div class="phase-title">ROOM MODES — Pinned mode selector</div><div class="phase-desc">Section pins. Four mode cards cascade in from right (stagger 0.1s). As user scrolls: active card cycles Fun→Pro→Ultra→Mixed with a smooth indicator translation. Unpins after all 4 are shown.</div></div></div>
+          <div class="phase"><div class="phase-num">S4</div><div class="phase-content"><div class="phase-title">GAME ARCADE — Horizontal scroll strip</div><div class="phase-desc">Horizontal rail of game poster cards. Pin + horizontal ScrollTrigger. Cards use 3D tilt on hover (<code>rotateX</code> max ±8°, <code>rotateY</code> max ±12°). Active card scales to 1.06.</div></div></div>
+          <div class="phase"><div class="phase-num">S5</div><div class="phase-content"><div class="phase-title">WATCH TOGETHER — Countdown sync demo</div><div class="phase-desc">Animated mockup of two browser windows showing the same video frame. A shared progress bar syncs across both. Timestamp digits flip using <code>clipPath</code> on scroll position.</div></div></div>
+          <div class="phase"><div class="phase-num">S6</div><div class="phase-content"><div class="phase-title">SEMANTIC MATCHING — Live node graph</div><div class="phase-desc">Five-phase matching animation loop (existing from source code). Canvas-drawn SVG with spring-physics node movement. Match line draws in using <code>stroke-dashoffset</code> animation.</div></div></div>
+          <div class="phase"><div class="phase-num">S7</div><div class="phase-content"><div class="phase-title">AI INTELLIGENCE — Before/After morph</div><div class="phase-desc">Two panels. As user scrolls: BEFORE panel's content corrupts (characters randomise using a character-swap loop), then AFTER panel slides over it with a wipe. The transition is the demonstration.</div></div></div>
+          <div class="phase"><div class="phase-num">S8</div><div class="phase-content"><div class="phase-title">FINAL CTA — Radial zoom portal</div><div class="phase-desc">As section enters viewport: a radial gradient expands from centre to edges over 1.2s. Headline scales from 0.85→1.0 with spring easing. CTA button pulses once (scale 1.0→1.04→1.0) to draw the eye.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODULE 5: TYPOGRAPHY & COLOR ── -->
+<div class="module" id="m5">
+  <div class="mod-header">
+    <div class="mod-num">Module 05 · Typography & Color System</div>
+    <div class="mod-title">Type as Architecture. Color as Signal.</div>
+    <div class="mod-role">No font pairing is accidental. No color is decorative.</div>
+  </div>
+  <div class="sections">
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(124,58,237,0.2)">T</div>Typography Stack</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="spec-row"><div class="spec-key">Display / Hero</div><div class="spec-val"><code>Syne 800</code> — Geometric, technical, slightly condensed. Used for hero headlines and section titles only. Size: <code>clamp(52px, 8vw, 120px)</code>. Letter-spacing: <code>-0.04em</code>. Line-height: 0.92.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Section Headings</div><div class="spec-val"><code>Syne 700</code>. Size: <code>clamp(32px, 4vw, 64px)</code>. Letter-spacing: <code>-0.03em</code>. Line-height: 1.1.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Body Copy</div><div class="spec-val"><code>DM Sans 400</code>. Size: 17px. Line-height: 1.8. Max width: 62ch. Color: <code>rgba(255,255,255,0.55)</code>.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Technical / Monospace</div><div class="spec-val"><code>DM Mono 400/500</code>. Used for: live signal ticker, section eyebrow labels, feature tags, nav links, code blocks. Size: 10–13px. Letter-spacing: <code>0.10–0.18em</code>. Uppercase.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Forbidden</div><div class="spec-val">Inter, Roboto, SF Pro, system-ui. These signal a product that didn't think about typography. Cospira's type must signal <b>intentionality.</b></div></div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(99,102,241,0.2)">●</div>Color Architecture</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="spec-row"><div class="spec-key">Surface Stack (Dark Mode)</div><div class="spec-val">Background: <code>#050505</code>. Surface 1: <code>#0c0c14</code>. Surface 2: <code>#111120</code>. Border default: <code>rgba(255,255,255,0.06)</code>. Border hover: <code>rgba(255,255,255,0.12)</code>.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Accent System</div><div class="spec-val">Primary: <code>#4F46E5</code> (indigo-600). Secondary: <code>#7C3AED</code> (violet-600). Glow: <code>rgba(99,102,241,0.25)</code>. Emerald signal: <code>#10B981</code> (online/match/confirm states only).</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Text Hierarchy</div><div class="spec-val">Primary: <code>rgba(255,255,255,0.95)</code>. Secondary: <code>rgba(255,255,255,0.55)</code>. Tertiary / labels: <code>rgba(255,255,255,0.28)</code>. Accent: <code>#A5B4FC</code> (indigo-300).</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">CSS Custom Properties (define all tokens)</div><div class="spec-val"><code>--bg-base, --bg-surface, --accent-primary, --accent-secondary, --text-primary, --text-secondary, --border-default, --border-hover, --glow-color</code>. All animations and colors reference variables — never hardcoded hex in component styles.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODULE 6: PERFORMANCE ── -->
+<div class="module" id="m6">
+  <div class="mod-header">
+    <div class="mod-num">Module 06 · Performance & Accessibility Contracts</div>
+    <div class="mod-title">60fps Is Not a Goal. It Is a Contract.</div>
+    <div class="mod-role">Every animation technique must pass the jank test before shipping</div>
+  </div>
+  <div class="sections">
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(16,185,129,0.15)">✓</div>GPU Acceleration Rules</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="spec-row"><div class="spec-key">Composited properties only</div><div class="spec-val">All animations use only <code>transform</code> and <code>opacity</code>. Never animate <code>width</code>, <code>height</code>, <code>top</code>, <code>left</code>, <code>margin</code>, <code>padding</code>, or any layout property. Violating this causes layout recalculation and frame drops on every browser.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">will-change discipline</div><div class="spec-val">Apply <code>will-change: transform, opacity</code> only to elements actively animating. Remove after animation completes via <code>onComplete</code> callback. Blanket application causes excessive GPU memory consumption.</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Three.js render budget</div><div class="spec-val">Max draw calls: 4. Use <code>THREE.InstancedMesh</code> for all nodes (1200 instances, 1 draw call). Edge lines: single merged <code>BufferGeometry</code>. Texture-free — all visuals from vertex shaders. Antialiasing: <code>false</code> on mobile (saves ~15ms/frame).</div></div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Scroll event throttling</div><div class="spec-val">Never read <code>scrollY</code> in a scroll listener. Use <code>ScrollTrigger</code>'s internal tick which reads scroll position once per rAF frame. For custom scroll effects: store latest scroll value in a variable in the listener, read it only in rAF callback.</div></div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head" onclick="tog(this)">
+        <div class="block-label"><div class="block-icon" style="background:rgba(245,158,11,0.15)">⚠</div>Accessibility & Motion Sensitivity</div>
+        <div class="block-caret open">▾</div>
+      </div>
+      <div class="block-body open">
+        <div class="code-block"><span class="cmt">// Wrap ALL animation initialisation in this check</span>
+<span class="kw">const</span> prefersReduced = <span class="fn">window.matchMedia</span>(
+  <span class="str">'(prefers-reduced-motion: reduce)'</span>
+).<span class="fn">matches</span>;
+
+<span class="kw">if</span> (!prefersReduced) {
+  <span class="fn">initThreeJS</span>();
+  <span class="fn">initLenis</span>();
+  <span class="fn">initScrollTrigger</span>();
+  <span class="fn">initCursor</span>();
+} <span class="kw">else</span> {
+  <span class="cmt">// Instant reveals, no scroll animations, no cursor FX</span>
+  document.<span class="fn">querySelectorAll</span>(<span class="str">'.reveal'</span>)
+    .<span class="fn">forEach</span>(el => el.style.opacity = <span class="str">'1'</span>);
+}</div>
+        <div class="divider"></div>
+        <div class="spec-row"><div class="spec-key">Mobile graceful degradation</div><div class="spec-val">On touch devices: disable magnetic hover, disable custom cursor, simplify parallax to 2 layers max, reduce Three.js particle count to 400, disable grain overlay. Detect via <code>('ontouchstart' in window)</code>.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODULE 7: FULL PROMPT ── -->
+<div class="module" id="m7">
+  <div class="mod-header">
+    <div class="mod-num">Module 07 · The Complete Deployable Prompt</div>
+    <div class="mod-title">Copy. Paste. Fire.</div>
+    <div class="mod-role">Every directive from modules 1–6 compiled into one structured system prompt</div>
+  </div>
+  <div class="sections">
+    <div class="prompt-output" id="full-prompt">
+<span class="h">━━━ SYSTEM IDENTITY ━━━</span>
+
+You are a Principal Creative Technologist and Interactive Director with deep expertise in GSAP 3, Three.js, Lenis smooth scroll, and cinematic web experiences. You have shipped award-winning interactive work for top-tier technology companies. Your code is production-ready, performance-conscious, and visually extraordinary.
+
+<span class="h">━━━ MISSION ━━━</span>
+
+Build a complete, single-file HTML homepage for <span class="g">COSPIRA</span> — a real-time collaboration platform where video calls, multiplayer games, AI intelligence, synchronized video watching, and shared web browsing all run inside one room simultaneously.
+
+The homepage must feel like <span class="v">entering a system that is already alive.</span> Not a brochure. A portal.
+
+<span class="h">━━━ CONTENT TO IMPLEMENT (in order) ━━━</span>
+
+<span class="s">§1 PRELOADER</span>  →  Black hold 200ms  →  "COSPIRA" character-by-character clipPath reveal (18ms stagger)  →  SVG progress arc 0→360° + numeric counter 0→100  →  Dual-panel wipe exit (expo.inOut 600ms)
+
+<span class="s">§2 NAVBAR</span>  →  Fixed, backdrop-blur(20px), bg rgba(5,5,5,0.8)  →  "COSPIRA" wordmark left  →  Real-time signal badge (emerald dot + "Signal Active · 2.4ms" in mono)  →  AI Assist toggle (indigo glow)  →  Sign In right  →  Entrance: y:-60 → 0, opacity 0→1 on load
+
+<span class="s">§3 HERO SECTION</span>
+  Background: Three.js neural mesh (1200 particles, proximity edges, Simplex noise displacement)
+  Layer stack (7 parallax layers, speeds 0.05x to 1.0x):
+    L1: SVG grain overlay 0.025 opacity animated at 8fps
+    L2: Two radial glows (indigo/violet), translate at 0.05x scroll
+    L3: Three.js canvas, translate 0.15x + internal camera drift
+    L4: Geometric accent shapes (rings, arcs), 0.30x scroll
+    L5: Subheadline + ticker, 0.55x scroll, fade out at 30vh
+    L6: Primary headline, 0.80x scroll
+    L7: CTA cluster, 1.0x (anchored)
+  Headline: "Command Presence. / Connect on Your Terms." — Syne 800, clamp(52px,8vw,120px), letter-spacing -0.04em
+  Subheadline: "Video. Games. AI. Co-Browse. One Room." — DM Sans 400, 19px, white/55
+  Live ticker: Rotating 3 signals every 6s (AnimatePresence fade in/out)
+  Primary CTA: "Start a Private Room" — white pill, black text, Syne 800, uppercase, magnetic hover, ripple on click
+  Secondary CTA: "Random Connect ▶" — outline pill, indigo text, magnetic hover
+  Trust row: "No signup · No recording · Instant exit" — DM Mono, white/28
+
+<span class="s">§4 DIFFERENTIATOR SECTION</span>
+  Entry: SVG rule draws left-to-right. Text blocks slide up y:60→0 stagger 0.12s.
+  Headline: "Not a meeting tool. A living room."
+  Body: Two paragraphs (use 10/10 document content)
+  Feature list: 6 bullets with emerald ▸ marks, staggered reveal
+
+<span class="s">§5 ROOM MODES — PINNED SECTION</span>
+  Pin section. 4 mode cards (Fun / Pro / Ultra / Mixed) cascade in from right.
+  Scroll cycles active state through all 4 modes with indicator translation.
+  Each card: icon + name + description. Active card: 1.04 scale, indigo border.
+  Unpin after 4th mode shown.
+
+<span class="s">§6 GAME ARCADE — HORIZONTAL SCROLL</span>
+  Pin + horizontal ScrollTrigger. 10 game cards in a rail.
+  Each card: game poster (solid color placeholder), name, player count, tags.
+  3D tilt on hover: perspective(800px) rotateX(±8°) rotateY(±12°) with specular highlight overlay.
+  Active card: scale 1.06, indigo glow shadow.
+  Cursor morphs to double-arrow (← →) over the strip.
+
+<span class="s">§7 WATCH TOGETHER SECTION</span>
+  Two browser-frame mockups side by side. Shared progress bar syncs across both.
+  Timestamp digits flip using clipPath on scroll.
+  Headline: "Same Frame. Same Timestamp." Entry: left frame slides from -80px, right from +80px.
+
+<span class="s">§8 CO-BROWSE SECTION</span>
+  Browser mockup with tab bar, URL field, content area.
+  Two cursor indicators showing two participants browsing simultaneously.
+  Entrance: curtain wipe from bottom.
+
+<span class="s">§9 SEMANTIC MATCHING — ANIMATED DEMO</span>
+  Canvas-based 5-phase loop (Idle→Scan→Nodes→Match→Result). 15s rest between cycles.
+  Match confirmation: emerald line draw + "Match confirmed in 0.42s" badge.
+  Headline: "Watch the system think."
+
+<span class="s">§10 AI INTELLIGENCE SECTION</span>
+  Before/After morph. BEFORE: characters in text randomise → AFTER panel wipes over.
+  5 AI feature cards (captions, meeting intelligence, polls, moderation, room intelligence).
+  Stagger reveal: 80ms cascade.
+
+<span class="s">§11 USE CASES</span>  →  6 use case cards in 2×3 grid. Each has icon + title + 2-line description. Stagger grid reveal.
+
+<span class="s">§12 INFRASTRUCTURE</span>  →  5 feature rows. Each uses icon + title + desc. Entrance: left-border line draws top-to-bottom as section enters.
+
+<span class="s">§13 AI INTERVIEWS (ROADMAP)</span>  →  Full-width dark section with indigo top border. Headline + 6 bullets + "Coming Q4 2026" badge.
+
+<span class="s">§14 ROADMAP</span>  →  Vertical timeline. 10 items (4 completed in emerald, 3 in-progress in amber, 3 planned in gray). Line draws downward on scroll.
+
+<span class="s">§15 TRUST & COMPLIANCE</span>  →  Glass card with animated gradient top border (primary→accent→primary, pulsing). 5 certification badges. Bottom pill with quantum/blockchain copy.
+
+<span class="s">§16 PRICING</span>  →  3 cards. Professional card: scale(1.04), 2px indigo border, "Most Popular" gradient badge.
+
+<span class="s">§17 FOUNDER STATEMENT</span>  →  Full-width quote. Large pull quote with left indigo border. Attribution: "— Mahesh Bandela, Founder, Cospira."
+
+<span class="s">§18 FINAL CTA</span>  →  Radial zoom entrance. "Create once. Control forever." — massive display type. CTA pulses once on enter. Trust row. Rooms self-destruct copy.
+
+<span class="s">§19 FOOTER</span>  →  3-column: brand + tagline · WebRTC/encrypted copy · Privacy/Terms/Contact/Feedback links.
+
+<span class="h">━━━ MOTION SYSTEM ━━━</span>
+
+Smooth scroll: Lenis (duration:1.4, custom ease curve). Sync to GSAP ticker.
+Scroll animations: GSAP ScrollTrigger with scrub:1.2 on all section transitions.
+Entrance reveals: IntersectionObserver threshold:0.12 → add class .revealed → CSS transition opacity 0→1, translateY 40→0 (0.6s, ease-out).
+Character split: Process all h1/h2 on DOMContentLoaded. Wrap each char in span.char. Reveal: clipPath inset(0 100% 0 0) → inset(0 0% 0 0), 18ms stagger.
+
+<span class="h">━━━ THREE.JS SPEC ━━━</span>
+
+1200 nodes via THREE.InstancedMesh (1 draw call). Simplex noise Y displacement per frame (amplitude 8, frequency 0.0015, speed 0.0006). Edges: proximity &lt;120 units, LineSegments merged geometry. Camera drift: lerp toward mouseNDC×(30,-20) at factor 0.04/frame. Scroll: mesh recedes Z 0→-300 and fades as user scrolls past hero.
+
+<span class="h">━━━ CUSTOM CURSOR ━━━</span>
+
+Outer ring 28px: 1px indigo border, 80ms lag (lerp 0.12). Inner dot 6px: 0ms lag. On .cta hover: ring → 64px filled white/8, inner dot fades, context text appears (ENTER/PLAY/WATCH). On text links: mix-blend-mode:difference inversion. On game strip: morphs to ← → arrow.
+
+<span class="h">━━━ MAGNETIC HOVER ━━━</span>
+
+Detection zone: 1.5× element bounds. Strength: 0.28. Spring return on mouseleave: elastic.out(1, 0.4). Apply to: all buttons, nav links.
+
+<span class="h">━━━ TYPOGRAPHY ━━━</span>
+
+Display: Syne 800 — clamp(52px,8vw,120px), ls -0.04em, lh 0.92
+Heading: Syne 700 — clamp(32px,4vw,64px), ls -0.03em, lh 1.1
+Body: DM Sans 400 — 17px, lh 1.8, max-width 62ch, white/55
+Mono/Label: DM Mono 400/500 — 10–13px, uppercase, ls 0.12em
+Load from: fonts.googleapis.com (Syne + DM Mono + DM Sans)
+
+<span class="h">━━━ COLOR SYSTEM ━━━</span>
+
+--bg-base: #050505
+--bg-surface: #0c0c14
+--bg-surface-2: #111120
+--accent-primary: #4F46E5
+--accent-secondary: #7C3AED
+--accent-glow: rgba(99,102,241,0.25)
+--text-primary: rgba(255,255,255,0.95)
+--text-secondary: rgba(255,255,255,0.55)
+--text-tertiary: rgba(255,255,255,0.28)
+--border-default: rgba(255,255,255,0.06)
+--border-hover: rgba(255,255,255,0.12)
+--emerald: #10B981 (match/confirm/online states only)
+
+<span class="h">━━━ PERFORMANCE CONTRACTS ━━━</span>
+
+1. Animate ONLY transform + opacity. Never width/height/top/left/margin.
+2. will-change: applied only during active animation, removed in onComplete.
+3. Three.js: InstancedMesh, no textures, antialiasing:false on mobile.
+4. Scroll reads: store in variable, consume in rAF only.
+5. prefers-reduced-motion: wrap ALL animation init in media query check.
+6. Touch devices: disable custom cursor, magnetic hover. Reduce particles to 400. Remove grain overlay.
+
+<span class="h">━━━ OUTPUT CONTRACT ━━━</span>
+
+Return a complete, single HTML file. No explanations. No markdown fences. No truncation. Start with &lt;!DOCTYPE html&gt;. The file must open in any modern browser and run at 60fps immediately. All libraries loaded from cdnjs.cloudflare.com.
+    </div>
+  </div>
+  <div class="action-bar">
+    <button class="btn-fire" onclick="firePrompt()">⚡ Send to Claude</button>
+    <button class="btn-copy" onclick="copyPrompt()">Copy</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copied to clipboard!</div>
+</div>
+
+<script>
+const tabs = document.querySelectorAll('.ntab');
+const mods = document.querySelectorAll('.module');
+
+function tab(i) {
+  tabs.forEach((t,j) => t.classList.toggle('on', i===j));
+  mods.forEach((m,j) => m.classList.toggle('on', i===j));
+}
+
+function tog(head) {
+  const body = head.nextElementSibling;
+  const caret = head.querySelector('.block-caret');
+  const open = body.classList.toggle('open');
+  caret.classList.toggle('open', open);
+}
+
+function getPromptText() {
+  return document.getElementById('full-prompt').innerText;
+}
+
+function firePrompt() {
+  sendPrompt(getPromptText());
+}
+
+function copyPrompt() {
+  const txt = getPromptText();
+  navigator.clipboard.writeText(txt).then(() => {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  });
+}
+</script>

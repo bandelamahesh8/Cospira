@@ -31,8 +31,8 @@
  */
 
 import crypto from 'crypto';
-import { supabase } from '../../supabase.js';
-import logger from '../../logger.js';
+import { supabase } from '../../../shared/supabase.js';
+import logger from '../../../shared/logger.js';
 import AIKillSwitch from './AIKillSwitch.js';
 import { getAIPolicy, checkAICapability } from './BreakoutAIPolicy.js';
 

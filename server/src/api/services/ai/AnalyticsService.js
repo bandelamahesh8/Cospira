@@ -1,11 +1,11 @@
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 import { Transcript } from '../../models/Transcript.js';
 import { Room } from '../../models/Room.js';
 import { AIModerationLog } from '../../models/AIModerationLog.js';
 import { UserAnalyticsSetting } from '../../models/UserAnalyticsSetting.js';
-import { supabase } from '../../supabase.js';
+import { supabase } from '../../../shared/supabase.js';
 import eventLogger from '../EventLogger.js';
-import { getRoom } from '../../redis.js';
+import { getRoom } from '../../../shared/redis.js';
 
 /**
  * AI Analytics Service

@@ -10,8 +10,8 @@
  */
 
 import logger from '../../shared/logger.js';
-import AIKillSwitch from '../services/breakout/AIKillSwitch.js';
-import BreakoutAIIngest, { AI_EVENT_TYPES } from '../services/breakout/BreakoutAIIngest.js';
+import AIKillSwitch from '../../api/services/breakout/AIKillSwitch.js';
+import BreakoutAIIngest, { AI_EVENT_TYPES } from '../../api/services/breakout/BreakoutAIIngest.js';
 import { supabase } from '../../shared/supabase.js';
 
 export default function registerBreakoutAIHandlers(io, socket) {

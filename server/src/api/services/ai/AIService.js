@@ -1,5 +1,5 @@
 import TranscriberProcess from './TranscriberProcess.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 import aiMemoryService from './AIMemoryService.js';
 import { VoiceTranscript } from '../../models/VoiceTranscript.js';
 

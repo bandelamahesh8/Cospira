@@ -1,7 +1,7 @@
 import llmService from './LLMService.js';
 import aiMemoryService from './AIMemoryService.js';
 import personalityService from './PersonalityService.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class ReasoningService {
     /**

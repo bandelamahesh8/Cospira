@@ -1,7 +1,7 @@
 import { VoiceTranscript } from '../../models/VoiceTranscript.js';
 import { MeetingSummary } from '../../models/MeetingSummary.js';
 import LLMService from './LLMService.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class SummaryService {
     async generateMeetingSummary(roomId) {

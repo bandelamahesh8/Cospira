@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import logger from './logger.js';
+import logger from './shared/logger.js';
 
 /**
  * Deletes files in the specified directory that are older than the max age.

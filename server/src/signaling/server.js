@@ -6,10 +6,10 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import logger from '../shared/logger.js';
 import { initRedis, getRoom, removeInactiveRooms } from '../shared/redis.js';
 import { deleteRoomUploads } from '../utils/fileCleanup.js';
-import SFUHandler from '../sfu/SFUHandler.js';
-import registerSocketHandlers from '../sockets/index.js';
+import SFUHandler from './sfu/SFUHandler.js';
+import registerSocketHandlers from './sockets/index.js';
 
-const PORT = process.env.PORT_SOCKET || 4000;
+const PORT = process.env.PORT_SOCKET || 3001;
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 const server = http.createServer();
@@ -64,7 +64,7 @@ const start = async () => {
     await initRedis();
     await sfuHandler.init();
     
-    registerSocketHandlers(io);
+    registerSocketHandlers(io, sfuHandler);
 
     server.listen(PORT, () => {
         logger.info(`🚀 Signaling Server running on port ${PORT}`);

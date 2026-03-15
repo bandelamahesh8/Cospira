@@ -1,0 +1,212 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: transparent; }
+  .page { max-width: 780px; margin: 0 auto; padding: 2rem 1.5rem 4rem; font-family: var(--font-sans); color: var(--color-text-primary); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; background: var(--color-background-secondary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 4px 10px; margin-bottom: 1.5rem; }
+  .hero-title { font-size: 32px; font-weight: 500; line-height: 1.2; margin-bottom: 0.75rem; }
+  .hero-sub { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 2.5rem; }
+  .divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 2rem 0; }
+  .toc { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); padding: 1.25rem 1.5rem; margin-bottom: 2.5rem; }
+  .toc-title { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 0.75rem; }
+  .toc-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .toc-list li { display: flex; align-items: center; gap: 8px; }
+  .toc-num { font-size: 11px; color: var(--color-text-tertiary); min-width: 18px; }
+  .toc-link { font-size: 14px; color: var(--color-text-secondary); text-decoration: none; cursor: pointer; }
+  .toc-link:hover { color: var(--color-text-primary); }
+  .section { margin-bottom: 2.5rem; scroll-margin-top: 1rem; }
+  .section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 1rem; }
+  .section-num { font-size: 12px; color: var(--color-text-tertiary); font-weight: 500; }
+  .section-title { font-size: 18px; font-weight: 500; }
+  .section-body { font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; }
+  .section-body p { margin-bottom: 0.75rem; }
+  .section-body p:last-child { margin-bottom: 0; }
+  .item-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 0.75rem 0; }
+  .item-list li { font-size: 14px; color: var(--color-text-secondary); line-height: 1.7; padding-left: 1rem; position: relative; }
+  .item-list li::before { content: "–"; position: absolute; left: 0; color: var(--color-text-tertiary); }
+  .highlight-box { border-left: 2px solid var(--color-border-secondary); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0; }
+  .highlight-box p { font-size: 14px; color: var(--color-text-secondary); line-height: 1.7; margin: 0; }
+  .contact-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem 1.5rem; margin-top: 1rem; }
+  .contact-card .name { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+  .contact-card .role { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 0.75rem; }
+  .contact-card .email { font-size: 13px; color: var(--color-text-secondary); }
+  .footer-note { font-size: 12px; color: var(--color-text-tertiary); text-align: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 0.5px solid var(--color-border-tertiary); line-height: 1.6; }
+</style>
+
+<div class="page">
+  <span class="badge">Legal</span>
+  <h1 class="hero-title">Privacy & Policy</h1>
+  <p class="hero-sub">Effective date: March 16, 2026 &nbsp;·&nbsp; Last updated: March 16, 2026</p>
+
+  <div class="toc">
+    <p class="toc-title">Contents</p>
+    <ul class="toc-list">
+      <li><span class="toc-num">01</span><span class="toc-link" onclick="document.getElementById('s1').scrollIntoView({behavior:'smooth'})">Who we are</span></li>
+      <li><span class="toc-num">02</span><span class="toc-link" onclick="document.getElementById('s2').scrollIntoView({behavior:'smooth'})">Information we collect</span></li>
+      <li><span class="toc-num">03</span><span class="toc-link" onclick="document.getElementById('s3').scrollIntoView({behavior:'smooth'})">How we use your information</span></li>
+      <li><span class="toc-num">04</span><span class="toc-link" onclick="document.getElementById('s4').scrollIntoView({behavior:'smooth'})">Sharing & disclosure</span></li>
+      <li><span class="toc-num">05</span><span class="toc-link" onclick="document.getElementById('s5').scrollIntoView({behavior:'smooth'})">Data retention</span></li>
+      <li><span class="toc-num">06</span><span class="toc-link" onclick="document.getElementById('s6').scrollIntoView({behavior:'smooth'})">Your rights & choices</span></li>
+      <li><span class="toc-num">07</span><span class="toc-link" onclick="document.getElementById('s7').scrollIntoView({behavior:'smooth'})">Cookies & tracking</span></li>
+      <li><span class="toc-num">08</span><span class="toc-link" onclick="document.getElementById('s8').scrollIntoView({behavior:'smooth'})">Security</span></li>
+      <li><span class="toc-num">09</span><span class="toc-link" onclick="document.getElementById('s9').scrollIntoView({behavior:'smooth'})">Children's privacy</span></li>
+      <li><span class="toc-num">10</span><span class="toc-link" onclick="document.getElementById('s10').scrollIntoView({behavior:'smooth'})">Changes to this policy</span></li>
+      <li><span class="toc-num">11</span><span class="toc-link" onclick="document.getElementById('s11').scrollIntoView({behavior:'smooth'})">Contact us</span></li>
+    </ul>
+  </div>
+
+  <div class="section" id="s1">
+    <div class="section-header"><span class="section-num">01</span><h2 class="section-title">Who we are</h2></div>
+    <div class="section-body">
+      <p>Cospira is a shared web experience platform that lets people connect, interact, and create in real time — together. When you use Cospira, you trust us with your information. We take that seriously.</p>
+      <p>This Privacy Policy explains what data we collect, how we use it, and the choices you have. It applies to all Cospira products, services, and platforms.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s2">
+    <div class="section-header"><span class="section-num">02</span><h2 class="section-title">Information we collect</h2></div>
+    <div class="section-body">
+      <p><strong style="color: var(--color-text-primary); font-weight: 500;">Information you provide</strong></p>
+      <ul class="item-list">
+        <li>Account details such as your name, email address, and username when you sign up</li>
+        <li>Profile information you choose to add, like a profile photo or bio</li>
+        <li>Messages, content, or media you share within Cospira sessions</li>
+        <li>Feedback, support requests, or communications you send us</li>
+      </ul>
+      <p style="margin-top: 1rem;"><strong style="color: var(--color-text-primary); font-weight: 500;">Information collected automatically</strong></p>
+      <ul class="item-list">
+        <li>Usage data such as pages visited, features used, and session duration</li>
+        <li>Device information including browser type, operating system, and screen resolution</li>
+        <li>IP address and approximate location derived from it</li>
+        <li>Log data including access times, errors, and referring URLs</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s3">
+    <div class="section-header"><span class="section-num">03</span><h2 class="section-title">How we use your information</h2></div>
+    <div class="section-body">
+      <p>We use the information we collect to:</p>
+      <ul class="item-list">
+        <li>Provide, maintain, and improve the Cospira platform</li>
+        <li>Personalize your experience and surface relevant features</li>
+        <li>Enable real-time collaboration and shared sessions between users</li>
+        <li>Send important updates, product announcements, or security alerts</li>
+        <li>Respond to your support requests and resolve issues</li>
+        <li>Detect, investigate, and prevent abuse, fraud, or violations of our terms</li>
+        <li>Understand how our platform is used so we can make it better</li>
+      </ul>
+      <div class="highlight-box">
+        <p>We do not sell your personal information to third parties. Ever.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s4">
+    <div class="section-header"><span class="section-num">04</span><h2 class="section-title">Sharing & disclosure</h2></div>
+    <div class="section-body">
+      <p>We only share your information in the following circumstances:</p>
+      <ul class="item-list">
+        <li><strong style="color: var(--color-text-primary); font-weight: 500;">With your consent</strong> — when you explicitly choose to share something or invite others to a session</li>
+        <li><strong style="color: var(--color-text-primary); font-weight: 500;">Service providers</strong> — trusted third-party vendors who help us operate Cospira (hosting, analytics, payments), bound by strict confidentiality agreements</li>
+        <li><strong style="color: var(--color-text-primary); font-weight: 500;">Legal obligations</strong> — when required by law, court order, or to protect the rights and safety of our users or the public</li>
+        <li><strong style="color: var(--color-text-primary); font-weight: 500;">Business transfers</strong> — in the event of a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s5">
+    <div class="section-header"><span class="section-num">05</span><h2 class="section-title">Data retention</h2></div>
+    <div class="section-body">
+      <p>We retain your personal information for as long as your account is active or as needed to provide you with our services. If you delete your account, we will delete or anonymize your data within 30 days, except where we are required to retain it for legal, compliance, or safety reasons.</p>
+      <p>Session content and shared activity logs may be retained for a shorter period depending on the type of data and the context in which it was created.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s6">
+    <div class="section-header"><span class="section-num">06</span><h2 class="section-title">Your rights & choices</h2></div>
+    <div class="section-body">
+      <p>Depending on where you live, you may have the right to:</p>
+      <ul class="item-list">
+        <li>Access the personal information we hold about you</li>
+        <li>Request correction of inaccurate or incomplete data</li>
+        <li>Request deletion of your account and associated data</li>
+        <li>Opt out of non-essential communications from us</li>
+        <li>Object to or restrict certain types of processing</li>
+        <li>Request a portable copy of your data</li>
+      </ul>
+      <p style="margin-top: 0.75rem;">To exercise any of these rights, contact us at <strong style="color: var(--color-text-primary); font-weight: 500;">privacy@cospira.app</strong>. We will respond within 30 days.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s7">
+    <div class="section-header"><span class="section-num">07</span><h2 class="section-title">Cookies & tracking</h2></div>
+    <div class="section-body">
+      <p>Cospira uses cookies and similar technologies to keep you logged in, remember your preferences, and understand how you use the platform. These include:</p>
+      <ul class="item-list">
+        <li><strong style="color: var(--color-text-primary); font-weight: 500;">Essential cookies</strong> — required for the platform to function. Cannot be disabled.</li>
+        <li><strong style="color: var(--color-text-primary); font-weight: 500;">Analytics cookies</strong> — help us understand usage patterns. You can opt out via your account settings.</li>
+        <li><strong style="color: var(--color-text-primary); font-weight: 500;">Preference cookies</strong> — store your settings and personalization choices.</li>
+      </ul>
+      <p style="margin-top: 0.75rem;">We do not use advertising or third-party tracking cookies.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s8">
+    <div class="section-header"><span class="section-num">08</span><h2 class="section-title">Security</h2></div>
+    <div class="section-body">
+      <p>We take the security of your data seriously. Cospira uses industry-standard encryption (TLS) for data in transit and AES-256 encryption for data at rest. Access to your personal data within our team is limited to those who need it to perform their role.</p>
+      <p>While we do everything we can to protect your information, no method of transmission or storage is 100% secure. We encourage you to use a strong, unique password and to notify us immediately if you suspect unauthorized access to your account.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s9">
+    <div class="section-header"><span class="section-num">09</span><h2 class="section-title">Children's privacy</h2></div>
+    <div class="section-body">
+      <p>Cospira is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that a child under 13 has created an account or provided us with personal data, we will delete that information promptly.</p>
+      <p>If you believe a child has provided us with their information without parental consent, please contact us at <strong style="color: var(--color-text-primary); font-weight: 500;">privacy@cospira.app</strong>.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s10">
+    <div class="section-header"><span class="section-num">10</span><h2 class="section-title">Changes to this policy</h2></div>
+    <div class="section-body">
+      <p>We may update this Privacy Policy from time to time. When we make significant changes, we will notify you via email or a notice within the Cospira app at least 7 days before the changes take effect. The "last updated" date at the top of this page will always reflect the most recent revision.</p>
+      <p>Continuing to use Cospira after changes take effect means you accept the updated policy.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section" id="s11">
+    <div class="section-header"><span class="section-num">11</span><h2 class="section-title">Contact us</h2></div>
+    <div class="section-body">
+      <p>Have questions, concerns, or requests about this policy or your data? Reach out — we're happy to help.</p>
+      <div class="contact-card">
+        <p class="name">Bandela Mahesh</p>
+        <p class="role">Founder, Cospira</p>
+        <p class="email">privacy@cospira.app</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="footer-note">© 2026 Cospira. All rights reserved.<br>This policy is governed by applicable privacy law including GDPR and applicable Indian data protection regulations.</p>
+</div>

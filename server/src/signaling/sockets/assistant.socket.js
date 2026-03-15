@@ -2,7 +2,7 @@
  * AI Assistant Socket Handlers - Phase 7
  */
 
-import assistantService from '../services/AssistantService.js';
+import assistantService from '../../api/services/AssistantService.js';
 import { getBrowserManager } from './browser.socket.js';
 import { getRoom, saveRoom } from '../../shared/redis.js';
 import logger from '../../shared/logger.js';

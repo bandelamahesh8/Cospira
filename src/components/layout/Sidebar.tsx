@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import CospiraLogoImg from '@/assets/COSPIRA_LOGO.png';
-import { LayoutDashboard, Gamepad2, Brain, Settings, Building2, Bot } from 'lucide-react';
+import { LayoutDashboard, Gamepad2, Brain, Settings, Building2, Bot, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAceternitySidebar as useSidebar } from '@/components/ui/aceternity-sidebar';
 import { SidebarLink } from '@/components/ui/aceternity-sidebar';
@@ -15,8 +15,8 @@ const NAV_ITEMS = [
   {
     icon: <Bot className='w-5 h-5' />,
     label: 'AI Interview',
-    path: '/upcoming-features',
-    badge: 'Upcoming',
+    path: '/ai-interview',
+    badge: 'Launching Soon',
   },
 ];
 
@@ -37,13 +37,13 @@ export const Sidebar = () => {
         <TooltipProvider delayDuration={100}>
           {NAV_ITEMS.map((item) => {
             const isActive = location.pathname === item.path;
-
             const link = (
               <SidebarLink
                 key={item.path}
                 link={{
                   label: item.label,
                   href: item.path,
+                  badge: item.badge,
                   icon: React.cloneElement(item.icon as React.ReactElement, {
                     className: `w-5 h-5 shrink-0 transition-all duration-300 ${
                       isActive ? 'text-white' : 'text-zinc-500 group-hover/sidebar:text-zinc-200'
@@ -86,7 +86,24 @@ export const Sidebar = () => {
       <div className='pt-6 border-t border-white/5 space-y-4 pb-4 relative z-10'>
         <SidebarLink
           link={{
-            label: 'System Diagnostics',
+            label: 'About Cospira',
+            href: '/about',
+            icon: (
+              <Info
+                className={`w-5 h-5 shrink-0 transition-all duration-300 ${location.pathname === '/about' ? 'text-white' : 'text-zinc-500 group-hover/sidebar:text-zinc-200'}`}
+              />
+            ),
+          }}
+          className={cn(
+            'transition-all duration-300',
+            location.pathname === '/about'
+              ? 'bg-indigo-600/20 border-indigo-500/30'
+              : 'hover:bg-white/[0.03] hover:border-white/5'
+          )}
+        />
+        <SidebarLink
+          link={{
+            label: 'Settings',
             href: '/settings',
             icon: (
               <Settings

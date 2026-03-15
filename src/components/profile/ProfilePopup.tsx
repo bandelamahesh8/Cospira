@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Shield, Lock, Rocket, Info, LogOut, Clock } from 'lucide-react';
+import { Shield, Lock, Rocket, LogOut, Clock } from 'lucide-react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { formatActivityTimestamp } from '@/utils/activityHelpers';
 
@@ -148,15 +148,6 @@ export const ProfilePopup = ({ onViewActivity }: { onViewActivity?: () => void }
           <Rocket className='w-4 h-4 text-pink-400 group-hover:scale-110 transition-transform' />
           <span className='text-sm font-medium text-white/80 group-hover:text-white'>
             Upcoming Features
-          </span>
-        </button>
-        <button
-          onClick={() => navigate('/about')}
-          className='w-full h-10 rounded-xl hover:bg-white/5 flex items-center px-4 gap-3 transition-colors group'
-        >
-          <Info className='w-4 h-4 text-white/40 group-hover:text-white/80 transition-colors' />
-          <span className='text-sm font-medium text-white/40 group-hover:text-white/80'>
-            About Cospira
           </span>
         </button>
         <button

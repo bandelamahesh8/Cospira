@@ -1,5 +1,5 @@
 import platformManager from './PlatformManager.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class AISyncEngine {
     constructor() {

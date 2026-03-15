@@ -1,4 +1,4 @@
-import { matchmakingService } from '../services/MatchmakingService.js';
+import { matchmakingService } from '../../api/services/MatchmakingService.js';
 import { createClient } from '@supabase/supabase-js';
 import { saveRoom, getRoom } from '../../shared/redis.js';
 import { v4 as uuidv4 } from 'uuid';

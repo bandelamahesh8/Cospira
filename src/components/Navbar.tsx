@@ -25,20 +25,20 @@ const Navbar = ({ isFixed = true }: NavbarProps) => {
     { label: 'Projects', href: '/projects' },
   ];
 
+  const isHome = location.pathname === '/';
+
   const handleLinkClick = (href: string) => {
     setIsOpen(false);
     navigate(href);
   };
-
-  if (location.pathname === '/') return null;
 
   return (
     <motion.nav
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className={`${isFixed ? 'fixed top-0 left-0 w-full' : 'relative w-full'} z-[100] transition-all duration-300 ease-ultra h-16 flex items-center
-        bg-[#05070a]/80 backdrop-blur-md border-b border-white/5
+      className={`${isHome ? 'absolute' : (isFixed ? 'fixed' : 'relative')} top-0 left-0 w-full z-[100] transition-all duration-300 ease-ultra h-16 flex items-center
+        ${isHome ? 'bg-transparent border-b border-white/0' : 'bg-[#05070a]/80 backdrop-blur-md border-b border-white/5'}
       `}
     >
       <div className='w-full px-6 md:px-10 lg:px-12'>
@@ -46,7 +46,7 @@ const Navbar = ({ isFixed = true }: NavbarProps) => {
           {/* LEFT: Branding & Signal */}
           <div className='flex items-center gap-2 md:gap-4'>
             <Link
-              to='/'
+              to='/dashboard'
               className='flex items-center gap-3 group opacity-90 hover:opacity-100 transition-opacity'
             >
               <CospiraLogo

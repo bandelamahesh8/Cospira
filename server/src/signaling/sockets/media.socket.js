@@ -1,8 +1,8 @@
 import { getBrowserManager } from './browser.socket.js';
 import logger from '../../shared/logger.js';
 import { getUser, getRoom, saveRoom } from '../../shared/redis.js';
-import { sanitizeRoomId } from '../utils/sanitize.js';
-import eventLogger from '../services/EventLogger.js';
+import { sanitizeRoomId } from '../../utils/sanitize.js';
+import eventLogger from '../../api/services/EventLogger.js';
 
 export default function registerMediaHandlers(io, socket, sfuHandler) {
   socket.on('start-screen-share', async ({ roomId, streamId }) => {

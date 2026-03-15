@@ -20,7 +20,7 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     let wsUrl = import.meta.env.VITE_WS_URL;
-    const { hostname, origin, protocol } = window.location;
+    const { hostname, origin } = window.location;
 
     const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
     const isLanIp =
@@ -31,11 +31,12 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
         parseInt(hostname.split('.')[1]) <= 31);
 
     if (isLocalHost) {
-      wsUrl = `${protocol}//${hostname}:3001`;
+      // Use origin to leverage Vite proxy for /socket.io
+      wsUrl = origin; 
     } else if (isLanIp || !wsUrl) {
       wsUrl = origin;
     }
-    wsUrl = wsUrl || 'https://localhost:3001';
+    wsUrl = wsUrl || origin || 'https://localhost:3001';
 
     if (window.location.protocol === 'https:' && wsUrl.startsWith('http:')) {
       wsUrl = wsUrl.replace('http:', 'https:');

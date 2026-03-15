@@ -2,8 +2,8 @@ import { createSocket } from 'dgram';
 import { spawn } from 'child_process';
 import ffmpegPath from '@ffmpeg-installer/ffmpeg';
 import { createClient } from '@deepgram/sdk';
-import config from '../../config.js';
-import logger from '../../logger.js';
+import config from '../../../shared/config.js';
+import logger from '../../../shared/logger.js';
 import { EventEmitter } from 'events';
 
 class TranscriberProcess extends EventEmitter {

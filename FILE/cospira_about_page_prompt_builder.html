@@ -1,0 +1,771 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body { background: transparent; }
+
+  .root {
+    font-family: 'Syne', sans-serif;
+    background: #08080f;
+    border-radius: 16px;
+    overflow: hidden;
+    padding: 0;
+    color: #e8e4ff;
+    position: relative;
+  }
+
+  .header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid rgba(140,120,255,0.15);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .header-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(120,100,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,100,255,0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .header-glow {
+    position: absolute; top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(120,80,255,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px;
+    background: rgba(120,80,255,0.15);
+    border: 1px solid rgba(120,80,255,0.35);
+    border-radius: 999px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: #a78bfa;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  .badge-dot {
+    width: 6px; height: 6px;
+    background: #a78bfa;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  .header h1 {
+    font-size: 22px; font-weight: 800;
+    color: #f0eeff;
+    line-height: 1.2;
+    position: relative;
+  }
+
+  .header p {
+    font-size: 13px; color: #8b85aa;
+    margin-top: 6px; position: relative;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .body { padding: 24px 32px 32px; }
+
+  .tabs {
+    display: flex; gap: 4px;
+    margin-bottom: 24px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    padding: 4px;
+  }
+
+  .tab {
+    flex: 1; padding: 8px;
+    border-radius: 8px; border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #6b6585;
+    background: transparent;
+    letter-spacing: 0.04em;
+  }
+
+  .tab.active {
+    background: rgba(120,80,255,0.2);
+    color: #c4b5fd;
+    border: 1px solid rgba(120,80,255,0.3);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 0.15em;
+    color: #6b6585; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .effects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .effect-chip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s;
+    user-select: none;
+  }
+
+  .effect-chip:hover {
+    border-color: rgba(120,80,255,0.4);
+    background: rgba(120,80,255,0.08);
+  }
+
+  .effect-chip.selected {
+    border-color: rgba(120,80,255,0.6);
+    background: rgba(120,80,255,0.14);
+  }
+
+  .effect-chip .icon {
+    font-size: 16px; flex-shrink: 0;
+  }
+
+  .effect-chip .label {
+    font-size: 12px; font-weight: 700;
+    color: #c4b5fd;
+    line-height: 1.2;
+  }
+
+  .effect-chip .sub {
+    font-size: 10px; color: #5a5572;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .effect-chip.selected .sub { color: #8b7dcc; }
+
+  .check {
+    margin-left: auto;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .effect-chip.selected .check {
+    background: #7c3aed;
+    border-color: #7c3aed;
+  }
+
+  .check-inner {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .effect-chip.selected .check-inner { opacity: 1; }
+
+  .style-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .select-group label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 0.12em;
+    color: #6b6585; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .custom-select {
+    width: 100%;
+    padding: 9px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: #c4b5fd;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .custom-select:focus {
+    border-color: rgba(120,80,255,0.5);
+  }
+
+  .custom-select option { background: #0f0f1a; }
+
+  .prompt-output {
+    position: relative;
+    background: #0c0c18;
+    border: 1px solid rgba(120,80,255,0.2);
+    border-radius: 12px;
+    padding: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.75;
+    color: #9d95c8;
+    max-height: 320px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120,80,255,0.3) transparent;
+  }
+
+  .prompt-output .kw { color: #a78bfa; font-weight: 500; }
+  .prompt-output .str { color: #6ee7b7; }
+  .prompt-output .num { color: #f9a8d4; }
+  .prompt-output .cmt { color: #4b4568; }
+
+  .action-bar {
+    display: flex; gap: 10px;
+    margin-top: 14px;
+  }
+
+  .btn-primary {
+    flex: 1;
+    padding: 11px;
+    background: linear-gradient(135deg, #7c3aed, #5b21b6);
+    border: none; border-radius: 10px;
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); opacity: 1; }
+
+  .btn-secondary {
+    padding: 11px 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #8b85aa;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover { background: rgba(255,255,255,0.09); color: #c4b5fd; }
+
+  .toast {
+    position: absolute; bottom: 20px; right: 20px;
+    background: rgba(120,80,255,0.9);
+    color: white; font-size: 12px;
+    padding: 8px 16px; border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .preview-mockup {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: #0c0c18;
+  }
+
+  .mock-nav {
+    display: flex; align-items: center;
+    padding: 10px 16px;
+    background: rgba(0,0,0,0.4);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    gap: 8px;
+  }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .mock-hero {
+    padding: 32px 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mock-hero-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(120,80,255,0.2) 0%, transparent 65%);
+  }
+
+  .mock-title {
+    font-size: 22px; font-weight: 800;
+    background: linear-gradient(135deg, #e8e4ff 30%, #a78bfa);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    position: relative; margin-bottom: 8px;
+  }
+
+  .mock-sub {
+    font-size: 11px; color: #6b6585;
+    font-family: 'DM Mono', monospace;
+    position: relative;
+  }
+
+  .mock-scroll-hint {
+    display: flex; justify-content: center;
+    margin-top: 16px; position: relative;
+  }
+
+  .scroll-pill {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    border: 1px solid rgba(120,80,255,0.3);
+    border-radius: 999px;
+    font-size: 10px; color: #7c6faa;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .scroll-arrow {
+    animation: bounce 1.5s ease-in-out infinite;
+    font-size: 10px;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(3px); }
+  }
+
+  .mock-sections {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 0 12px 12px;
+  }
+
+  .mock-section-bar {
+    height: 32px; border-radius: 6px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    display: flex; align-items: center;
+    padding: 0 12px; gap: 8px;
+  }
+
+  .bar-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: rgba(120,80,255,0.5);
+    flex-shrink: 0;
+  }
+
+  .bar-line {
+    height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+  }
+
+  .intensity-row {
+    display: flex; gap: 6px;
+    margin-bottom: 20px;
+  }
+
+  .intensity-btn {
+    flex: 1; padding: 8px 4px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; color: #6b6585;
+    cursor: pointer; text-align: center;
+    transition: all 0.18s;
+  }
+
+  .intensity-btn.active {
+    background: rgba(120,80,255,0.15);
+    border-color: rgba(120,80,255,0.4);
+    color: #c4b5fd;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin: 20px 0;
+  }
+</style>
+
+<div class="root" id="root">
+  <div class="header">
+    <div class="header-grid"></div>
+    <div class="header-glow"></div>
+    <div class="badge"><div class="badge-dot"></div>PROMPT ARCHITECT v2.0</div>
+    <h1>About Page Generator</h1>
+    <p>Craft your AI prompt — configure, preview, deploy</p>
+  </div>
+
+  <div class="body">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('configure')">Configure</button>
+      <button class="tab" onclick="switchTab('preview')">Preview</button>
+      <button class="tab" onclick="switchTab('prompt')">Prompt</button>
+    </div>
+
+    <!-- CONFIGURE PANEL -->
+    <div class="panel active" id="panel-configure">
+
+      <div class="section-label">Animation Effects — select all that apply</div>
+      <div class="effects-grid" id="effects-grid">
+        <!-- rendered by JS -->
+      </div>
+
+      <hr class="divider">
+
+      <div class="section-label">Animation Intensity</div>
+      <div class="intensity-row" id="intensity-row">
+        <button class="intensity-btn" onclick="setIntensity('subtle')">Subtle</button>
+        <button class="intensity-btn active" onclick="setIntensity('balanced')">Balanced</button>
+        <button class="intensity-btn" onclick="setIntensity('cinematic')">Cinematic</button>
+      </div>
+
+      <div class="style-row">
+        <div class="select-group">
+          <label>Color Palette</label>
+          <select class="custom-select" id="sel-color">
+            <option value="deep-space">Deep Space (Dark)</option>
+            <option value="obsidian-gold">Obsidian + Gold</option>
+            <option value="arctic-white">Arctic White (Light)</option>
+            <option value="crimson-black">Crimson + Black</option>
+            <option value="neon-cyber">Neon Cyber</option>
+          </select>
+        </div>
+        <div class="select-group">
+          <label>Typography Style</label>
+          <select class="custom-select" id="sel-font">
+            <option value="editorial">Editorial Serif</option>
+            <option value="tech-mono">Tech Mono</option>
+            <option value="luxury">Luxury Display</option>
+            <option value="humanist">Humanist Sans</option>
+            <option value="brutalist">Brutalist Slab</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="style-row">
+        <div class="select-group">
+          <label>Scroll Behaviour</label>
+          <select class="custom-select" id="sel-scroll">
+            <option value="parallax-deep">Deep Parallax</option>
+            <option value="pinned">Section Pinning</option>
+            <option value="horizontal">Horizontal Scroll</option>
+            <option value="snap">Snap Scroll</option>
+          </select>
+        </div>
+        <div class="select-group">
+          <label>Cursor Style</label>
+          <select class="custom-select" id="sel-cursor">
+            <option value="magnetic">Magnetic Trail</option>
+            <option value="glow">Glow Orb</option>
+            <option value="dot-follow">Dot Follow</option>
+            <option value="text-morph">Text Morph</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PREVIEW PANEL -->
+    <div class="panel" id="panel-preview">
+      <div class="preview-mockup">
+        <div class="mock-nav">
+          <div class="dot" style="background:#ff5f57"></div>
+          <div class="dot" style="background:#febc2e"></div>
+          <div class="dot" style="background:#28c840"></div>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:#4b4568;margin-left:8px;">cospira.app/about</span>
+        </div>
+        <div class="mock-hero">
+          <div class="mock-hero-bg"></div>
+          <div class="mock-title">COSPIRA</div>
+          <div class="mock-sub">Human Presence, Delivered Without Compromise</div>
+          <div class="mock-scroll-hint">
+            <div class="scroll-pill">scroll to explore <span class="scroll-arrow">↓</span></div>
+          </div>
+        </div>
+        <div class="mock-sections" id="mock-sections">
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:rgba(120,80,255,0.08);border:1px solid rgba(120,80,255,0.2);border-radius:10px;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:#6b6585;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Active Effects</div>
+        <div id="active-pills" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+    </div>
+
+    <!-- PROMPT PANEL -->
+    <div class="panel" id="panel-prompt">
+      <div class="section-label">Generated System Prompt</div>
+      <div class="prompt-output" id="prompt-output"></div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn-primary" onclick="handleMain()">
+        <span id="main-btn-label">⚡ Generate & Use Prompt</span>
+      </button>
+      <button class="btn-secondary" onclick="copyPrompt()">Copy</button>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast">Copied to clipboard!</div>
+</div>
+
+<script>
+const EFFECTS = [
+  { id:'scroll-reveal', icon:'◈', label:'Scroll Reveal', sub:'entrance on scroll' },
+  { id:'parallax', icon:'⬡', label:'Parallax Depth', sub:'multi-layer scroll' },
+  { id:'3d-tilt', icon:'◻', label:'3D Card Tilt', sub:'mouse perspective' },
+  { id:'magnetic', icon:'◉', label:'Magnetic Hover', sub:'cursor attraction' },
+  { id:'smooth-loader', icon:'◌', label:'Smooth Loader', sub:'animated preloader' },
+  { id:'cursor-trail', icon:'⊹', label:'Cursor FX', sub:'custom cursor trail' },
+  { id:'text-morph', icon:'≈', label:'Text Morph', sub:'letter-by-letter' },
+  { id:'stagger-grid', icon:'⊞', label:'Stagger Grid', sub:'cascade entrance' },
+  { id:'pin-sections', icon:'⊡', label:'Section Pin', sub:'sticky scroll panels' },
+  { id:'noise-grain', icon:'⋮', label:'Noise Grain', sub:'film texture overlay' },
+];
+
+let selected = new Set(['scroll-reveal','parallax','3d-tilt','magnetic','smooth-loader','cursor-trail','text-morph','stagger-grid','pin-sections','noise-grain']);
+let intensity = 'balanced';
+
+function renderEffects() {
+  const grid = document.getElementById('effects-grid');
+  grid.innerHTML = EFFECTS.map(e => `
+    <div class="effect-chip ${selected.has(e.id)?'selected':''}" onclick="toggleEffect('${e.id}')">
+      <span class="icon">${e.icon}</span>
+      <div>
+        <div class="label">${e.label}</div>
+        <div class="sub">${e.sub}</div>
+      </div>
+      <div class="check"><div class="check-inner"></div></div>
+    </div>
+  `).join('');
+}
+
+function toggleEffect(id) {
+  if(selected.has(id)) selected.delete(id);
+  else selected.add(id);
+  renderEffects();
+  updatePills();
+  updatePrompt();
+}
+
+function setIntensity(v) {
+  intensity = v;
+  document.querySelectorAll('.intensity-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase()===v);
+  });
+  updatePrompt();
+}
+
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i)=>{
+    const names = ['configure','preview','prompt'];
+    b.classList.toggle('active', names[i]===t);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  if(t==='prompt') updatePrompt();
+  if(t==='preview') updatePreview();
+  const lbl = document.getElementById('main-btn-label');
+  lbl.textContent = t==='prompt' ? '⚡ Send Prompt to Claude' : '⚡ Generate & Use Prompt';
+}
+
+function updatePills() {
+  const c = document.getElementById('active-pills');
+  if(!c) return;
+  const arr = EFFECTS.filter(e=>selected.has(e.id));
+  c.innerHTML = arr.map(e=>`
+    <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:rgba(120,80,255,0.15);border:1px solid rgba(120,80,255,0.3);border-radius:999px;font-family:'DM Mono',monospace;font-size:10px;color:#c4b5fd;">${e.icon} ${e.label}</span>
+  `).join('');
+}
+
+function updatePreview() {
+  updatePills();
+  const sections = document.getElementById('mock-sections');
+  const labels = ['01 · The Vision','02 · Problem & Solution','03 · Core Philosophy','04 · Technical Edge','05 · The Roadmap'];
+  const widths = [65,80,55,72,60];
+  sections.innerHTML = labels.map((l,i)=>`
+    <div class="mock-section-bar">
+      <div class="bar-dot"></div>
+      <span style="font-family:'DM Mono',monospace;font-size:9px;color:#5a5572;flex-shrink:0;">${l}</span>
+      <div class="bar-line" style="flex:1;max-width:${widths[i]}%"></div>
+    </div>
+  `).join('');
+}
+
+function buildPrompt() {
+  const color = document.getElementById('sel-color').value;
+  const font = document.getElementById('sel-font').value;
+  const scroll = document.getElementById('sel-scroll').value;
+  const cursor = document.getElementById('sel-cursor').value;
+
+  const colorMap = {
+    'deep-space':'Deep Space — primary #08080f, accent #7c3aed / #a78bfa, text #e8e4ff, surface #0f0f1a',
+    'obsidian-gold':'Obsidian + Gold — primary #0a0a0a, accent #d4a853 / #f5c842, text #f0ead6, surface #111',
+    'arctic-white':'Arctic White — primary #f8f8fc, accent #3b82f6 / #6366f1, text #0f0f1a, surface #ffffff',
+    'crimson-black':'Crimson Black — primary #0d0000, accent #dc2626 / #ef4444, text #fde8e8, surface #150505',
+    'neon-cyber':'Neon Cyber — primary #000510, accent #00fff5 / #ff00aa, text #e0fffc, surface #00020d',
+  };
+  const fontMap = {
+    'editorial':'Editorial Serif — display: Playfair Display 800, body: Source Serif 4 400',
+    'tech-mono':'Tech Mono — display: Space Mono 700, body: JetBrains Mono 400',
+    'luxury':'Luxury Display — display: Cormorant Garamond 300, body: Jost 300',
+    'humanist':'Humanist Sans — display: Cabinet Grotesk 900, body: Satoshi 400',
+    'brutalist':'Brutalist Slab — display: Bebas Neue 400, body: IBM Plex Mono 400',
+  };
+  const scrollMap = {
+    'parallax-deep':'Deep multi-layer parallax — background layers at 0.2x speed, mid at 0.5x, foreground at 1x',
+    'pinned':'GSAP ScrollTrigger section pinning — each section pins while content animates in, then unpins',
+    'horizontal':'Horizontal scroll container — use ScrollTrigger horizontal pinning for the featured section',
+    'snap':'CSS scroll-snap-type mandatory — full-page sections with smooth snap transitions',
+  };
+  const cursorMap = {
+    'magnetic':'Magnetic cursor — custom SVG cursor with elastic trail using spring physics (stiffness 120, damping 14)',
+    'glow':'Glow orb cursor — radial gradient orb following mouse with 80ms lerp lag',
+    'dot-follow':'Dot follow — 8px filled dot at true position, 24px outline ring lagging 100ms behind',
+    'text-morph':'Text morph cursor — cursor displays context-aware text (VIEW, DRAG, PLAY) that morphs on hover targets',
+  };
+
+  const selEffects = EFFECTS.filter(e=>selected.has(e.id)).map(e=>e.label);
+  const intensityDesc = {
+    subtle:'Keep all animations restrained — durations 0.3–0.6s, easing ease-out, transforms limited to 8px Y-axis and 0.96 scale. No blur or heavy 3D.',
+    balanced:'Moderate energy — durations 0.6–1.0s, spring easings, transforms up to 24px. 3D perspective at 800px. Parallax depth ±40px.',
+    cinematic:'Maximum drama — durations 1.0–2.0s, complex staged sequences, bold 3D transforms (rotateX up to 12deg), deep parallax ±120px, staggered letter animations.',
+  }[intensity];
+
+  return `You are a world-class creative frontend engineer and motion designer.
+
+TASK: Build a complete, single-file HTML About page for COSPIRA based on the provided document content. The page must be production-ready, visually extraordinary, and fully animated.
+
+━━━ CONTENT SOURCE ━━━
+Parse and use the COSPIRA About Us document which contains these five sections:
+  1. The Vision — opening philosophical statement
+  2. The Problem & Solution — fragmentation tax concept + architecture solution
+  3. Core Philosophy — Room Kernel, digital twins, three commitments
+  4. Technical Edge — AIOS, agent swarm, matchmaking, full stack
+  5. The Roadmap — three near-term pillars + closing manifesto
+
+━━━ VISUAL IDENTITY ━━━
+Palette: ${colorMap[color]}
+Typography: ${fontMap[font]}
+Load fonts from Google Fonts CDN. Establish clear typographic hierarchy: hero display (clamp 64px→120px), section headings (clamp 40px→64px), body (18px/1.8).
+
+━━━ ANIMATION SYSTEM ━━━
+Required effects: ${selEffects.join(', ')}
+Intensity level: ${intensity.toUpperCase()} — ${intensityDesc}
+
+Implement each effect precisely:
+
+SMOOTH LOADER: Full-screen preloader with brand wordmark. Counter animates 0→100. Progress bar fills. On complete: loader scales up and fades out revealing page. Duration: 2.2s total.
+
+SCROLL REVEAL (IntersectionObserver): Every section, heading, and card registers an observer with threshold:0.15. On intersect: add class "revealed" which triggers CSS transition (opacity 0→1, translateY 40px→0). Use data-delay attributes for staggered children.
+
+PARALLAX: ${scrollMap[scroll]}
+
+3D CARD TILT: On mousemove over any .card or .feature-block, compute tilt from cursor offset. Apply transform: perspective(800px) rotateX(Xdeg) rotateY(Ydeg). Add specular highlight overlay that tracks cursor. On mouseleave: spring-return to flat.
+
+MAGNETIC HOVER: All CTA buttons and nav links have a magnetic zone (1.4× element size). On hover, element translates toward cursor. Strength: 0.3 (element moves 30% of cursor offset). On leave: spring back.
+
+CURSOR: ${cursorMap[cursor]}
+
+TEXT MORPH: Section headings animate character by character on reveal. Split text into spans, stagger opacity and translateY with 30ms intervals. Use clip-path for clean reveal.
+
+STAGGER GRID: Card grids animate children with 80ms cascade delay. First card at 0ms, last card at N×80ms.
+
+NOISE GRAIN: Inject a full-page fixed canvas with Perlin-noise-style grain texture. Opacity 0.035. Animate grain slowly (requestAnimationFrame offset). Adds cinematic film texture.
+
+━━━ PAGE ARCHITECTURE ━━━
+Structure:
+  <nav> — sticky, blurs background on scroll (backdrop-filter: blur(20px)), logo left + links right
+  <section#hero> — full viewport, brand name as massive display type, tagline, animated scroll indicator
+  <section#vision> — full-width statement, large pull-quote style
+  <section#problem> — split layout: problem left / solution right. Animated connection line between.
+  <section#philosophy> — three commitment cards in a grid. Each card has hover 3D tilt.
+  <section#tech> — dark bg section. Tech stack displayed as animated node graph or grid. Highlight: AIOS, Agent Swarm, SFU Media, Matchmaking.
+  <section#roadmap> — timeline or stepped layout. Three pillars revealed in sequence.
+  <footer> — brand sign-off: "Engineered for Presence"
+
+━━━ TECHNICAL REQUIREMENTS ━━━
+- Pure HTML/CSS/JS, single file, no build tools, no frameworks
+- Load GSAP 3 from cdnjs for ScrollTrigger, Draggable, and core
+- Load three.js only if needed for background
+- All animations GPU-accelerated (transform, opacity only — no layout thrashing)
+- Smooth scroll behavior: scroll-behavior: smooth on html
+- Performance: use will-change sparingly, only on actively animating elements
+- Mobile: all effects gracefully degrade on touch devices (no magnetic/tilt on mobile, simpler parallax)
+- prefers-reduced-motion: wrap all animations in @media (prefers-reduced-motion: no-preference) checks
+
+━━━ CODE QUALITY ━━━
+- Semantic HTML5 elements (nav, main, section, article, footer)
+- CSS custom properties for all design tokens
+- JavaScript in a single DOMContentLoaded block
+- No console.log in production code
+- Smooth 60fps guaranteed — avoid scroll-triggered JS layout reads
+
+━━━ OUTPUT ━━━
+Return the complete single HTML file. No explanation, no markdown fences, no truncation. The file must be immediately runnable. Start directly with <!DOCTYPE html>.`;
+}
+
+function updatePrompt() {
+  const el = document.getElementById('prompt-output');
+  if(!el) return;
+  const txt = buildPrompt();
+  el.innerHTML = txt
+    .replace(/━━━[^━]*━━━/g, m=>`<span class="kw">${m}</span>`)
+    .replace(/\b(TASK|CRITICAL|Required|Structure|Implement|Load|Return|Build|Parse|Apply|Inject|Establish|Use|Add)\b/g, m=>`<span class="kw">${m}</span>`)
+    .replace(/(["'])([^"']*)\1/g, (m,q,v)=>`<span class="str">${q}${v}${q}</span>`)
+    .replace(/\b(\d+\.?\d*(?:px|ms|s|deg|%))/g, m=>`<span class="num">${m}</span>`);
+}
+
+function handleMain() {
+  const activeTab = document.querySelector('.tab.active').textContent.trim();
+  if(activeTab === 'Prompt' || activeTab.includes('Prompt')) {
+    sendPrompt(buildPrompt());
+  } else {
+    switchTab('prompt');
+    setTimeout(()=>{ sendPrompt(buildPrompt()); }, 400);
+  }
+}
+
+function copyPrompt() {
+  const txt = buildPrompt();
+  navigator.clipboard.writeText(txt).then(()=>{
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2000);
+  });
+}
+
+document.querySelectorAll('.custom-select').forEach(s => {
+  s.addEventListener('change', () => { updatePrompt(); updatePreview(); });
+});
+
+renderEffects();
+updatePills();
+updatePrompt();
+updatePreview();
+</script>

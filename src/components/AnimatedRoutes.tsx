@@ -61,12 +61,12 @@ import RootLayout from '@/components/layout/RootLayout';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageLoader } from './PageLoader';
 
-import Index from '@/pages/Index';
-import Dashboard from '@/pages/Dashboard';
+const Index = safeLazy(() => import('@/pages/Index'));
 
 const Auth = safeLazy(() => import('@/pages/Auth'));
-const About = safeLazy(() => import('@/pages/AboutPage'));
 const CreateRoom = safeLazy(() => import('@/pages/CreateRoom'));
+const Dashboard = safeLazy(() => import('@/pages/Dashboard'));
+const About = safeLazy(() => import('@/pages/About'));
 const Docs = safeLazy(() => import('@/pages/Docs'));
 const Room = safeLazy(() => import('@/pages/Room'));
 const Profile = safeLazy(() => import('@/pages/Profile'));
@@ -82,7 +82,9 @@ const Join = safeLazy(() => import('@/pages/Join'));
 const Games = safeLazy(() => import('@/pages/Games'));
 const AIAnalytics = safeLazy(() => import('@/pages/AIAnalyticsPage'));
 const Settings = safeLazy(() => import('@/pages/Settings'));
-const UpcomingFeatures = safeLazy(() => import('@/pages/UpcomingFeatures'));
+const AIInterviewSoon = safeLazy(() => import('@/pages/AIInterviewSoon'));
+const Privacy = safeLazy(() => import('@/pages/Privacy'));
+const Terms = safeLazy(() => import('@/pages/Terms'));
 import { SidebarDemo } from '@/components/SidebarDemo';
 
 const Loader = ({ children }: { children: ReactNode }) => {
@@ -120,12 +122,46 @@ const AnimatedRoutes = () => {
           }
         />
 
+
         <Route
           path='/auth'
           element={
             <PageTransition>
               <Loader>
                 <Auth />
+              </Loader>
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path='/privacy'
+          element={
+            <PageTransition>
+              <Loader>
+                <Privacy />
+              </Loader>
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path='/terms'
+          element={
+            <PageTransition>
+              <Loader>
+                <Terms />
+              </Loader>
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path='/about'
+          element={
+            <PageTransition>
+              <Loader>
+                <About />
               </Loader>
             </PageTransition>
           }
@@ -267,12 +303,12 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path='/upcoming-features'
+            path='/ai-interview'
             element={
               <PageTransition>
                 <Loader>
                   <ProtectedRoute>
-                    <UpcomingFeatures />
+                    <AIInterviewSoon />
                   </ProtectedRoute>
                 </Loader>
               </PageTransition>
@@ -348,16 +384,6 @@ const AnimatedRoutes = () => {
           }
         />
 
-        <Route
-          path='/about'
-          element={
-            <PageTransition variant='slideLeft'>
-              <Loader>
-                <About />
-              </Loader>
-            </PageTransition>
-          }
-        />
 
         <Route
           path='/docs'

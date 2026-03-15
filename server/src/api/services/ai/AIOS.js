@@ -1,4 +1,4 @@
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 import aiKernel from './AIKernel.js';
 import agentManager from './AgentManager.js';
 import autonomousGoalEngine from './AutonomousGoalEngine.js';

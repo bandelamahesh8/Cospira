@@ -2,7 +2,7 @@ import roomIntelligenceService from '../RoomIntelligenceService.js';
 import aiMemoryService from './AIMemoryService.js';
 import { analyzeSentiment } from './SentimentAnalyzer.js';
 import confidenceService from './ConfidenceService.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class ContextInferenceService {
     /**

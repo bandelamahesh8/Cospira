@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class AgentBus extends EventEmitter {
     constructor() {

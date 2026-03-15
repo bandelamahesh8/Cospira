@@ -1,19 +1,19 @@
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../shared/logger.js';
-import eventLogger from '../services/EventLogger.js';
+import eventLogger from '../../api/services/EventLogger.js';
 import { getRoom, saveRoom, getUser, saveUser, hasRoom, deleteUser, getSystemStats, deleteRoom, getActiveRooms } from '../../shared/redis.js';
 import { createRoomSchema, joinRoomSchema } from '../../shared/validation.js';
-import { sanitizeRoomId } from '../utils/sanitize.js';
+import { sanitizeRoomId } from '../../utils/sanitize.js';
 import { supabase } from '../../shared/supabase.js';
-import PermissionEngine from '../services/PermissionEngine.js';
-import { UserAnalyticsSetting } from '../models/UserAnalyticsSetting.js';
+import PermissionEngine from '../../api/services/PermissionEngine.js';
+import { UserAnalyticsSetting } from '../../api/models/UserAnalyticsSetting.js';
 // ─── Neural Controls ─────────────────────────────────────────────────────────
-import roomKernel, { KERNEL_EVENTS } from '../services/RoomKernel.js';
-import authorityEngine from '../services/AuthorityEngine.js';
-import { Room as RoomModel } from '../models/Room.js';
-import { RoomEvent } from '../models/RoomEvent.js';
-import analyticsService from '../services/ai/AnalyticsService.js';
-import { deleteRoomUploads } from '../utils/fileCleanup.js';
+import roomKernel, { KERNEL_EVENTS } from '../../api/services/RoomKernel.js';
+import authorityEngine from '../../api/services/AuthorityEngine.js';
+import { Room as RoomModel } from '../../api/models/Room.js';
+import { RoomEvent } from '../../api/models/RoomEvent.js';
+import analyticsService from '../../api/services/ai/AnalyticsService.js';
+import { deleteRoomUploads } from '../../utils/fileCleanup.js';
 
 export default function registerRoomHandlers(io, socket, sfuHandler) {
     

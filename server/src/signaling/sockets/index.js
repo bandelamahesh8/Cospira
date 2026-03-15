@@ -17,11 +17,11 @@ import registerMatchmakingHandlers from './matchmaking.socket.js';
 import registerChessHandlers from './chess.socket.js';
 import registerBreakoutHandlers, { handleBreakoutHostDisconnect } from './breakout.socket.js';
 import registerBreakoutAIHandlers from './breakout-ai.socket.js';
-import BreakoutAIIngest from '../services/breakout/BreakoutAIIngest.js';
+import BreakoutAIIngest from '../../api/services/breakout/BreakoutAIIngest.js';
 import { registerPolicySockets } from './policy.socket.js';
 import { getSystemStats } from '../../shared/redis.js';
 import logger from '../../shared/logger.js';
-import eventLogger from '../services/EventLogger.js';
+import eventLogger from '../../api/services/EventLogger.js';
 
 export default function registerSocketHandlers(io, sfuHandler) {
   // Maps userId -> socketId
@@ -107,7 +107,7 @@ export default function registerSocketHandlers(io, sfuHandler) {
           userSockets.delete(userId);
         }
         // Stop AI Transcription
-        import('../services/ai/AIService.js').then(m => m.default.stopTranscription(userId));
+        import('../../api/services/ai/AIService.js').then(m => m.default.stopTranscription(userId));
 
         // GAP 5: Host failure policy — handle breakout host disconnect
         handleBreakoutHostDisconnect(io, userId).catch(err =>
@@ -115,7 +115,7 @@ export default function registerSocketHandlers(io, sfuHandler) {
         );
       } else {
         // Fallback for non-authenticated users if they were using socket.id as userId
-        import('../services/ai/AIService.js').then(m => m.default.stopTranscription(socket.id));
+        import('../../api/services/ai/AIService.js').then(m => m.default.stopTranscription(socket.id));
       }
       
       // Broadcast stats on disconnect

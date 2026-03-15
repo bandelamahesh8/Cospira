@@ -1,7 +1,7 @@
 import aiMemoryService from './AIMemoryService.js';
 import trustService from './TrustService.js';
 import conflictDetector from './ConflictDetector.js';
-import logger from '../../logger.js';
+import logger from '../../../shared/logger.js';
 
 class EnterpriseService {
     constructor() {

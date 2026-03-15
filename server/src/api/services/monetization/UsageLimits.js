@@ -1,6 +1,6 @@
-import logger from '../../logger.js';
-import { supabase } from '../../supabase.js';
-import { getCache, setCache } from '../../redis.js';
+import logger from '../../../shared/logger.js';
+import { supabase } from '../../../shared/supabase.js';
+import { getCache, setCache } from '../../../shared/redis.js';
 
 /**
  * Usage Limits Service
