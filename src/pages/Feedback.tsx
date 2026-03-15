@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import FooterCTA from '@/components/home/FooterCTA';
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -541,7 +541,7 @@ const Feedback = () => {
           </div>
         </div>
       </div>
-      <Footer />
+      <FooterCTA />
     </div>
   );
 };
