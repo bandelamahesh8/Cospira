@@ -17,8 +17,11 @@ export interface RoomModeConfig {
     games: boolean;
     virtualBrowser: boolean;
     screenShare: boolean;
+    screenRecording: boolean;
     transcription: boolean;
-    summary: boolean;
+    aiSummary: boolean;
+    orpion: boolean;
+    revealNames: boolean;
   };
   uiConfig: {
     theme: 'fun' | 'professional' | 'ultra' | 'mixed';
@@ -27,6 +30,7 @@ export interface RoomModeConfig {
     gameOverlay?: boolean;
     securityHud?: boolean;
     watermark?: boolean;
+    screenCapturePrevention?: boolean;
   };
 }
 
@@ -50,8 +54,11 @@ export const ROOM_MODE_CONFIGS: Record<RoomMode, RoomModeConfig> = {
       games: true,
       virtualBrowser: true,
       screenShare: true,
+      screenRecording: true,
       transcription: false,
-      summary: false, // User Requirement: No need for summary in Fun
+      aiSummary: false, // User Requirement: No AI Summary in Fun
+      orpion: false, // User Requirement: No Orpion in Fun
+      revealNames: true,
     },
     uiConfig: {
       theme: 'fun',
@@ -71,8 +78,11 @@ export const ROOM_MODE_CONFIGS: Record<RoomMode, RoomModeConfig> = {
       games: false, // User Requirement: No games in Professional
       virtualBrowser: true,
       screenShare: true,
+      screenRecording: true,
       transcription: true,
-      summary: true,
+      aiSummary: true,
+      orpion: true,
+      revealNames: true,
     },
     uiConfig: {
       theme: 'professional',
@@ -89,17 +99,21 @@ export const ROOM_MODE_CONFIGS: Record<RoomMode, RoomModeConfig> = {
       noiseSuppression: true,
       autoFraming: false,
       chat: true,
-      games: false, // Professional standard
-      virtualBrowser: false, // Limit external vectors
-      screenShare: false, // User Req: No outgoing screen share
+      games: false,
+      virtualBrowser: true, 
+      screenShare: true, 
+      screenRecording: false, // NO recording allowed
       transcription: true,
-      summary: true, // "Complete high professional" implies minutes needed.
+      aiSummary: false, // User Requirement: No AI tools
+      orpion: false, // User Requirement: No Orpion
+      revealNames: false, // Blind to participants
     },
     uiConfig: {
       theme: 'ultra',
       layout: 'focused',
       securityHud: true,
       watermark: true,
+      screenCapturePrevention: true, // Advanced CSS Deterrents
     },
   },
   mixed: {
@@ -114,8 +128,11 @@ export const ROOM_MODE_CONFIGS: Record<RoomMode, RoomModeConfig> = {
       games: true,
       virtualBrowser: true,
       screenShare: true,
+      screenRecording: true,
       transcription: true,
-      summary: true,
+      aiSummary: true,
+      orpion: true,
+      revealNames: true,
     },
     uiConfig: {
       theme: 'mixed',
@@ -158,8 +175,22 @@ export function getUIConfig(mode: RoomMode): RoomModeConfig['uiConfig'] {
   return config.uiConfig;
 }
 
+/**
+ * Normalize variations of room modes into canonical RoomMode
+ */
+export function normalizeRoomMode(mode: string | null | undefined): RoomMode {
+  if (!mode) return 'mixed';
+  const m = String(mode).toLowerCase().trim();
+  if (m === 'fun') return 'fun';
+  if (m === 'prof' || m === 'pro' || m === 'professional') return 'professional';
+  if (m === 'ultra_secure' || m === 'ultra') return 'ultra';
+  if (m === 'mixed') return 'mixed';
+  return 'mixed';
+}
+
 export default {
   getModeConfig,
+  normalizeRoomMode,
   getAllModes,
   isFeatureEnabled,
   getUIConfig,

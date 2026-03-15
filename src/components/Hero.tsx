@@ -42,7 +42,7 @@ const Hero = () => {
             <Button
               size='lg'
               asChild
-              className='bg-gradient-to-r from-primary to-accent text-background font-semibold text-lg px-8 py-6 hover:shadow-lg hover:shadow-primary/50 transition-all group'
+              className='bg-white text-black font-black uppercase tracking-[0.2em] text-sm px-8 py-6 hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] transition-all group rounded-full'
             >
               <Link to='/dashboard'>
                 Create Room

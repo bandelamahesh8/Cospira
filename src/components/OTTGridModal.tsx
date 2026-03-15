@@ -157,6 +157,7 @@ const OTTGridModal: React.FC<OTTGridModalProps> = ({
                         const f = e.target.files?.[0];
                         if (f) {
                           onFileUpload(f);
+                          e.target.value = ''; // Ensure re-selection fires onChange
                           onOpenChange(false);
                         }
                       }}

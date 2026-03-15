@@ -83,6 +83,9 @@ export class BreakoutService {
    * Get a specific breakout session by ID.
    */
   static async getBreakoutDetails(breakoutId: string): Promise<BreakoutSession | null> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
+      return null;
+    }
     const { data, error } = await supabase
       .from('breakout_sessions')
       .select(
@@ -113,6 +116,9 @@ export class BreakoutService {
    * Get participants for a specific breakout.
    */
   static async getBreakoutParticipants(breakoutId: string): Promise<BreakoutParticipant[]> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
+      return [];
+    }
     interface RawParticipant {
       id: string;
       breakout_id: string;
@@ -377,6 +383,9 @@ export class BreakoutService {
    * Close a breakout session.
    */
   static async closeBreakout(breakoutId: string): Promise<void> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
+      return;
+    }
     const { error } = await supabase
       .from('breakout_sessions')
       .update({ status: 'CLOSED' })
@@ -391,6 +400,26 @@ export class BreakoutService {
   }
 
   /**
+   * Delete a breakout session permanently.
+   */
+  static async deleteBreakout(breakoutId: string): Promise<void> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
+      return;
+    }
+    const { error } = await supabase
+      .from('breakout_sessions')
+      .delete()
+      .eq('id', breakoutId);
+
+    if (error) throw error;
+
+    roomEventBus.emit('ROOM_STATE_CHANGE', {
+      breakoutId,
+      status: 'CLOSED', // Treat as closed for UI purposes
+    });
+  }
+
+  /**
    * Update org mode (only if no LIVE breakouts).
    */
   static async updateOrgMode(orgId: string, mode: OrgMode): Promise<void> {
@@ -400,10 +429,43 @@ export class BreakoutService {
   }
 
   /**
+   * Delete all breakout sessions for an organization permanently.
+   */
+  static async deleteAllBreakouts(orgId: string): Promise<void> {
+    const { error } = await supabase
+      .from('breakout_sessions')
+      .delete()
+      .eq('organization_id', orgId);
+
+    if (error) throw error;
+
+    // Notify that room state has changed (all rooms closed)
+    roomEventBus.emit('ROOM_STATE_CHANGE', {
+      breakoutId: '', // Use empty string or handle specifically to avoid UUID errors
+      status: 'CLOSED',
+    });
+  }
+
+  /**
+   * Delete an entire organization permanently.
+   */
+  static async deleteOrganization(orgId: string): Promise<void> {
+    const { error } = await supabase
+      .from('organizations')
+      .delete()
+      .eq('id', orgId);
+
+    if (error) throw error;
+  }
+
+  /**
    * Pause a breakout — triggered when host disconnects in ULTRA_SECURE mode.
    * Status: LIVE → PAUSED
    */
   static async pauseBreakout(breakoutId: string): Promise<void> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
+      return;
+    }
     const { data: session, error: fetchError } = await supabase
       .from('breakout_sessions')
       .select('status')
@@ -621,6 +683,9 @@ export class BreakoutService {
    * Get historical event logs for a specific room.
    */
   static async getRoomHistory(breakoutId: string): Promise<RoomEventLog[]> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
+      return [];
+    }
     const { data, error } = await supabase
       .from('room_event_logs')
       .select('*')

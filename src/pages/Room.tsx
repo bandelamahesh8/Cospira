@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Suspense, useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { safeLazy } from '@/components/AnimatedRoutes';
 import {
   Shield,
   VideoOff,
@@ -7,16 +8,18 @@ import {
   Building2,
   Eye,
   LayoutGrid,
-  BrainCircuit,
   Globe,
   User,
   Bot,
   Sparkles,
   Settings,
+  Ghost,
+  BarChart3,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { PollData } from '@/types/websocket';
 import { ParticipantStrip } from '@/components/room/ParticipantStrip';
 import { useAuth } from '@/hooks/useAuth';
 import { useRecording } from '@/hooks/useRecording';
@@ -25,46 +28,49 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useOrganization } from '@/contexts/useOrganization';
-import RoomControls from '@/components/room/RoomControls';
-import VideoGrid from '@/components/room/VideoGrid';
-import ChatPanel from '@/components/room/ChatPanel';
-import FeedbackModal from '@/components/FeedbackModal';
-const SynchronizedYouTubePlayer = lazy(() => import('@/components/SynchronizedYouTubePlayer'));
-const OTTGridModal = lazy(() => import('@/components/OTTGridModal'));
-import { GameHubModal, AbandonGameModal } from '@/components/games/GameSelector';
-import { GameArenaContainer } from '@/components/games/GameArenaContainer';
-import { VirtualBrowser } from '@/components/VirtualBrowser';
-import { FilePresenter } from '@/components/room/FilePresenter';
-import { SoftOnboarding } from '@/components/room/SoftOnboarding';
-import { CaptionsOverlay } from '@/components/room/CaptionsOverlay';
-import { RoomModeSuggestion } from '@/components/room/RoomModeSuggestion';
-import { SecurityOverlay } from '@/components/room/SecurityOverlay';
+import { copyToClipboard } from '@/utils/clipboard';
+const RoomControls = safeLazy(() => import('@/components/room/RoomControls'));
+const VideoGrid = safeLazy(() => import('@/components/room/VideoGrid'));
+const ChatPanel = safeLazy(() => import('@/components/room/ChatPanel'));
+const VirtualBrowser = safeLazy(() => import('@/components/VirtualBrowser').then(m => ({ default: m.VirtualBrowser })));
+const SoftOnboarding = safeLazy(() => import('@/components/room/SoftOnboarding').then(m => ({ default: m.SoftOnboarding })));
+const CaptionsOverlay = safeLazy(() => import('@/components/room/CaptionsOverlay').then(m => ({ default: m.CaptionsOverlay })));
+const RoomModeSuggestion = safeLazy(() => import('@/components/room/RoomModeSuggestion'));
+const LateJoinBanner = safeLazy(() => import('@/components/room/LateJoinBanner'));
+const InviteModal = safeLazy(() => import('@/components/room/InviteModal'));
+const AIPoll = safeLazy(() => import('@/components/room/AIPoll'));
+const ManualPollModal = safeLazy(() => import('@/components/room/ManualPollModal'));
+const AuthPromptModal = safeLazy(() => import('@/components/room/AuthPromptModal').then(m => ({ default: m.AuthPromptModal })));
+const RoomTimerModal = safeLazy(() => import('@/components/room/RoomTimerModal').then(m => ({ default: m.RoomTimerModal })));
+const DispatchModal = safeLazy(() => import('@/components/room/DispatchModal'));
+const SuperiorSummaryModal = safeLazy(() => import('@/components/room/SuperiorSummaryModal'));
+const ParticipantsModal = safeLazy(() => import('@/components/room/ParticipantsModal'));
+const SynchronizedYouTubePlayer = safeLazy(() => import('@/components/SynchronizedYouTubePlayer'));
+const OTTGridModal = safeLazy(() => import('@/components/OTTGridModal'));
+const GameHubModal = safeLazy(() => import('@/components/games/GameSelector').then(m => ({ default: m.GameHubModal })));
+const AbandonGameModal = safeLazy(() => import('@/components/games/GameSelector').then(m => ({ default: m.AbandonGameModal })));
+const GameArenaContainer = safeLazy(() => import('@/components/games/GameArenaContainer').then(m => ({ default: m.GameArenaContainer })));
+const FeedbackModal = safeLazy(() => import('@/components/FeedbackModal'));
+const SettingsModal = safeLazy(() => import('@/components/SettingsModal'));
+const SecurityDecryptionModal = safeLazy(() => import('@/components/room/SecurityDecryptionModal').then(m => ({ default: m.SecurityDecryptionModal })));
+const TranscriptionOverlay = safeLazy(() => import('@/components/room/TranscriptionOverlay').then(m => ({ default: m.TranscriptionOverlay })));
+const RoomsGridView = safeLazy(() => import('@/components/room/RoomsGridView'));
+const HeaderTimer = safeLazy(() => import('@/components/room/HeaderTimer'));
+const SecurityOverlay = safeLazy(() => import('@/components/room/SecurityOverlay').then(m => ({ default: m.SecurityOverlay })));
+const FilePresenter = safeLazy(() => import('@/components/room/FilePresenter').then(m => ({ default: m.FilePresenter })));
+import { useFullscreenEnforcement } from '@/hooks/useFullscreenEnforcement';
+import { UltraSecureBlocker } from '@/components/room/UltraSecureBlocker';
+import { KeyWarningOverlay } from '@/components/room/KeyWarningOverlay';
+
+import { useNavigate, useLocation } from 'react-router-dom';
+import { BreakoutService } from '@/services/BreakoutService';
 import { getModeConfig, type RoomMode } from '@/services/RoomIntelligence';
 import AITimer from '@/components/room/AITimer';
-import LateJoinBanner from '@/components/room/LateJoinBanner';
-import InviteModal from '@/components/room/InviteModal';
-import OrpionSummaryModal from '@/components/room/OrpionSummaryModal';
-import AIPoll from '@/components/room/AIPoll';
-import { AuthPromptModal } from '@/components/room/AuthPromptModal';
-import { useNetworkQuality, NetworkQuality } from '@/hooks/useNetworkQuality';
 import { RoomSkeleton } from '@/components/room/RoomSkeleton';
+import SocialRoomControls from '@/components/room/SocialRoomControls';
+import { useNetworkQuality, NetworkQuality } from '@/hooks/useNetworkQuality';
 import { UI_TEXT } from '@/utils/terminology';
 
-import SocialRoomControls from '@/components/room/SocialRoomControls';
-import SettingsModal from '@/components/SettingsModal';
-import ParticipantsModal from '@/components/room/ParticipantsModal';
-import { SecurityDecryptionModal } from '@/components/room/SecurityDecryptionModal';
-import { TranscriptionOverlay } from '@/components/room/TranscriptionOverlay';
-import { MeetingSummaryModal } from '@/components/room/MeetingSummaryModal';
-import { DispatchModal } from '@/components/room/DispatchModal';
-import { RoomsGridView } from '@/components/room/RoomsGridView';
-// import STTService from '@/services/ai/STTService'; // Handled by Context
-import AISummaryService, { MeetingSummary } from '@/services/ai/AISummaryService';
-import HeaderTimer from '@/components/room/HeaderTimer';
-import { RoomTimerModal } from '@/components/room/RoomTimerModal';
-import { useNavigate, useLocation } from 'react-router-dom';
-// OrganizationRoom removed — Dispatch Center is handled by DispatchModal directly
-import { BreakoutService } from '@/services/BreakoutService';
 const Room = () => {
   const {
     roomId,
@@ -100,6 +106,7 @@ const Room = () => {
     users,
     files,
     isHost,
+    isSuperHost,
     isConnected,
     roomName,
     organizationName,
@@ -116,6 +123,7 @@ const Room = () => {
     isScreenSharing,
     toggleAudio,
     toggleVideo,
+    repairMedia,
     isPresentingFile,
     presentedFile,
     closePresentedFile,
@@ -134,6 +142,9 @@ const Room = () => {
     meetingSummary,
     activeTimer,
     startRoomTimer,
+    pauseRoomTimer,
+    resumeRoomTimer,
+    stopRoomTimer,
     activePoll,
     lateJoinSummary,
     roomMode,
@@ -145,7 +156,18 @@ const Room = () => {
     isRoomLocked,
     accessType,
     checkRoom,
+    isGhost,
   } = useWebSocket();
+
+  const [isPollDismissed, setIsPollDismissed] = useState(false);
+  const prevPollId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (activePoll && activePoll.id !== prevPollId.current) {
+      setIsPollDismissed(false);
+      prevPollId.current = activePoll.id;
+    }
+  }, [activePoll]);
 
   const activeMode = (roomMode || 'mixed') as RoomMode;
   const activeConfig = getModeConfig(activeMode);
@@ -165,24 +187,64 @@ const Room = () => {
 
   // Elite-tier UI state
   const [showStatusBanner, setShowStatusBanner] = useState(true);
+  const [showManualPollModal, setShowManualPollModal] = useState(false);
+  const [pollHistory, setPollHistory] = useState<PollData[]>([]);
+
+  const fetchPollHistory = useCallback(() => {
+    if (!socket || !roomId) return;
+    socket.emit('get-poll-history', { roomId }, (res: { success: boolean, history?: PollData[], error?: string }) => {
+      if (res.success && res.history) {
+        setPollHistory(res.history);
+      } else if (res.error) {
+        toast.error('History Error', { description: res.error });
+      }
+    });
+  }, [socket, roomId]);
   const [shortcutHint, setShortcutHint] = useState<string | null>(null);
   const [shortcutUsed, setShortcutUsed] = useState<Set<string>>(new Set());
-  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showSuperiorSummary, setShowSuperiorSummary] = useState(false);
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
   const [showGameHub, setShowGameHub] = useState(false);
   const [showAbandonModal, setShowAbandonModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [showDispatchModal, setShowDispatchModal] = useState(false);
-  const [showOrpionModal, setShowOrpionModal] = useState(false);
   const [viewMode, setViewMode] = useState<'single' | 'grid'>('single');
   const [showViewMenu, setShowViewMenu] = useState(false);
   const [isBrowserStarting, setIsBrowserStarting] = useState(false); // bridges click → isVirtualBrowserActive gap
+  const [isBreakoutRoom, setIsBreakoutRoom] = useState(false);
+
+  // Ghost Observer Mode Toggle
+  const [localGhostToggle, setLocalGhostToggle] = useState<boolean | null>(null);
+
+  // Ghost Observer Mode — either from URL param (initial/pending), Context (confirmed) or Local Override
+  const isGhostMode = useMemo(() => {
+    if (localGhostToggle !== null) return localGhostToggle;
+    if (isGhost) return true;
+    const params = new URLSearchParams(location.search);
+    return params.get('ghost') === 'true';
+  }, [location.search, isGhost, localGhostToggle]);
+
+  const handleToggleGhost = useCallback(() => {
+    const newGhostState = !isGhostMode;
+    setLocalGhostToggle(newGhostState);
+    
+    if (newGhostState) {
+      if (isAudioEnabled) toggleAudio();
+      if (isVideoEnabled) toggleVideo();
+      toast.success('Ghost Mode Activated', { description: 'You are now invisible to participants.' });
+    } else {
+      toast.success('Ghost Mode Deactivated', { description: 'You are no longer hidden.' });
+    }
+  }, [isGhostMode, isAudioEnabled, toggleAudio, isVideoEnabled, toggleVideo]);
+
   const [preFetchedRoomInfo, setPreFetchedRoomInfo] = useState<{
     organizationName?: string | null;
     organization_name?: string | null;
     settings?: { organizationName?: string | null };
     name?: string;
     hostName?: string | null;
+    success?: boolean;
+    requiresPassword?: boolean;
   } | null>(null);
 
   // Pre-fetch room info when not joined
@@ -195,12 +257,25 @@ const Room = () => {
       });
     }
   }, [roomId, hasJoined, isWaiting, checkRoom]);
+  
+  // Auto-decrypt if no password is required (prevents stuck screen in Ultra Secure mode)
+  useEffect(() => {
+    if (preFetchedRoomInfo?.success && preFetchedRoomInfo?.requiresPassword === false) {
+      setIsDecrypted(true);
+    }
+  }, [preFetchedRoomInfo]);
   useEffect(() => {
     if (roomId && organizations.length > 0) {
+      const params = new URLSearchParams(location.search);
+      const isExplicitOrg = params.get('type') === 'org';
+
       // Check if roomId is an ID or a Slug
       const org = organizations.find((o) => o.id === roomId || o.slug === roomId);
-      if (org) {
+      
+      if (org && isExplicitOrg) {
+        // Only auto-select org if it's explicitly an org room via URL param
         setCurrentOrganization(org);
+        setIsBreakoutRoom(false);
       } else {
         // Secondary check: is it a breakout room? By definition these must be valid UUIDs
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -211,27 +286,64 @@ const Room = () => {
           BreakoutService.getBreakoutDetails(roomId)
             .then((breakout) => {
               if (breakout && breakout.organization_id) {
+                setIsBreakoutRoom(true);
                 const parentOrg = organizations.find((o) => o.id === breakout.organization_id);
                 if (parentOrg) {
                   setCurrentOrganization(parentOrg);
                 }
+              } else {
+                setIsBreakoutRoom(false);
+                // Don't clear if it was set by organizationName from socket (legacy)
+                if (!organizationName) setCurrentOrganization(null); 
               }
             })
             .catch((err) => {
               console.error('[Room] Error resolving breakout details:', err);
+              setIsBreakoutRoom(false);
+              if (!organizationName) setCurrentOrganization(null);
             });
+        } else {
+          setIsBreakoutRoom(false);
+          // If not an explicit org room and not a breakout, clear the org context
+          // but allow organizationName from socket to persist for metadata display
+          if (!organizationName) setCurrentOrganization(null);
         }
       }
     }
-  }, [roomId, organizations, setCurrentOrganization]);
+  }, [roomId, organizations, setCurrentOrganization, location.search, organizationName]);
 
   const isMainOrgRoom = useMemo(() => {
     if (!currentOrganization || !roomId) return false;
-    return roomId === currentOrganization.id || roomId === currentOrganization.slug;
-  }, [currentOrganization, roomId]);
+    const isMatchingId = roomId === currentOrganization.id || roomId === currentOrganization.slug;
+    const params = new URLSearchParams(location.search);
+    // Only treat as Main Org Room if we have the explicit type=org flag
+    // This prevents standalone private rooms from accidentally showing the org waiting lobby
+    return isMatchingId && params.get('type') === 'org';
+  }, [currentOrganization, roomId, location.search]);
 
   // Derived State from Mode Config
   const isUltraSecure = activeConfig.securityLevel === 'high';
+
+  // Fullscreen Enforcement for Ultra Secure Mode - Bypass for Hosts
+  const isSecurityEnforced = useMemo(() => {
+    return hasJoined && isUltraSecure && !isHost && !isSuperHost;
+  }, [hasJoined, isUltraSecure, isHost, isSuperHost]);
+
+  const { 
+    chances: securityChances, 
+    keyChances,
+    isBlocked: isSecurityBlocked, 
+    isKeyWarningVisible,
+    pressedKey,
+    requestFullscreen 
+  } = useFullscreenEnforcement(isSecurityEnforced, (key) => {
+    if (socket) {
+      socket.emit('security:suspicious-activity', {
+        roomId,
+        reason: `User exhausted key warnings (Last blocked key: ${key})`
+      });
+    }
+  });
 
   // Ultra Security Decryption State
   const [isDecrypted, setIsDecrypted] = useState(!isUltraSecure);
@@ -239,8 +351,6 @@ const Room = () => {
   // AI Intelligence State
   const [transcript, setTranscript] = useState('');
   const [isTranscriptFinal, setIsTranscriptFinal] = useState(false);
-  const [generatedSummary, setGeneratedSummary] = useState<MeetingSummary | null>(null);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   // Sync local transcript with WebSocket context
   const { lastTranscript } = useWebSocket();
@@ -253,41 +363,67 @@ const Room = () => {
 
   /* Removed duplicate STTService.init/start logic - handled by WebSocketContext */
 
-  const handleGenerateSummary = useCallback(async () => {
-    if (!activeConfig.features.summary) return;
-    setIsGeneratingSummary(true);
-    setShowSummaryModal(true);
-
-    try {
-      // Mock duration calculation
-      const duration = 3600; // 1 hour dummy
-      // Pass transcript context
-      const context = transcript || 'Session logs unavailable.';
-      const summary = await AISummaryService.generateSummary(
-        roomId || 'demo',
-        activeMode,
-        duration,
-        context
-      );
-      setGeneratedSummary(summary);
-    } catch (_error) {
-      toast.error('Failed to generate mission report.');
-    } finally {
-      setIsGeneratingSummary(false);
-    }
-  }, [activeConfig.features.summary, roomId, activeMode, transcript]);
+  const handleGenerateSummary = useCallback(() => {
+    if (!activeConfig.features.aiSummary) return;
+    setShowSuperiorSummary(true);
+  }, [activeConfig.features.aiSummary]);
 
   useEffect(() => {
     // If switching TO ultra mode dynamically, re-lock?
-    // For now, if we are in ultra and not decrypted, it stays locked.
-    // If we switch modes, maybe we don't force re-lock to avoid annoyance, or maybe we do.
-    // Let's rely on initial load or mode switch logic.
     if (isUltraSecure && !isDecrypted) {
       // Keep locked
     } else if (!isUltraSecure && !isDecrypted) {
       setIsDecrypted(true);
     }
-  }, [isUltraSecure, isDecrypted]);
+
+    // Content Protection (Screenshot Blocking) via Tauri - Only for non-hosts
+    const setWindowProtection = async (protected_mode: boolean) => {
+      // Robust check for Tauri environment
+      const isTauri = !!(window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+      if (!isTauri) return;
+
+      try {
+        const core = await import('@tauri-apps/api/core');
+        if (core && core.invoke) {
+          await core.invoke('set_window_protection', { protected: protected_mode });
+        }
+      } catch (err) {
+        // Silently fail in browser/non-Tauri environments
+        if (protected_mode) {
+          console.warn('Failed to engage content protection:', err);
+        }
+      }
+    };
+
+    if (isSecurityEnforced) {
+      setWindowProtection(true).catch(err => {
+        console.error('Security Protocol Error:', err);
+        toast.error('Security Protocol Error', { 
+          description: 'Failed to engage OS-level screenshot blocking.' 
+        });
+      });
+    } else {
+      setWindowProtection(false);
+    }
+
+    // Cleanup protection on unmount or mode switch
+    return () => {
+      setWindowProtection(false);
+    };
+  }, [isSecurityEnforced, isUltraSecure, isDecrypted]); 
+
+  // Global "Secure Mask" for immediate blackout during screenshot attempts - Only for non-hosts
+  const [isMaskActive, setIsMaskActive] = useState(false);
+  useEffect(() => {
+    if (!isSecurityEnforced || isKeyWarningVisible === false) return;
+    
+    // If PrtSc or other sensitive keys are pressed, blackout for 300ms
+    if (pressedKey === 'PrintScreen' || pressedKey === 'PrtSc') {
+      setIsMaskActive(true);
+      const timer = setTimeout(() => setIsMaskActive(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isSecurityEnforced, isKeyWarningVisible, pressedKey]);
 
   const modeTheme = useMemo(() => {
     switch (activeMode) {
@@ -579,10 +715,10 @@ const Room = () => {
 
   // Auto-open summary when generated
   useEffect(() => {
-    if (meetingSummary) {
-      setShowSummaryModal(true);
+    if (meetingSummary && activeConfig.features.aiSummary) {
+      setShowSuperiorSummary(true);
     }
-  }, [meetingSummary]);
+  }, [meetingSummary, activeConfig.features.aiSummary]);
 
   // Auto-re-match logic for Social Mode
   useEffect(() => {
@@ -720,7 +856,7 @@ const Room = () => {
     return <RoomSkeleton />;
   }
 
-  if (isWaiting) {
+  if (isWaiting && isMainOrgRoom) {
     return (
       <div className='min-h-screen bg-[#0B0F14] flex items-center justify-center p-6'>
         <motion.div
@@ -768,7 +904,8 @@ const Room = () => {
     !!youtubeVideoId ||
     gameState?.isActive ||
     isVirtualBrowserActive ||
-    isBrowserStarting;
+    isBrowserStarting ||
+    Array.from(remoteScreenStreams.values()).some(s => s !== null);
   const currentUser = users.find((u) => u.id === (authUser?.id || effectiveUserId));
   const canShareScreen = isHost || currentUser?.isCoHost || false;
   const localUserName = currentUser?.name || authUser?.user_metadata?.display_name || 'You';
@@ -785,6 +922,39 @@ const Room = () => {
         roomId={roomId || 'UNKNOWN'}
         onDecrypt={() => setIsDecrypted(true)}
       />
+
+      {/* ── Ghost Observer HUD ─────────────────────────────────────────────── */}
+      {/* Shown only when Super Host joins with ?ghost=true — invisible to participants */}
+      <AnimatePresence>
+        {isGhostMode && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className='fixed top-20 left-4 z-[200] pointer-events-none select-none'
+          >
+            <div className='flex flex-col gap-1.5'>
+              {/* Main ghost badge */}
+              <div className='flex items-center gap-2 px-3 py-2 rounded-2xl bg-purple-950/80 border border-purple-500/30 backdrop-blur-md shadow-xl shadow-purple-900/30'>
+                <div className='relative'>
+                  <Ghost className='w-4 h-4 text-purple-400' />
+                  <span className='absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-purple-400 animate-pulse' />
+                </div>
+                <div>
+                  <p className='text-[10px] font-black uppercase tracking-[0.2em] text-purple-300'>
+                    Ghost Observer
+                  </p>
+                  <p className='text-[8px] font-medium text-purple-400/60 uppercase tracking-widest'>
+                    Invisible to participants
+                  </p>
+                </div>
+              </div>
+              {/* Subtle scanning line animation */}
+              <div className='h-px w-full bg-gradient-to-r from-transparent via-purple-500/40 to-transparent animate-pulse' />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Virtual Browser Startup Overlay — shown immediately on click, before panel appears */}
       <AnimatePresence>
@@ -820,10 +990,10 @@ const Room = () => {
         animate={{ y: 0, opacity: 1 }}
         className={`h-[56px] md:h-[64px] border-b ${modeTheme.borderClass} luxury-glass px-4 md:px-6 flex items-center justify-between shrink-0 z-[100] safe-top relative ${modeTheme.bg}/95 transition-all duration-700`}
       >
-        {/* 1. LEFT ZONE: Brand/Org Return */}
-        <div className='flex items-center justify-start gap-4 min-w-[200px] flex-1'>
+        {/* 1. LEFT ZONE: CONTEXT INDICATOR (Timer / Protocol Status) */}
+        <div className='flex items-center gap-3 relative flex-1 basis-0'>
           {/* Manage button — Refined Premium Style */}
-          {isHost && currentOrganization && isMainOrgRoom && (
+          {currentOrganization && ((isHost && isMainOrgRoom) || currentUser?.isSuperHost) && (
             <button
               onClick={() => setShowDispatchModal(true)}
               className='flex items-center gap-2 h-9 px-3.5 rounded-xl bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 hover:border-indigo-500/40 text-indigo-300 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-lg active:scale-95'
@@ -838,12 +1008,16 @@ const Room = () => {
             joinedAt={roomCreatedAt}
             status={roomStatus}
             onClick={() => isHost && setShowTimerModal(true)}
+            isHost={isHost}
+            onPause={pauseRoomTimer}
+            onResume={resumeRoomTimer}
+            onStop={stopRoomTimer}
             compact={!!(isHost && currentOrganization && isMainOrgRoom)}
           />
         </div>
 
         {/* 2. CENTER ZONE: HERO STATUS (True Screen Center Alignment) */}
-        <div className='flex flex-col items-center justify-center px-4 md:px-12 relative overflow-visible'>
+        <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center overflow-visible min-w-max'>
           {/* Top Row: IDENTITY */}
           <div className='flex items-center justify-center gap-3 relative'>
             {/* Hanging LIVE indicator (Doesn't offset text centering) */}
@@ -863,28 +1037,30 @@ const Room = () => {
                 <Tooltip delayDuration={200}>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         const inviteLink = `${window.location.origin}/room/${roomId}`;
-                        navigator.clipboard.writeText(inviteLink);
-                        toast.success('Invitation Link Copied', {
-                          description: 'Share this link to invite team members.',
-                          icon: <Users className='w-4 h-4 text-blue-400' />,
-                        });
+                        const success = await copyToClipboard(inviteLink);
+                        if (success) {
+                          toast.success('Invitation Link Copied', {
+                            description: 'Share this link to invite team members.',
+                            icon: <Users className='w-4 h-4 text-blue-400' />,
+                          });
+                        }
                       }}
                       className='flex items-center gap-2 group cursor-pointer transition-all hover:scale-[1.01] active:opacity-80'
                     >
-                      <h1 className='text-[16px] md:text-[18px] lg:text-[20px] font-bold text-white tracking-tight truncate max-w-[120px] sm:max-w-[180px] md:max-w-[280px] lg:max-w-md'>
-                        {currentOrganization || organizationName ? (
+                      <h1 className='text-[16px] md:text-[18px] lg:text-[20px] font-black uppercase text-white tracking-tight truncate max-w-[120px] sm:max-w-[180px] md:max-w-[280px] lg:max-w-md'>
+                        {((currentOrganization && (isMainOrgRoom || isBreakoutRoom)) || organizationName) ? (
                           <span className='flex items-center gap-2'>
                             <span className='text-white/40 font-medium'>
                               #{currentOrganization?.name || organizationName}
                             </span>
                             <span className='text-white'>/ {roomName || 'General'}</span>
                           </span>
-                        ) : isSocialMode ? (
-                          'SOCIAL V4'
                         ) : roomId ? (
                           roomId
+                        ) : isSocialMode ? (
+                          'SOCIAL V4'
                         ) : (
                           'UNKNOWN'
                         )}
@@ -899,18 +1075,18 @@ const Room = () => {
               </TooltipProvider>
             ) : (
               <div className='flex items-center gap-2'>
-                <h1 className='text-[16px] md:text-[18px] lg:text-[20px] font-bold text-white tracking-tight truncate max-w-[120px] sm:max-w-[180px] md:max-w-[280px] lg:max-w-md'>
-                  {currentOrganization || organizationName ? (
+                <h1 className='text-[16px] md:text-[18px] lg:text-[20px] font-black uppercase text-white tracking-tight truncate max-w-[120px] sm:max-w-[180px] md:max-w-[280px] lg:max-w-md'>
+                  {((currentOrganization && (isMainOrgRoom || isBreakoutRoom)) || organizationName) ? (
                     <span className='flex items-center gap-2'>
                       <span className='text-white/40 font-medium'>
                         #{currentOrganization?.name || organizationName}
                       </span>
                       <span className='text-white'>/ {roomName || 'General'}</span>
                     </span>
-                  ) : isSocialMode ? (
-                    'SOCIAL V4'
                   ) : roomId ? (
                     roomId
+                  ) : isSocialMode ? (
+                    'SOCIAL V4'
                   ) : (
                     'UNKNOWN'
                   )}
@@ -931,11 +1107,16 @@ const Room = () => {
             >
               {isConnected ? `${displayMode.toUpperCase()} MODE • STABLE` : 'SECURING CHANNEL'}
             </span>
+            {isSuperHost && (
+              <span className='ml-1 text-[8px] font-black bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase tracking-[0.1em]'>
+                Super Host
+              </span>
+            )}
           </div>
         </div>
 
         {/* 3. RIGHT ZONE: Actions */}
-        <div className='flex items-center justify-end gap-2 md:gap-3'>
+        <div className='flex items-center justify-end gap-2 md:gap-3 flex-1 basis-0'>
           {/* User Count / Participants - Compact Professional Pill */}
           {!isSocialMode && (
             <button
@@ -954,66 +1135,129 @@ const Room = () => {
           )}
 
           {/* Room Overview View Button */}
-          {isHost && currentOrganization && isMainOrgRoom && (
+          {currentOrganization && ((isHost && isMainOrgRoom) || currentUser?.isSuperHost) && (
             <div className='relative'>
               <button
                 onClick={() => setShowViewMenu(!showViewMenu)}
                 className={`hidden lg:flex h-9 px-3 rounded-xl items-center gap-1.5 border text-[10px] font-black uppercase tracking-widest transition-all group ${
-                  viewMode === 'grid' || showViewMenu
-                    ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
-                    : 'bg-white/5 border-white/5 text-white/40 hover:text-white hover:bg-white/10'
+                  showViewMenu
+                    ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
+                    : viewMode === 'grid'
+                      ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+                      : 'bg-white/5 border-white/5 text-white/40 hover:text-white hover:bg-white/10'
                 }`}
               >
-                <Eye size={14} />
-                <span>View Options</span>
+                {viewMode === 'grid' ? <LayoutGrid size={14} /> : <Eye size={14} />}
+                <span>{viewMode === 'grid' ? 'Grid View' : 'Single Room'}</span>
               </button>
 
-              <AnimatePresence>
-                {showViewMenu && (
-                  <>
-                    <div className='fixed inset-0 z-[120]' onClick={() => setShowViewMenu(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      className='absolute top-12 right-0 w-48 bg-[#0c0f14]/95 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl p-2 z-[130] flex flex-col gap-1'
+              {showViewMenu && (
+                <>
+                  {/* Invisible overlay for capturing outside clicks */}
+                  <div 
+                    className='fixed inset-0 z-[120] bg-transparent' 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowViewMenu(false);
+                    }} 
+                  />
+                  
+                  {/* Dropdown Container */}
+                  <div className='absolute top-12 right-0 w-48 bg-[#0c0f14]/95 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl p-2 z-[130] flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200'>
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setViewMode('single');
+                        setShowViewMenu(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        viewMode === 'single'
+                          ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'
+                          : 'text-white/50 hover:bg-white/5 hover:text-white'
+                      }`}
                     >
-                      <button
-                        onClick={() => {
-                          setViewMode('single');
-                          setShowViewMenu(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                          viewMode === 'single'
-                            ? 'bg-indigo-500/20 text-indigo-400'
-                            : 'text-white/50 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                        <span className='w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' />
-                        Current Room
-                      </button>
-                      <button
-                        onClick={() => {
-                          setViewMode('grid');
-                          setShowViewMenu(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                          viewMode === 'grid'
-                            ? 'bg-cyan-500/20 text-cyan-400'
-                            : 'text-white/50 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
+                      <div className="w-4 h-4 flex items-center justify-center pointer-events-none">
+                        {viewMode === 'single' ? (
+                          <span className='w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' />
+                        ) : (
+                          <div className="w-1.5 h-1.5 rounded-full border border-white/20" />
+                        )}
+                      </div>
+                      <span className="pointer-events-none">Current Room</span>
+                    </button>
+
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setViewMode('grid');
+                        setShowViewMenu(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        viewMode === 'grid'
+                          ? 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.1)]'
+                          : 'text-white/50 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div className="w-4 h-4 flex items-center justify-center pointer-events-none">
                         <LayoutGrid
                           size={12}
-                          className={viewMode === 'grid' ? 'text-cyan-400' : 'text-white/50'}
+                          className={viewMode === 'grid' ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'text-white/30'}
                         />
-                        All Rooms (Grid)
-                      </button>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
+                      </div>
+                      <span className="pointer-events-none">All Rooms (Grid)</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
+          )}
+
+          {/* Ghost Toggle Button for Super Hosts */}
+          {((isHost && isMainOrgRoom) || isSuperHost || currentUser?.isSuperHost || authUser?.user_metadata?.is_superhost) && (
+             <TooltipProvider>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleToggleGhost}
+                      className={`flex h-9 px-3 rounded-xl items-center gap-2 border text-[10px] font-black uppercase tracking-widest transition-all group ${
+                        isGhostMode
+                          ? 'bg-purple-500/20 border-purple-500/40 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                          : 'bg-white/5 border-white/5 text-white/40 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <Ghost size={14} className={isGhostMode ? 'animate-pulse' : ''} />
+                      <span className="hidden xl:inline">{isGhostMode ? 'Ghost: ON' : 'Ghost: OFF'}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className='bg-black/95 border-white/10 text-xs text-center p-2 rounded-xl shadow-2xl z-[200]'>
+                    <p className='font-bold text-purple-400 mb-0.5'>Ghost Mode</p>
+                    <p className='text-white/40'>{isGhostMode ? 'Click to reveal yourself' : 'Click to observe silently'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+          )}
+
+          {/* Manual Poll Button - Authorized Users Only */}
+          {((isHost && isMainOrgRoom) || isSuperHost || currentUser?.isSuperHost || authUser?.user_metadata?.is_superhost) && (
+             <TooltipProvider>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowManualPollModal(true)}
+                      className="flex h-9 px-3 rounded-xl items-center gap-2 border bg-white/5 border-white/5 text-white/40 hover:text-indigo-400 hover:bg-white/10 hover:border-indigo-500/20 transition-all group"
+                    >
+                      <BarChart3 size={14} className="group-hover:scale-110 transition-transform" />
+                      <span className="hidden xl:inline">Poll</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className='bg-black/95 border-white/10 text-xs text-center p-2 rounded-xl shadow-2xl z-[200]'>
+                    <p className='font-bold text-indigo-400 mb-0.5'>Protocol Poll</p>
+                    <p className='text-white/40'>Deploy a new consensus protocol</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
           )}
 
           <SettingsModal
@@ -1026,36 +1270,30 @@ const Room = () => {
             }
           />
 
-          {activeMode !== 'fun' && (
-            <button
-              className={`flex h-8 md:h-9 w-8 md:w-9 rounded-full items-center justify-center hover:bg-indigo-500/10 transition-all group ${showOrpionModal ? 'bg-indigo-500/20 text-indigo-400' : 'text-white/50 hover:text-indigo-400'}`}
-              onClick={() => setShowOrpionModal(true)}
-            >
-              <BrainCircuit size={18} />
-            </button>
-          )}
         </div>
       </motion.header>
 
       {/* ── PARTICIPANT STRIP — Only visible in presentation/game/browser modes ── */}
       {!isSocialMode && hasJoined && isPresentationMode && (
         <ParticipantStrip
-          localStream={localStream}
+          localStream={isGhostMode ? null : localStream}
           localUserName={localUserName}
-          isAudioEnabled={isAudioEnabled}
-          isVideoEnabled={isVideoEnabled}
-          localUserId={authUser?.id || effectiveUserId || ''}
+          isAudioEnabled={isGhostMode ? false : isAudioEnabled}
+          isVideoEnabled={isGhostMode ? false : isVideoEnabled}
+          localUserId={isGhostMode ? undefined : (authUser?.id || effectiveUserId || '')}
           localUserPhotoUrl={authUser?.user_metadata?.photo_url || null}
           localUserGender={authUser?.user_metadata?.gender || 'other'}
           users={users}
           remoteStreams={remoteStreams}
+          revealNames={activeConfig.features.revealNames}
         />
+
       )}
 
       {/* ────────────────────────────────────────────────────
                 ALL-ROOMS GRID VIEW (when viewMode = 'grid')
             ──────────────────────────────────────────────────── */}
-      {viewMode === 'grid' && isHost && (
+      {viewMode === 'grid' && (isHost || isSuperHost) && (
         <RoomsGridView
           currentRoomId={roomId || ''}
           orgId={currentOrganization?.id || ''}
@@ -1229,46 +1467,60 @@ const Room = () => {
             isSocialMode ? 'w-1/2 h-full' : 'flex-1'
           }`}
         >
-          {isPresentationMode && !isSocialMode ? (
+          {isPresentationMode ? (
             <div className='flex-1 flex flex-col min-h-0 transition-all duration-500'>
               {/* Wrapper: Transparent & Centered (No Background) */}
               <div
-                className={`flex-1 relative flex items-center justify-center overflow-y-auto custom-scrollbar ${isVirtualBrowserActive ? 'p-0 md:p-4' : 'p-2 md:p-4 lg:p-6'}`}
+                className={`flex-1 relative flex items-center justify-center overflow-y-auto custom-scrollbar ${
+                  isVirtualBrowserActive || isPresentingFile ? 'p-0 md:p-1' : 'p-2 md:p-4 lg:p-6'
+                }`}
               >
                 <AnimatePresence mode='wait'>
                   <motion.div
                     key={
-                      youtubeVideoId
-                        ? 'yt'
-                        : isPresentingFile
-                          ? 'file'
-                          : isVirtualBrowserActive
-                            ? 'browser'
-                            : 'share'
+                      isPresentingFile
+                        ? 'file'
+                        : isVirtualBrowserActive
+                          ? 'browser'
+                          : hasScreenShare
+                            ? 'share'
+                            : youtubeVideoId
+                              ? 'yt'
+                              : 'none'
                     }
                     initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
                     animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                     exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
-                    className='w-full h-full max-w-[1400px] relative z-10 flex items-center justify-center'
+                    className='w-full h-full relative z-10 flex items-center justify-center'
                   >
                     {/* Browser Container - Strict Box */}
-                    {isVirtualBrowserActive && (
+                    {isPresentingFile && presentedFile && (
+                      <div className='w-full h-full bg-[#05070a] border border-white/5 rounded-2xl md:rounded-[1.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)]'>
+                        <FilePresenter file={presentedFile} onClose={closePresentedFile} />
+                      </div>
+                    )}
+
+                    {/* Browser Container - Priority 2 */}
+                    {isVirtualBrowserActive && !isPresentingFile && (
                       <div className='w-full h-full md:aspect-video bg-[#05070a] md:rounded-[1.5rem] overflow-hidden border border-white/5 md:shadow-[0_20px_60px_rgba(0,0,0,0.6)]'>
                         <VirtualBrowser />
                       </div>
                     )}
 
-                    {/* Screen Share - Strict Box */}
-                    {hasScreenShare && (
+                    {/* Screen Share - Priority 3 */}
+                    {hasScreenShare && !isPresentingFile && !isVirtualBrowserActive && (
                       <div className='w-full h-full md:aspect-video bg-black rounded-2xl md:rounded-[1.5rem] overflow-hidden border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.6)] flex items-center justify-center relative'>
                         {localScreenStream && (
                           <video
                             autoPlay
                             muted
                             playsInline
+                            webkit-playsinline="true"
                             ref={(v) => {
-                              if (v) v.srcObject = localScreenStream;
+                              if (v && v.srcObject !== localScreenStream) {
+                                v.srcObject = localScreenStream;
+                              }
                             }}
                             className='max-w-full max-h-full object-contain'
                           />
@@ -1278,8 +1530,18 @@ const Room = () => {
                             key={`screen-${uid}`}
                             autoPlay
                             playsInline
+                            muted
+                            webkit-playsinline="true"
                             ref={(v) => {
-                              if (v) v.srcObject = s;
+                              if (v && v.srcObject !== s) {
+                                v.srcObject = s;
+                                // Force play to avoid some browsers staying paused on black
+                                v.play().catch(err => {
+                                  if (err.name !== 'AbortError') {
+                                    console.warn('[Room] Remote screen share play failed:', err);
+                                  }
+                                });
+                              }
                             }}
                             className='max-w-full max-h-full object-contain'
                           />
@@ -1290,13 +1552,8 @@ const Room = () => {
                       </div>
                     )}
 
-                    {isPresentingFile && presentedFile && !hasScreenShare && (
-                      <div className='w-full h-full md:aspect-video bg-[#05070a] border border-white/5 rounded-2xl md:rounded-[1.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)]'>
-                        <FilePresenter file={presentedFile} onClose={closePresentedFile} />
-                      </div>
-                    )}
-
-                    {youtubeVideoId && !hasScreenShare && !isPresentingFile && (
+                    {/* YouTube Player - Priority 4 */}
+                    {youtubeVideoId && !hasScreenShare && !isPresentingFile && !isVirtualBrowserActive && (
                       <div className='w-full h-full md:aspect-video bg-black border border-white/5 rounded-2xl md:rounded-[1.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)]'>
                         <Suspense
                           fallback={
@@ -1325,16 +1582,16 @@ const Room = () => {
               {/* Inner Container for Video Grid */}
               <div className='w-full h-full flex items-center justify-center relative'>
                 <VideoGrid
-                  localStream={localStream}
+                  localStream={isGhostMode ? null : localStream}
                   localUserName={localUserName}
-                  isAudioEnabled={isAudioEnabled}
-                  isVideoEnabled={isVideoEnabled}
+                  isAudioEnabled={isGhostMode ? false : isAudioEnabled}
+                  isVideoEnabled={isGhostMode ? false : isVideoEnabled}
                   isMediaLoading={isInitialLoading}
                   remoteStreams={remoteStreams}
                   users={users}
                   isSocialMode={isSocialMode}
                   isSearching={isSearching}
-                  localUserId={authUser?.id || effectiveUserId || ''}
+                  localUserId={isGhostMode ? undefined : (authUser?.id || effectiveUserId || '')}
                   localUserPhotoUrl={
                     authUser?.user_metadata?.photo_url || currentUser?.photoUrl || undefined
                   }
@@ -1342,13 +1599,16 @@ const Room = () => {
                   layout={
                     activeMode === 'ultra' ? 'focus' : activeMode === 'fun' ? 'theater' : 'grid'
                   }
+                  revealNames={activeConfig.features.revealNames}
                 />
+
                 {activeTimer && (
                   <div className='absolute top-4 right-4 z-[60]'>
                     <AITimer
                       duration={activeTimer.duration}
                       startedAt={activeTimer.startedAt}
                       label={activeTimer.label}
+                      isPaused={activeTimer.isPaused}
                     />
                   </div>
                 )}
@@ -1424,7 +1684,7 @@ const Room = () => {
             isRecording={isRecording}
             startRecording={startRecording}
             stopRecording={stopRecording}
-            isHost={isHost}
+            isHost={isHost || isSuperHost}
             isCoHost={!!currentUser?.isCoHost}
             setShowDisbandConfirm={setShowDisbandConfirm}
             handleLeaveRoom={handleLeaveRoom}
@@ -1442,7 +1702,7 @@ const Room = () => {
             setIsVisible={setIsControlsVisible}
             onStartBrowserWithUrl={handleStartVirtualBrowser}
             isGuest={!authUser}
-            onFileSelected={(file) => presentFileFromUpload(file)}
+            onFileSelected={handleFileUpload}
             waitingUserCount={waitingUsers.length}
             onGenerateSummary={() => wrappedGenerateSummary()}
             onInvite={() => setIsInviteOpen(true)}
@@ -1452,15 +1712,18 @@ const Room = () => {
             onOpenAbandonModal={() => setShowAbandonModal(true)}
             // Mode Props
             gamesEnabled={activeConfig.features.games}
-            aiEnabled={activeConfig.features.summary}
+            aiEnabled={activeConfig.features.aiSummary}
             securityLevel={activeConfig.securityLevel}
             // Feature Flags
             virtualBrowserEnabled={activeConfig.features.virtualBrowser}
             screenShareEnabled={activeConfig.features.screenShare}
             youtubeEnabled={activeConfig.features.virtualBrowser} // Link YouTube to virtual browser/media capability
-            fileUploadEnabled={activeConfig.securityLevel !== 'high'} // No file transfers in Ultra
-            recordingEnabled={activeConfig.securityLevel !== 'high'} // No recording in Ultra
+            fileUploadEnabled={activeConfig.securityLevel !== 'high' || isHost || isSuperHost} // Host/Super can upload in any mode
+            isMainRoom={isMainOrgRoom}
+            isBreakout={isBreakoutRoom}
+            recordingEnabled={activeConfig.features.screenRecording} // Explicit recording flag
             inviteEnabled={true}
+            repairMedia={repairMedia}
           />
         )}
       </div>
@@ -1476,11 +1739,13 @@ const Room = () => {
             }}
             onStartScreenShare={handleToggleScreenShare}
             onStartVirtualBrowser={() => {
-              handleStartVirtualBrowser('https://www.google.com');
+              handleStartVirtualBrowser('https://duckduckgo.com');
             }}
           />
         )}
       </Suspense>
+
+
 
       <AuthPromptModal
         open={authPromptOpen}
@@ -1490,7 +1755,7 @@ const Room = () => {
 
       {/* Join Room Screen Overlay */}
       <AnimatePresence>
-        {!hasJoined && !isWaiting && !joinExplicitlyRequested && (
+        {!hasJoined && (!isWaiting || !isMainOrgRoom) && !joinExplicitlyRequested && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1588,9 +1853,10 @@ const Room = () => {
                       <Button
                         variant='outline'
                         onClick={requestJoin}
-                        className='w-full h-12 rounded-xl text-sm font-bold border-indigo-500/20 text-indigo-300 hover:text-white hover:bg-white/5 transition-all'
+                        disabled={isWaiting}
+                        className='w-full h-12 rounded-xl text-sm font-bold border-indigo-500/20 text-indigo-300 hover:text-white hover:bg-white/5 transition-all disabled:opacity-50'
                       >
-                        Continue as Guest
+                        {isWaiting ? 'Waiting...' : 'Continue as Guest'}
                       </Button>
                     </div>
                   </motion.div>
@@ -1600,9 +1866,10 @@ const Room = () => {
                   <div className='flex flex-col sm:flex-row items-center justify-center gap-4'>
                     <Button
                       onClick={requestJoin}
-                      className='h-16 px-12 rounded-2xl text-lg font-bold bg-primary hover:bg-primary/90 text-black shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] transition-all hover:scale-105 active:scale-95 w-full sm:w-auto'
+                      disabled={isWaiting}
+                      className='h-16 px-12 rounded-2xl text-lg font-bold bg-primary hover:bg-primary/90 text-black shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] transition-all hover:scale-105 active:scale-95 w-full sm:w-auto disabled:opacity-50'
                     >
-                      Join Session
+                      {isWaiting ? 'Waiting for Approval...' : 'Join Session'}
                     </Button>
 
                     <Button
@@ -1642,7 +1909,7 @@ const Room = () => {
 
       {/* Waiting Room Overlay */}
       <AnimatePresence>
-        {isWaiting && (
+        {isWaiting && isMainOrgRoom && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1717,17 +1984,36 @@ const Room = () => {
       <GameHubModal open={showGameHub} onOpenChange={setShowGameHub} isPrivate={true} />
       <AbandonGameModal open={showAbandonModal} onOpenChange={setShowAbandonModal} />
 
-      <MeetingSummaryModal
-        open={showSummaryModal}
-        onClose={() => setShowSummaryModal(false)}
-        summary={generatedSummary}
-        loading={isGeneratingSummary}
-      />
+      {activeConfig.features.aiSummary && (
+        <SuperiorSummaryModal
+          isOpen={showSuperiorSummary}
+          onClose={() => setShowSuperiorSummary(false)}
+          roomId={roomId || ''}
+        />
+      )}
 
       <RoomTimerModal
         isOpen={showTimerModal}
         onClose={() => setShowTimerModal(false)}
         onSetTimer={startRoomTimer}
+      />
+
+      <ManualPollModal
+        isOpen={showManualPollModal}
+        onClose={() => setShowManualPollModal(false)}
+        isSuperHost={isSuperHost}
+        pollHistory={pollHistory}
+        onFetchHistory={fetchPollHistory}
+        onSubmit={(data) => {
+          socket?.emit('create-poll', {
+            roomId: roomId!,
+            ...data,
+          }, (res: { success: boolean, error?: string }) => {
+            if (!res.success) {
+              toast.error('Deployment Failed', { description: res.error });
+            }
+          });
+        }}
       />
 
       <DispatchModal
@@ -1736,24 +2022,50 @@ const Room = () => {
         orgId={currentOrganization?.id || roomId || ''}
       />
 
-      <OrpionSummaryModal
-        isOpen={showOrpionModal}
-        onClose={() => setShowOrpionModal(false)}
-        roomId={roomId || ''}
-      />
-
       <ParticipantsModal isOpen={isParticipantsOpen} onClose={() => setIsParticipantsOpen(false)} />
 
-      {activePoll && (
-        <div className='fixed bottom-32 right-8 z-[80] w-full max-w-sm pointer-events-auto'>
+      {activePoll && !isPollDismissed && (
+        <motion.div 
+          drag
+          dragMomentum={false}
+          className='fixed bottom-32 right-8 z-[80] w-full max-w-sm px-4 pointer-events-auto cursor-move'
+        >
           <AIPoll
             {...activePoll}
+            voters={activePoll.voters}
+            isHostOrSuperHost={isHost || isSuperHost}
             onVote={(index: number) => {
               socket?.emit('cast-poll-vote', { pollId: activePoll.id, optionIndex: index });
             }}
+            onEndPoll={() => {
+              socket?.emit('end-poll', { pollId: activePoll.id });
+            }}
+            onDismiss={() => setIsPollDismissed(true)}
           />
-        </div>
+        </motion.div>
       )}
+
+      {/* Ultra Secure Fullscreen Enforcement Blocker */}
+      <UltraSecureBlocker 
+        isVisible={isSecurityBlocked} 
+        chances={securityChances} 
+        onRequestFullscreen={requestFullscreen} 
+      />
+
+      {/* Warning Toast for Key Masking */}
+      <KeyWarningOverlay isVisible={isKeyWarningVisible} pressedKey={pressedKey} availableChances={keyChances} />
+
+      {/* Global Secure Mask (100% Black) */}
+      <AnimatePresence>
+        {isMaskActive && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[12000] bg-black"
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

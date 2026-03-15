@@ -11,7 +11,7 @@ const roomEventSchema = new mongoose.Schema({
       'join', 'leave',
       
       // Activity events
-      'room_created', 'game_started', 'global_connect',
+      'room_created', 'room_deleted', 'game_started', 'global_connect',
       
       // Media events
       'mute', 'unmute', 'share', 'stop_share', 'speak',
@@ -28,6 +28,9 @@ const roomEventSchema = new mongoose.Schema({
       
       // Moderation events
       'room_locked', 'room_unlocked', 'user_kicked', 'user_promoted',
+      
+      // Presentation events
+      'present_file', 'stop_presentation',
       
       // Settings events
       'settings_changed'

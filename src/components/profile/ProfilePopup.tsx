@@ -49,8 +49,11 @@ export const ProfilePopup = ({ onViewActivity }: { onViewActivity?: () => void }
   return (
     <div className='w-[320px] p-1'>
       {/* Header: User Info */}
-      <div className='bg-white/5 rounded-xl p-4 mb-4 flex items-center gap-4'>
-        <div className='w-12 h-12 rounded-full overflow-hidden bg-white/10 border border-white/10'>
+      <div
+        onClick={() => navigate('/profile')}
+        className='bg-white/5 rounded-xl p-4 mb-4 flex items-center gap-4 cursor-pointer hover:bg-white/10 transition-all group/id'
+      >
+        <div className='w-12 h-12 rounded-full overflow-hidden bg-white/10 border border-white/10 group-hover/id:border-white/20 transition-all'>
           <img
             src={
               user?.user_metadata?.photo_url ||
@@ -61,7 +64,7 @@ export const ProfilePopup = ({ onViewActivity }: { onViewActivity?: () => void }
           />
         </div>
         <div>
-          <h3 className='text-white font-bold text-base'>
+          <h3 className='text-white font-bold text-base group-hover/id:text-blue-400 transition-colors'>
             {user?.user_metadata?.display_name || 'User'}
           </h3>
           <p className='text-white/40 text-xs'>{user?.email}</p>
@@ -139,7 +142,7 @@ export const ProfilePopup = ({ onViewActivity }: { onViewActivity?: () => void }
       {/* Actions */}
       <div className='space-y-1'>
         <button
-          onClick={() => navigate('/upcoming')}
+          onClick={() => navigate('/upcoming-features')}
           className='w-full h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center px-4 gap-3 transition-colors group'
         >
           <Rocket className='w-4 h-4 text-pink-400 group-hover:scale-110 transition-transform' />

@@ -7,6 +7,7 @@ import {
   GameState,
   RoomStatus,
   RoomInfo,
+  PollData,
 } from '@/types/websocket';
 import { logger } from '@/utils/logger';
 import { RoomModeConfig } from '@/services/RoomIntelligence';
@@ -97,12 +98,11 @@ export type SignalingEvents = {
   }) => void;
   'assistant:response': (data: { content: string; type: string; action?: string }) => void;
   'room:timer-started': (data: { duration: number; startedAt: number; label: string }) => void;
-  'room:poll-created': (data: {
-    id: string;
-    question: string;
-    options: string[];
-    expiresAt: number;
-  }) => void;
+  'room:timer-paused': () => void;
+  'room:timer-stopped': () => void;
+  'room:timer-ended': () => void;
+  'room:poll-created': (data: PollData) => void;
+  'room:poll-updated': (data: PollData) => void;
   'late-join-summary': (data: { summary: string; bullets: string[]; duration: number }) => void;
   'moderation:alert': (data: { severity: string; action: string; reason: string }) => void;
   'summary-generated': (data: unknown) => void;
@@ -155,7 +155,7 @@ export class SignalingService {
 
     this.socket = io(socketUrl, {
       path: '/socket.io',
-      transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+      transports: ['polling', 'websocket'], // Start with polling for better tunnel stability, upgrade after handshake
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,

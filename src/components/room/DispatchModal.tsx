@@ -27,6 +27,7 @@ import {
   Square,
   RefreshCw,
   Bot,
+  Ghost,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useBreakout } from '@/contexts/useBreakout';
@@ -34,10 +35,10 @@ import { useOrganization } from '@/contexts/useOrganization';
 import {
   BreakoutSession,
   OrgMode,
-  RoomType,
-  SecurityLevel,
   GlobalScenario,
   UserPresence,
+  RoomType,
+  SecurityLevel,
 } from '@/types/organization';
 import { ModePolicyResolver } from '@/lib/ModePolicyResolver';
 import { useCommandFeed } from '@/contexts/useCommandFeed';
@@ -51,6 +52,16 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { NeuralMap } from '@/components/room/NeuralMap';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface DispatchModalProps {
   isOpen: boolean;
@@ -132,6 +143,7 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ isOpen, onClose, o
     pauseBreakout,
     resumeBreakout,
     createChildRoom,
+    deleteBreakout,
   } = useBreakout();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -142,12 +154,12 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ isOpen, onClose, o
   const [isFeedOpen, setIsFeedOpen] = useState(false);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
-  const [newRoomType, setNewRoomType] = useState<RoomType>('GENERAL');
-  const [newRoomSecurity, setNewRoomSecurity] = useState<SecurityLevel>('STANDARD');
   const [newRoomMaxParticipants, setNewRoomMaxParticipants] = useState(20);
   const [createLoading, setCreateLoading] = useState(false);
-  const [modeOverride, setModeOverride] = useState<OrgMode>('FUN');
   const [isDistributing, setIsDistributing] = useState(false);
+  const [modeOverride] = useState<OrgMode>('FUN');
+  const [newRoomType] = useState<RoomType>('GENERAL');
+  const [newRoomSecurity] = useState<SecurityLevel>('STANDARD');
 
   // V2 Mission Control State
   const [globalScenario, setGlobalScenario] = useState<GlobalScenario>('NORMAL');
@@ -361,6 +373,11 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ isOpen, onClose, o
     onClose();
   };
 
+  const handleGhostObserve = (breakoutId: string) => {
+    navigate(`/room/${breakoutId}?ghost=true`);
+    onClose();
+  };
+
   const handleCreateRoom = async () => {
     if (!newRoomName.trim()) return;
     try {
@@ -554,11 +571,11 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ isOpen, onClose, o
                 <h2 className='text-xl font-black uppercase tracking-tight text-white flex items-center gap-2'>
                   Dispatch Center
                   <span className='px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400'>
-                    Owner
+                    Super Host
                   </span>
                 </h2>
                 <p className='text-[10px] text-white/40 uppercase font-bold tracking-[0.2em]'>
-                  Manage Organization Breakouts & Participants
+                  Manage Organization Breakouts & Participants as Super Host
                 </p>
               </div>
             </div>
@@ -1130,6 +1147,19 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ isOpen, onClose, o
                             className='h-10 bg-white/5 border-white/10 rounded-xl text-xs'
                           />
                         </div>
+                        <div className='w-24 relative'>
+                          <Input
+                            type='number'
+                            min={1}
+                            max={100}
+                            placeholder='Cap'
+                            value={newRoomMaxParticipants}
+                            onChange={(e) =>
+                              setNewRoomMaxParticipants(parseInt(e.target.value) || 20)
+                            }
+                            className='h-10 bg-white/5 border-white/10 rounded-xl text-[10px] font-black text-center'
+                          />
+                        </div>
                         <button
                           onClick={handleCreateRoom}
                           disabled={!newRoomName.trim() || createLoading}
@@ -1145,98 +1175,11 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ isOpen, onClose, o
                         </button>
                       </div>
 
-                      <div className='flex flex-wrap gap-3 items-center'>
-                        <div className='flex flex-col gap-1.5 min-w-[140px]'>
-                          <label className='text-[9px] font-black text-white/20 uppercase tracking-widest px-1'>
-                            Room Type
-                          </label>
-                          <select
-                            value={newRoomType}
-                            onChange={(e) => setNewRoomType(e.target.value as RoomType)}
-                            className='h-9 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 focus:outline-none'
-                          >
-                            <option value='GENERAL' className='bg-[#0c0f14]'>
-                              GENERAL HUB
-                            </option>
-                            <option value='SECURE_VAULT' className='bg-[#0c0f14]'>
-                              SECURE VAULT
-                            </option>
-                            <option value='COLLAB_HUB' className='bg-[#0c0f14]'>
-                              COLLAB SPACE
-                            </option>
-                            <option value='AI_LAB' className='bg-[#0c0f14]'>
-                              AI ANALYZER
-                            </option>
-                            <option value='ZERO_KNOWLEDGE' className='bg-[#0c0f14]'>
-                              ZERO KNOWLEDGE
-                            </option>
-                          </select>
-                        </div>
+                      <p className='text-[8px] text-white/20 uppercase font-black tracking-widest px-1'>
+                        Advanced settings (Default: General Hub, Standard Security)
+                      </p>
 
-                        <div className='flex flex-col gap-1.5 min-w-[160px]'>
-                          <label className='text-[9px] font-black text-white/20 uppercase tracking-widest px-1'>
-                            Security Level
-                          </label>
-                          <select
-                            value={newRoomSecurity}
-                            onChange={(e) => setNewRoomSecurity(e.target.value as SecurityLevel)}
-                            className='h-9 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 focus:outline-none'
-                          >
-                            <option value='STANDARD' className='bg-[#0c0f14]'>
-                              STANDARD
-                            </option>
-                            <option value='MANDATORY_RECORDING' className='bg-[#0c0f14]'>
-                              MANDATORY LOG
-                            </option>
-                            <option value='ZERO_TRUST' className='bg-[#0c0f14]'>
-                              ZERO TRUST
-                            </option>
-                            <option value='AI_OBSERVED' className='bg-[#0c0f14]'>
-                              AI OBSERVED
-                            </option>
-                            <option value='QUANTUM_ENCRYPTED' className='bg-[#0c0f14]'>
-                              QUANTUM ENCRYPTED
-                            </option>
-                          </select>
-                        </div>
-
-                        <div className='flex flex-col gap-1.5 w-24'>
-                          <label className='text-[9px] font-black text-white/20 uppercase tracking-widest px-1'>
-                            Capacity
-                          </label>
-                          <Input
-                            type='number'
-                            min={1}
-                            max={100}
-                            value={newRoomMaxParticipants}
-                            onChange={(e) =>
-                              setNewRoomMaxParticipants(parseInt(e.target.value) || 20)
-                            }
-                            className='h-9 bg-white/5 border-white/10 rounded-xl text-[10px] font-black text-center'
-                          />
-                        </div>
-                      </div>
-
-                      {isMixed && (
-                        <div className='flex gap-2'>
-                          {(['FUN', 'PROF', 'ULTRA_SECURE'] as OrgMode[]).map((m) => {
-                            const b = ModePolicyResolver.getBadge(m);
-                            return (
-                              <button
-                                key={m}
-                                onClick={() => setModeOverride(m)}
-                                className={`flex-1 h-8 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${
-                                  modeOverride === m
-                                    ? b.color + ' opacity-100'
-                                    : 'border-white/10 text-white/30 bg-transparent hover:border-white/20'
-                                }`}
-                              >
-                                {b.emoji} {b.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                      {/* Simple room creation - defaults handled by state */}
                     </motion.div>
                   )}
 
@@ -1328,12 +1271,15 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ isOpen, onClose, o
                         onStart={() => startBreakout(breakout.id)}
                         onClose={() => closeBreakout(breakout.id)}
                         onEnter={() => handleEnterRoom(breakout)}
+                        onGhostObserve={() => handleGhostObserve(breakout.id)}
                         onPause={() => pauseBreakout(breakout.id)}
                         onResume={() => resumeBreakout(breakout.id)}
                         onViewHistory={() =>
                           setHistoryRoom({ id: breakout.id, name: breakout.name })
                         }
                         onCreateChild={(name) => createChildRoom(breakout.id, name)}
+                        onDelete={() => deleteBreakout(breakout.id)}
+                        onDeleteChild={(childId) => deleteBreakout(childId)}
                         members={orgMembers}
                         currentUserLocation={currentUserLocation}
                       />
@@ -1540,10 +1486,13 @@ const RoomCard = ({
   onStart,
   onClose,
   onEnter,
+  onGhostObserve,
   onPause,
   onResume,
   onCreateChild,
   onViewHistory,
+  onDelete,
+  onDeleteChild,
   members,
   currentUserLocation,
 }: {
@@ -1553,18 +1502,24 @@ const RoomCard = ({
   onStart: () => void;
   onClose: () => void;
   onEnter: () => void;
+  onGhostObserve: () => void;
   onPause: () => void;
   onResume: () => void;
   onCreateChild: (name: string) => void;
   onViewHistory: () => void;
+  onDelete: () => void;
+  onDeleteChild: (childId: string) => void;
   members: OrgMember[];
   currentUserLocation: string | null | undefined;
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showAssignMenu, setShowAssignMenu] = useState(false);
   const [showChildInput, setShowChildInput] = useState(false);
   const [childName, setChildName] = useState('');
   const [assignRole, setAssignRole] = useState<'host' | 'participant'>('participant');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteChildConfirm, setShowDeleteChildConfirm] = useState<string | null>(null);
 
   const statusColors = {
     CREATED: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
@@ -1602,35 +1557,55 @@ const RoomCard = ({
               {breakout.name}
             </h4>
           </div>
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-2 flex-wrap gap-y-1'>
             <span
-              className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${statusColors[breakout.status]}`}
+              className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border whitespace-nowrap min-w-fit ${statusColors[breakout.status]}`}
             >
               {breakout.status === 'LIVE' && (
                 <span className='inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5' />
               )}
               {breakout.status}
             </span>
-            <span
-              className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${badge.color}`}
-            >
-              {badge.emoji} {badge.label}
-            </span>
+            {badge.label !== 'ULTRA SECURE' && (
+              <span
+                className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border whitespace-nowrap min-w-fit ${badge.color}`}
+              >
+                {badge.emoji} {badge.label}
+              </span>
+            )}
           </div>
         </div>
-        <div className='flex gap-2'>
+        <div className='flex gap-2 flex-wrap justify-end'>
           {breakout.status === 'LIVE' &&
             (currentUserLocation === breakout.id ? (
               <div className='h-8 px-3 rounded-xl bg-white/5 border border-white/10 text-white/40 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 cursor-default'>
                 IN ROOM
               </div>
             ) : (
-              <button
-                onClick={onEnter}
-                className='h-8 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-lg shadow-indigo-500/20'
-              >
-                JOIN <ChevronRight className='w-3 h-3' />
-              </button>
+              <>
+                {/* Ghost Observer Button */}
+                <button
+                  onClick={onGhostObserve}
+                  title='Ghost Observe — enter invisibly, not shown in participant grid'
+                  className='h-8 px-3 rounded-xl bg-purple-600/10 hover:bg-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all border border-purple-500/20 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/10'
+                >
+                  <Ghost className='w-3 h-3' />
+                  Ghost
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className='p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all border border-red-500/20'
+                  title='Delete Room'
+                >
+                  <Trash2 className='w-4 h-4' />
+                </button>
+                <button
+                  onClick={onEnter}
+                  className='h-8 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-lg shadow-indigo-500/20'
+                >
+                  JOIN <ChevronRight className='w-3 h-3' />
+                </button>
+              </>
             ))}
           {breakout.status === 'LIVE' && (
             <button
@@ -1657,12 +1632,7 @@ const RoomCard = ({
               <Play className='w-3 h-3' /> Start
             </button>
           )}
-          <button
-            onClick={onClose}
-            className='h-8 w-8 rounded-xl bg-white/5 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center text-white/40 transition-all border border-white/5'
-          >
-            <Trash2 className='w-3.5 h-3.5' />
-          </button>
+          {/* Consolidated delete action: only use onDelete if provided, remove redundant onClose trash */}
           <button
             onClick={onViewHistory}
             className='h-8 w-8 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 flex items-center justify-center transition-all border border-indigo-500/20'
@@ -1801,8 +1771,31 @@ const RoomCard = ({
                   <span className='text-[8px] font-black text-white/20 uppercase'>
                     {child.participants_count || 0} p
                   </span>
+                  {child.status === 'LIVE' && (
+                    <button
+                      onClick={() => {
+                        // Navigate to child room as ghost observer
+                        window.history.pushState({}, '', `/room/${child.id}?ghost=true`);
+                        window.location.href = `/room/${child.id}?ghost=true`;
+                      }}
+                      title='Ghost Observe sub-room'
+                      className='p-1 rounded-lg hover:bg-purple-500/20 text-purple-400/60 hover:text-purple-400 transition-colors'
+                    >
+                      <Ghost className='w-3 h-3' />
+                    </button>
+                  )}
                   <button
-                    onClick={() => onEnter()} // Logic for jointing child room can be expanded in handleEnterRoom
+                    onClick={() => setShowDeleteChildConfirm(child.id)}
+                    className='p-1 rounded-lg hover:bg-red-500/20 text-red-400/60 hover:text-red-400 transition-colors'
+                    title='Delete Sub-room'
+                  >
+                    <Trash2 className='w-3 h-3' />
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate(`/room/${child.id}`);
+                      onClose();
+                    }}
                     className='p-1 rounded-lg hover:bg-indigo-500/20 text-indigo-400 transition-colors'
                   >
                     <ChevronRight className='w-3 h-3' />
@@ -1869,6 +1862,70 @@ const RoomCard = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modern Confirmation Dialogs */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className='luxury-glass border-white/5 p-8 rounded-[2.5rem] bg-black/90 backdrop-blur-3xl max-w-sm'>
+          <AlertDialogHeader className='mb-6'>
+            <div className='w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mb-6'>
+              <Trash2 className='w-8 h-8 text-red-500' />
+            </div>
+            <AlertDialogTitle className='text-2xl font-black uppercase tracking-tighter text-red-500 italic'>
+              Delete Session?
+            </AlertDialogTitle>
+            <AlertDialogDescription className='text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-relaxed'>
+              This will permanently destroy <span className='text-white'>{breakout.name}</span>. 
+              All participants will be immediately ejected to the main room.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className='flex-col gap-2'>
+            <AlertDialogAction
+              onClick={() => {
+                onDelete();
+                setShowDeleteConfirm(false);
+              }}
+              className='h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white uppercase font-black text-[9px] tracking-widest'
+            >
+              Confirm Destruction
+            </AlertDialogAction>
+            <AlertDialogCancel className='h-12 rounded-xl bg-white/5 border-white/10 text-white/60 hover:text-white uppercase font-black text-[9px] tracking-widest'>
+              Cancel
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog 
+        open={!!showDeleteChildConfirm} 
+        onOpenChange={(open) => !open && setShowDeleteChildConfirm(null)}
+      >
+        <AlertDialogContent className='luxury-glass border-white/5 p-8 rounded-[2rem] bg-black/90 backdrop-blur-3xl max-w-xs'>
+          <AlertDialogHeader className='mb-4 text-center sm:text-left'>
+            <AlertDialogTitle className='text-xl font-black uppercase tracking-tighter text-red-500 italic'>
+              Delete Sub-room?
+            </AlertDialogTitle>
+            <AlertDialogDescription className='text-slate-400 text-[9px] font-bold uppercase tracking-widest'>
+              Are you sure? This action is irreversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className='flex-col gap-2 sm:flex-row sm:gap-4'>
+            <AlertDialogCancel className='h-10 rounded-lg bg-white/5 border-white/10 text-white/40 uppercase font-black text-[8px] tracking-widest order-2 sm:order-1'>
+              Back
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (showDeleteChildConfirm) {
+                  onDeleteChild(showDeleteChildConfirm);
+                  setShowDeleteChildConfirm(null);
+                }
+              }}
+              className='h-10 rounded-lg bg-red-600 hover:bg-red-700 text-white uppercase font-black text-[8px] tracking-widest order-1 sm:order-2'
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -1,8 +1,6 @@
 import { ChessEngine } from './engines/ChessEngine';
 import { TicTacToeEngine } from './engines/TicTacToeEngine';
-import { LudoEngine } from './engines/LudoEngine';
 import { SnakeLadderEngine } from './engines/SnakeLadderEngine';
-import { BattleshipEngine } from './engines/BattleshipEngine';
 import { BilliardsEngine } from './engines/BilliardsEngine';
 import { CheckersEngine } from './engines/CheckersEngine';
 import { ConnectFourEngine } from './engines/ConnectFourEngine';
@@ -37,14 +35,8 @@ export function createGameEngine(gameType: string): GameEngine {
     case 'ultimate-tictactoe':
       return new UltimateTicTacToeEngine();
 
-    case 'ludo':
-      return new LudoEngine();
-
     case 'snakeladder':
       return new SnakeLadderEngine();
-
-    case 'battleship':
-      return new BattleshipEngine();
 
     case 'billiards':
       return new BilliardsEngine();
@@ -78,9 +70,7 @@ export function isValidGameType(gameType: string): boolean {
     'tictactoe5x5',
     'tictactoe7x7',
     'ultimate-tictactoe',
-    'ludo',
     'snakeladder',
-    'battleship',
     'billiards',
     'checkers',
     'connect4',
@@ -101,9 +91,7 @@ export function getSupportedGameTypes(): string[] {
     'tictactoe5x5',
     'tictactoe7x7',
     'ultimate-tictactoe',
-    'ludo',
     'snakeladder',
-    'battleship',
     'billiards',
     'checkers',
     'connect4',

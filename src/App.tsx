@@ -11,10 +11,22 @@ import { AIAssistantProvider } from '@/contexts/AIAssistantContext';
 import AnimatedRoutes from '@/components/AnimatedRoutes';
 import { DesktopLayout } from '@/ui/desktop/DesktopLayout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { memo } from 'react';
 
-const queryClient = new QueryClient();
+// Configure React Query for better performance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
-const App = () => (
+// Memoize the main App component to prevent unnecessary re-renders
+const App = memo(() => (
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
       <TooltipProvider>
@@ -22,7 +34,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter
           future={{
-            v7_startTransition: true,
+            v7_startTransition: false,
             v7_relativeSplatPath: true,
           }}
         >
@@ -43,6 +55,8 @@ const App = () => (
       </TooltipProvider>
     </ErrorBoundary>
   </QueryClientProvider>
-);
+));
+
+App.displayName = 'App';
 
 export default App;

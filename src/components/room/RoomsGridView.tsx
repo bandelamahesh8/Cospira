@@ -10,10 +10,22 @@
  */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Monitor, LayoutGrid, X, ChevronRight, Pin } from 'lucide-react';
+import { Monitor, LayoutGrid, X, ChevronRight, Pin, MoreHorizontal, Trash2, Users } from 'lucide-react';
 import { useBreakout } from '@/contexts/useBreakout';
+import { useOrganization } from '@/contexts/useOrganization';
 import { useNavigate } from 'react-router-dom';
-import type { BreakoutSession } from '@/types/organization';
+import type { BreakoutSession, BreakoutParticipant } from '@/types/organization';
+import { BreakoutService } from '@/services/BreakoutService';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import UserAvatar from '@/components/UserAvatar';
+import { Button } from '@/components/ui/button';
+import { RippleButton } from '@/components/ui/ripple-button';
 
 interface RoomsGridViewProps {
   currentRoomId: string;
@@ -39,15 +51,32 @@ const MiniRoomFrame: React.FC<{
   isPinned: boolean;
   onSelect: () => void;
   onPin: () => void;
-}> = ({ roomId, label, type, status, isCurrent, isPinned, onSelect, onPin }) => {
+  onDelete?: () => void;
+  onShowParticipants?: () => void;
+  mode?: string;
+}> = ({ 
+  roomId, 
+  label, 
+  type, 
+  status, 
+  isCurrent, 
+  isPinned, 
+  onSelect, 
+  onPin, 
+  onDelete, 
+  onShowParticipants, 
+  mode 
+}) => {
   const frameW = FRAME_W / SCALE;
   const frameH = FRAME_H / SCALE;
 
   const borderColor = isCurrent
     ? 'border-cyan-400/70'
-    : isPinned
-      ? 'border-yellow-400/40'
-      : 'border-white/[0.06]';
+    : mode === 'ULTRA_SECURE'
+      ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+      : isPinned
+        ? 'border-yellow-400/40'
+        : 'border-white/[0.06]';
 
   const typeAccent =
     type === 'MAIN'
@@ -103,13 +132,36 @@ const MiniRoomFrame: React.FC<{
           >
             <Pin className='w-3 h-3' />
           </button>
+
+          {/* Context Menu for non-main rooms */}
+          {type !== 'MAIN' && onDelete && onShowParticipants && (
+            <div className="z-30 relative" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className='p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 transition-colors'>
+                    <MoreHorizontal className='w-3 h-3' />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-[#0a0c14] border-white/10 text-white/80 z-[200]">
+                  <DropdownMenuItem onClick={onShowParticipants} className="hover:bg-white/10 cursor-pointer focus:bg-white/10 focus:text-white">
+                    <Users className="w-4 h-4 mr-2" />
+                    <span className="text-xs">Show Participants</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onDelete} className="text-red-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer focus:bg-red-500/20 focus:text-red-300">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    <span className="text-xs">Delete Room</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Iframe container — the actual room rendered at native size then scaled */}
       <div className='relative flex-1 overflow-hidden' style={{ width: FRAME_W, height: FRAME_H }}>
         <iframe
-          src={`/room/${roomId}?preview=true`}
+          src={`/room/${roomId}?preview=true&ghost=true`}
           title={`Room: ${label}`}
           scrolling='no'
           allow=''
@@ -162,12 +214,173 @@ const MiniRoomFrame: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Grid Participants Modal
+// ─────────────────────────────────────────────────────────────────────────────
+const GridParticipantsModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  roomId: string;
+  roomName: string;
+}> = ({ isOpen, onClose, roomId, roomName }) => {
+  const [participants, setParticipants] = useState<BreakoutParticipant[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && roomId) {
+      setIsLoading(true);
+      BreakoutService.getBreakoutParticipants(roomId)
+        .then(setParticipants)
+        .catch(console.error)
+        .finally(() => setIsLoading(false));
+    }
+  }, [isOpen, roomId]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className='fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-8'>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className='relative w-full max-w-md bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[70vh]'
+          >
+            <div className='p-5 border-b border-white/5 flex items-center justify-between bg-white/5'>
+              <div>
+                <h2 className='text-base font-bold text-white tracking-tight flex items-center gap-2'>
+                  {roomName}
+                  <span className='bg-white/10 text-white/60 text-[10px] px-2 py-0.5 rounded-full font-mono'>
+                    {participants.length}
+                  </span>
+                </h2>
+                <p className='text-[10px] text-white/40 font-medium tracking-wider uppercase mt-1'>
+                  Room Participants
+                </p>
+              </div>
+              <Button variant='ghost' size='icon' onClick={onClose} className='hover:bg-white/10 rounded-full h-8 w-8 !p-0'>
+                <X className='w-4 h-4 text-white/70' />
+              </Button>
+            </div>
+            
+            <ScrollArea className='flex-1 p-4'>
+              {isLoading ? (
+                <div className='flex justify-center items-center py-10'>
+                  <div className='w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin' />
+                </div>
+              ) : participants.length === 0 ? (
+                <div className='text-center py-10 text-white/40 text-xs italic'>
+                  No participants currently in room.
+                </div>
+              ) : (
+                <div className='space-y-2'>
+                  {participants.map((p) => (
+                    <div key={p.id} className='flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5'>
+                      <UserAvatar name={p.user?.display_name || 'Unknown'} avatarUrl={p.user?.avatar_url} className='w-8 h-8' />
+                      <div>
+                        <div className='text-sm font-semibold text-white/90'>{p.user?.display_name || 'Unknown'}</div>
+                        <div className='text-[10px] text-white/40'>{p.role === 'HOST' ? 'Host' : 'Participant'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Grid Delete Room Modal
+// ─────────────────────────────────────────────────────────────────────────────
+const GridDeleteRoomModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  roomName: string;
+  isDeleting: boolean;
+}> = ({ isOpen, onClose, onConfirm, roomName, isDeleting }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className='fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-8'>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={isDeleting ? undefined : onClose}
+            className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className='relative w-full max-w-sm bg-[#0A0A0A] border border-red-500/20 rounded-2xl shadow-[0_0_40px_rgba(239,68,68,0.1)] flex flex-col overflow-hidden'
+          >
+            <div className='p-6 text-center'>
+              <div className='w-12 h-12 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4'>
+                <Trash2 className='w-6 h-6' />
+              </div>
+              <h2 className='text-lg font-bold text-white mb-2'>Delete Breakout Room</h2>
+              <p className='text-sm text-white/50 leading-relaxed mb-6'>
+                Are you sure you want to close and permanently delete <span className='text-white font-semibold'>"{roomName}"</span>? All participants will be returned to the main lobby.
+              </p>
+              <div className='flex flex-col sm:flex-row items-center gap-3'>
+                <Button
+                  variant='ghost'
+                  onClick={onClose}
+                  disabled={isDeleting}
+                  className='flex-1 h-11 bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:text-white rounded-full'
+                >
+                  Keep Room
+                </Button>
+                <RippleButton
+                  onClick={onConfirm}
+                  disabled={isDeleting}
+                  className='flex-[1.5] h-11 bg-white hover:bg-[#f3f4f6] border border-white/20 text-[#0a0a0a] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 rounded-full shadow-[0_4px_12px_rgba(255,255,255,0.1)] hover:scale-[1.02] transition-transform active:scale-[0.98] text-[10px]'
+                  rippleColor="rgba(0, 0, 0, 0.1)"
+                >
+                  {isDeleting ? (
+                    <div className='w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin' />
+                  ) : (
+                    <>
+                      <Trash2 className='w-3.5 h-3.5' />
+                      <span>Delete Now</span>
+                    </>
+                  )}
+                </RippleButton>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main Grid View
 // ─────────────────────────────────────────────────────────────────────────────
 export const RoomsGridView: React.FC<RoomsGridViewProps> = ({ currentRoomId, orgId, onExit }) => {
-  const { breakouts, setCurrentBreakout, refreshBreakouts } = useBreakout();
+  const { breakouts, setCurrentBreakout, refreshBreakouts, closeBreakout } = useBreakout();
+  const { currentOrganization } = useOrganization();
   const navigate = useNavigate();
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+
+  const [modalRoomId, setModalRoomId] = useState<string | null>(null);
+  const [modalRoomName, setModalRoomName] = useState<string>('');
+
+  const [deleteModalData, setDeleteModalData] = useState<{ id: string; name: string } | null>(null);
+  const [isDeletingRoom, setIsDeletingRoom] = useState(false);
 
   // Refresh breakout data when grid opens
   useEffect(() => {
@@ -189,6 +402,28 @@ export const RoomsGridView: React.FC<RoomsGridViewProps> = ({ currentRoomId, org
     onExit();
   };
 
+  const handleDeleteRoom = (roomId: string, roomName: string) => {
+    setDeleteModalData({ id: roomId, name: roomName });
+  };
+
+  const confirmDeleteRoom = async () => {
+    if (!deleteModalData) return;
+    setIsDeletingRoom(true);
+    try {
+      await closeBreakout(deleteModalData.id);
+      setDeleteModalData(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDeletingRoom(false);
+    }
+  };
+
+  const handleShowParticipants = (roomId: string, roomName: string) => {
+    setModalRoomId(roomId);
+    setModalRoomName(roomName);
+  };
+
   // Build ordered list: pinned first, then rest
   type RoomEntry = {
     id: string;
@@ -196,18 +431,33 @@ export const RoomsGridView: React.FC<RoomsGridViewProps> = ({ currentRoomId, org
     type: 'MAIN' | 'PARENT' | 'CHILD';
     status: string;
     breakout?: BreakoutSession;
+    mode?: string;
   };
 
   const allRooms: RoomEntry[] = [
-    { id: orgId, label: 'Main Lobby', type: 'MAIN', status: 'LIVE' },
+    { 
+      id: orgId, 
+      label: 'Main Lobby', 
+      type: 'MAIN', 
+      status: 'LIVE', 
+      mode: currentOrganization?.mode 
+    },
     ...breakouts.flatMap((b) => [
-      { id: b.id, label: b.name, type: 'PARENT' as const, status: b.status, breakout: b },
+      { 
+        id: b.id, 
+        label: b.name, 
+        type: 'PARENT' as const, 
+        status: b.status, 
+        breakout: b, 
+        mode: b.mode_override || currentOrganization?.mode 
+      },
       ...(b.child_rooms || []).map((c) => ({
         id: c.id,
         label: c.name,
         type: 'CHILD' as const,
         status: c.status || 'LIVE',
         breakout: b,
+        mode: c.mode_override || b.mode_override || currentOrganization?.mode
       })),
     ]),
   ];
@@ -273,6 +523,9 @@ export const RoomsGridView: React.FC<RoomsGridViewProps> = ({ currentRoomId, org
                 isPinned={pinnedIds.has(room.id)}
                 onSelect={() => handleSelect(room.id, room.breakout)}
                 onPin={() => togglePin(room.id)}
+                onDelete={() => handleDeleteRoom(room.id, room.label)}
+                onShowParticipants={() => handleShowParticipants(room.id, room.label)}
+                mode={room.mode}
               />
             ))}
           </motion.div>
@@ -308,6 +561,24 @@ export const RoomsGridView: React.FC<RoomsGridViewProps> = ({ currentRoomId, org
             <span className='text-[10px] font-black uppercase tracking-widest'>All Rooms</span>
           </button>
         </div>
+
+        {/* Modal explicitly rendered out of typical flow */}
+        {modalRoomId && (
+          <GridParticipantsModal
+            isOpen={!!modalRoomId}
+            onClose={() => setModalRoomId(null)}
+            roomId={modalRoomId}
+            roomName={modalRoomName}
+          />
+        )}
+
+        <GridDeleteRoomModal
+          isOpen={!!deleteModalData}
+          onClose={() => setDeleteModalData(null)}
+          onConfirm={confirmDeleteRoom}
+          roomName={deleteModalData?.name || ''}
+          isDeleting={isDeletingRoom}
+        />
       </motion.div>
     </AnimatePresence>
   );

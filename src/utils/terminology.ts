@@ -8,6 +8,7 @@ export const TERMINOLOGY = {
   // Entities
   ROOM: 'Room',
   HOST: 'Host',
+  SUPER_HOST: 'Super Host',
   PARTICIPANT: 'Participant',
   SESSION: 'Session',
   INTELLIGENCE: 'Intelligence', // Not "Summary"

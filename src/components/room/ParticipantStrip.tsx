@@ -15,6 +15,7 @@ interface ParticipantStripProps {
   localUserGender?: string;
   users: User[];
   remoteStreams: Map<string, MediaStream>;
+  revealNames?: boolean;
 }
 
 interface PinnedParticipant {
@@ -38,6 +39,7 @@ export const ParticipantStrip: React.FC<ParticipantStripProps> = ({
   localUserGender,
   users,
   remoteStreams,
+  revealNames = true,
 }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [pinnedParticipant, setPinnedParticipant] = useState<PinnedParticipant | null>(null);
@@ -160,9 +162,9 @@ export const ParticipantStrip: React.FC<ParticipantStripProps> = ({
                     {allParticipants.slice(0, 4).map((p) => (
                       <UserAvatar
                         key={p.id}
-                        name={p.name}
-                        avatarUrl={p.photoUrl || undefined}
-                        gender={p.gender}
+                        name={!revealNames && !p.isLocal ? 'Participant' : p.name}
+                        avatarUrl={!revealNames && !p.isLocal ? undefined : p.photoUrl || undefined}
+                        gender={!revealNames && !p.isLocal ? undefined : p.gender}
                         seed={p.id}
                         className='w-5 h-5 border border-[#080b10] text-[8px]'
                       />
@@ -232,11 +234,11 @@ export const ParticipantStrip: React.FC<ParticipantStripProps> = ({
                       >
                         <VideoTile
                           stream={p.stream}
-                          username={p.name}
+                          username={!revealNames && !p.isLocal ? 'Participant' : p.name}
                           isLocal={p.isLocal}
                           isMuted={p.isMuted}
-                          photoUrl={p.photoUrl}
-                          gender={p.gender}
+                          photoUrl={!revealNames && !p.isLocal ? undefined : p.photoUrl}
+                          gender={!revealNames && !p.isLocal ? undefined : p.gender}
                           seed={p.id}
                           isVideoEnabled={p.isVideoOn}
                           hideName
@@ -281,7 +283,7 @@ export const ParticipantStrip: React.FC<ParticipantStripProps> = ({
                       {/* Name below thumbnail */}
                       <div className='mt-px text-center'>
                         <span className='text-[6px] font-bold text-white/40 uppercase tracking-wider truncate block w-full'>
-                          {p.isLocal ? 'You' : p.name}
+                          {p.isLocal ? 'You' : !revealNames ? 'Participant' : p.name}
                         </span>
                       </div>
                     </motion.div>
@@ -321,7 +323,7 @@ export const ParticipantStrip: React.FC<ParticipantStripProps> = ({
               <div className='flex items-center gap-2'>
                 <div className='w-1.5 h-1.5 rounded-full bg-primary animate-pulse' />
                 <span className='text-[10px] font-black uppercase tracking-widest text-white/60'>
-                  {pinnedParticipant.isLocal ? 'You' : pinnedParticipant.name}
+                  {pinnedParticipant.isLocal ? 'You' : !revealNames ? 'Participant' : pinnedParticipant.name}
                 </span>
               </div>
               <div className='flex items-center gap-2 pointer-events-auto'>
@@ -344,11 +346,11 @@ export const ParticipantStrip: React.FC<ParticipantStripProps> = ({
             <div className='relative aspect-video bg-black/40'>
               <VideoTile
                 stream={pinnedParticipant.stream}
-                username={pinnedParticipant.name}
+                username={!revealNames && !pinnedParticipant.isLocal ? 'Participant' : pinnedParticipant.name}
                 isLocal={pinnedParticipant.isLocal}
                 isMuted={pinnedParticipant.isMuted}
-                photoUrl={pinnedParticipant.photoUrl}
-                gender={pinnedParticipant.gender}
+                photoUrl={!revealNames && !pinnedParticipant.isLocal ? undefined : pinnedParticipant.photoUrl}
+                gender={!revealNames && !pinnedParticipant.isLocal ? undefined : pinnedParticipant.gender}
                 seed={pinnedParticipant.id}
                 isVideoEnabled={pinnedParticipant.isVideoOn}
                 hideName

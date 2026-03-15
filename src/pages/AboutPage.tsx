@@ -328,7 +328,7 @@ const AboutPage = () => {
                 },
                 {
                   icon: Command,
-                  label: 'AI Summary',
+                  label: 'Superior AI Summary',
                   desc: 'Generate instant transcripts and action items via Gemini 1.5.',
                 },
                 {

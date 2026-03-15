@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
-import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -33,10 +32,7 @@ import {
   Cpu,
   Zap,
   History,
-  Hash, // Added for username
-  Edit3, // Added for edit buttons
-  FileDigit, // Added from Code Edit
-  LogOut, // Added from Code Edit
+  Edit3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -46,8 +42,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client'; // Added from Code Edit
-import useSound from 'use-sound'; // Added from Code Edit
+import { supabase } from '@/integrations/supabase/client';
+import useSound from 'use-sound';
+import { getApiUrl } from '@/utils/url';
 
 const PRESET_SEEDS = [
   'Felix',
@@ -281,10 +278,10 @@ const Profile = () => {
         formData.append('photo', photoFile);
         formData.append('userId', user?.id || '');
 
-        const response = await fetch(
-          `${import.meta.env.VITE_WS_URL || 'http://localhost:3001'}/upload-profile-photo`,
-          { method: 'POST', body: formData }
-        );
+        const response = await fetch(getApiUrl('/upload-profile-photo'), {
+          method: 'POST',
+          body: formData,
+        });
 
         if (!response.ok) throw new Error('Upload failed');
         const data = await response.json();

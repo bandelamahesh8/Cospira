@@ -52,6 +52,7 @@ interface BreakoutContextType {
   startBreakout: (breakoutId: string) => Promise<void>;
   closeBreakout: (breakoutId: string) => Promise<void>;
   removeParticipantToLobby: (breakoutId: string, userId: string) => Promise<void>;
+  deleteBreakout: (breakoutId: string) => Promise<void>;
 
   // Advanced Child Rooms & Master Controls
   createChildRoom: (
@@ -560,6 +561,22 @@ export const BreakoutProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [refreshBreakouts]
   );
 
+  const deleteBreakout = useCallback(
+    async (breakoutId: string) => {
+      try {
+        await BreakoutService.deleteBreakout(breakoutId);
+        toast.success('Breakout deleted permanently');
+        if (currentBreakout?.id === breakoutId) setCurrentBreakout(null);
+        await refreshBreakouts();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to delete breakout';
+        toast.error(msg);
+        throw err;
+      }
+    },
+    [currentBreakout, refreshBreakouts, setCurrentBreakout]
+  );
+
   // ─── Advanced Child Room & Master Controls ──────────────────
 
   const createChildRoom = useCallback(
@@ -762,6 +779,7 @@ export const BreakoutProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         startBreakout,
         closeBreakout: closeBreakoutFn,
         removeParticipantToLobby,
+        deleteBreakout,
         createChildRoom,
         masterBroadcast,
         forceTransferUser,

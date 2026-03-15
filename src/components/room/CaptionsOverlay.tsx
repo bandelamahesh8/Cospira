@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { generateUUID } from '@/utils/uuid';
 
 interface TranscriptItem {
   id: string;
@@ -18,7 +19,7 @@ export const CaptionsOverlay = () => {
   useEffect(() => {
     if (lastTranscript) {
       const newItem: TranscriptItem = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         text: lastTranscript.text,
         userId: lastTranscript.userId,
         userName:

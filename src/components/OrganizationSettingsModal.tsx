@@ -12,8 +12,10 @@ import { Label } from '@/components/ui/label';
 import { useOrganization } from '@/contexts/useOrganization';
 import { OrganizationService } from '@/services/OrganizationService';
 import { supabase } from '@/integrations/supabase/client';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { Trash2, UserPlus, User, ShieldCheck, XCircle, Settings, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { copyToClipboard } from '@/utils/clipboard';
 // ... (lines 17-18)
 // ...
 
@@ -47,6 +49,7 @@ export const OrganizationSettingsModal: React.FC<OrganizationSettingsModalProps>
   onOpenChange,
 }) => {
   const { currentOrganization, removeMember } = useOrganization();
+  const { updateRoomSettings, autoApprove, stopJoiningTime: currentStopJoiningTime } = useWebSocket();
 
   // Data State
   const [members, setMembers] = useState<OrganizationUser[]>([]);
@@ -187,8 +190,10 @@ export const OrganizationSettingsModal: React.FC<OrganizationSettingsModalProps>
   useEffect(() => {
     if (open && currentOrganization) {
       fetchData();
+      setAutoApproveParticipants(autoApprove || false);
+      setStopJoiningTime(currentStopJoiningTime || 0);
     }
-  }, [open, currentOrganization, fetchData]);
+  }, [open, currentOrganization, fetchData, autoApprove, currentStopJoiningTime]);
 
   // --- Actions ---
 
@@ -210,8 +215,10 @@ export const OrganizationSettingsModal: React.FC<OrganizationSettingsModalProps>
 
       // Clipboard Copy for Phase 2
       const inviteLink = `${window.location.origin}/join?token=${token}`;
-      navigator.clipboard.writeText(inviteLink);
-      toast.success(`Invitation generated! Link copied to clipboard.`);
+      const success = await copyToClipboard(inviteLink);
+      if (success) {
+        toast.success(`Invitation generated! Link copied to clipboard.`);
+      }
 
       setInviteEmail('');
       fetchData();
@@ -336,8 +343,14 @@ export const OrganizationSettingsModal: React.FC<OrganizationSettingsModalProps>
   const handleSaveSettings = async () => {
     setIsSavingSettings(true);
     try {
-      // Note: Update backend when organization settings column is extended, for now local mock toast
-      await new Promise((r) => setTimeout(r, 800));
+      updateRoomSettings(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        autoApproveParticipants,
+        stopJoiningTime
+      );
       toast.success('Organization room settings updated successfully!');
     } catch {
       toast.error('Failed to update settings');

@@ -7,7 +7,7 @@ import Navbar from '@/components/Navbar';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { Zap, Cpu, Lock, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { ROOM_MODE_CONFIGS, RoomMode } from '@/services/RoomIntelligence';
+import { ROOM_MODE_CONFIGS, RoomMode, normalizeRoomMode } from '@/services/RoomIntelligence';
 import { encodeRoomId } from '@/utils/roomCode';
 
 const CreateRoom = () => {
@@ -35,7 +35,7 @@ const CreateRoom = () => {
 
     const accessType = password ? 'password' : 'public';
     const settings = {
-      mode: selectedMode,
+      mode: normalizeRoomMode(selectedMode),
       // Inherit default features from mode, but allow overrides if we added toggles later.
       // For now, we trust the mode config on the backend/room logic.
     };
@@ -50,14 +50,6 @@ const CreateRoom = () => {
           description: `Unit ${roomId} is now active in ${ROOM_MODE_CONFIGS[selectedMode].label}.`,
         });
         const encodedId = encodeRoomId(roomId);
-        console.log(
-          '[CreateRoom] Navigating to:',
-          `/room/${encodedId}`,
-          'Raw:',
-          roomId,
-          'Encoded:',
-          encodedId
-        );
         setTimeout(() => navigate(`/room/${encodedId}`), 500);
       },
       undefined,
@@ -197,7 +189,7 @@ const CreateRoom = () => {
                         )}
                         {config.features.summary && (
                           <span className='px-2 py-1 rounded bg-white/5 text-[10px] font-bold uppercase tracking-wider text-white/50'>
-                            AI Summary
+                            Superior AI Summary
                           </span>
                         )}
                         {config.securityLevel === 'high' && (

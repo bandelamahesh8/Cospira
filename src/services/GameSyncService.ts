@@ -2,6 +2,7 @@
 // Handles real-time game state synchronization across clients
 
 import { logger } from '@/utils/logger';
+import { generateUUID } from '@/utils/uuid';
 
 export interface GameMove {
   id: string;
@@ -103,7 +104,7 @@ export class GameSyncService {
 
     // Create move record
     const move: GameMove = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       playerId,
       playerName: this.state.players.find((p) => p.id === playerId)?.name || 'Unknown',
       action: JSON.stringify(action),

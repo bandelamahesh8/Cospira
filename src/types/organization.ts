@@ -99,6 +99,8 @@ export interface Organization {
   role?: string; // Legacy
   current_user_role_id?: string;
   current_user_permissions?: PermissionKey[];
+  authorized_only?: boolean;
+  lobby_name?: string;
 }
 
 // ─────────────────────────────────────────────────────────────

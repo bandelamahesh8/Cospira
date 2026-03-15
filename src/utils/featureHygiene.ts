@@ -8,7 +8,6 @@ const STORAGE_KEY = 'cospira_feature_usage';
 
 export const Features = {
   VIRTUAL_BROWSER: 'virtual_browser',
-  GAMES_LUDO: 'game_ludo',
   GAMES_CHESS: 'game_chess',
   WHITEBOARD: 'whiteboard',
   SCREEN_SHARE: 'screen_share',

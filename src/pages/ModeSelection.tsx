@@ -31,7 +31,7 @@ const ModeSelection = () => {
     },
     {
       id: 'ultra',
-      title: 'Ultra Secure',
+      title: 'Secure',
       description: 'Maximum privacy. Ghost protocol, no logs, self-destructing room.',
       icon: Shield,
       color: 'text-red-400',

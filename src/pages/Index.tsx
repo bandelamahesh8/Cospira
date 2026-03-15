@@ -234,9 +234,9 @@ const AICards = () => {
       {/* AFTER CARD - THE "10/10" FEEL */}
       <motion.div
         whileHover={{ y: -4, scale: 1.01 }}
-        className='p-8 rounded-3xl bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/30 relative overflow-hidden group shadow-[0_0_40px_rgba(79,70,229,0.1)]'
+        className='p-8 rounded-3xl bg-white/[0.03] border border-white/10 relative overflow-hidden group shadow-[0_0_40px_rgba(255,255,255,0.05)]'
       >
-        <div className='absolute inset-0 bg-indigo-500/5 group-hover:bg-indigo-500/10 transition-colors' />
+        <div className='absolute inset-0 bg-white/[0.02] group-hover:bg-white/[0.05] transition-colors' />
         <div className='absolute top-0 right-0 p-4'>
           <div className='flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-emerald-400'>
             <CheckCircle2 className='w-3 h-3' /> After
@@ -343,7 +343,7 @@ const Index = () => {
                     className='group relative px-8 py-4 bg-white text-black rounded-full font-black text-sm uppercase tracking-widest transition-transform duration-300 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:shadow-[0_0_60px_rgba(255,255,255,0.4)]'
                   >
                     Start a Private Room
-                    <div className='absolute inset-0 rounded-full bg-gradient-to-r from-indigo-400 via-white to-indigo-400 opacity-0 group-hover:opacity-20 animate-pulse-gap' />
+                    <div className='absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-10 animate-pulse-gap' />
                   </motion.button>
                 </Link>
 
@@ -422,7 +422,7 @@ const Index = () => {
                 className='group relative overflow-hidden text-lg md:text-xl px-12 py-6 rounded-full bg-white text-black font-black uppercase tracking-widest hover:bg-zinc-100 transition-all shadow-[0_20px_60px_rgba(255,255,255,0.2)] duration-200'
               >
                 Start Private Room
-                <div className='absolute inset-0 rounded-full bg-gradient-to-r from-indigo-400 via-white to-indigo-400 opacity-0 group-hover:opacity-20 animate-pulse-gap' />
+                <div className='absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-10 animate-pulse-gap' />
               </motion.button>
             </Link>
 

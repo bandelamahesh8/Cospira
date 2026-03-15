@@ -51,7 +51,7 @@ const ActivityPage = () => {
     if (!socket || !isConnected) return;
 
     setLoading(true);
-    socket.emit('get-user-history', (res: { success: boolean; history?: HistoryItem[] }) => {
+    socket.emit('get-user-history', { userId: user?.id }, (res: { success: boolean; history?: HistoryItem[] }) => {
       if (res.success && res.history) {
         const mappedActivities: ActivityType[] = res.history.map((item) => ({
           id: item.id,

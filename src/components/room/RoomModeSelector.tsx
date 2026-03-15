@@ -38,7 +38,7 @@ const MODES: ModeConfig[] = [
     label: 'Professional',
     icon: Briefcase,
     emoji: '💼',
-    features: 'Work • AI Summary • Focus',
+    features: 'Work • Superior AI Summary • Focus',
     color: '#00c2ff',
     glowColor: 'rgba(0, 194, 255, 0.4)',
     description: 'Optimized for productive meetings and collaboration',

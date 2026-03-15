@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { logger } from '@/utils/logger';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -91,6 +92,7 @@ export const RoomTimerModal: React.FC<RoomTimerModalProps> = ({ isOpen, onClose,
   };
 
   const handleApply = () => {
+    logger.info('[RoomTimerModal] Applying timer settings:', { duration: minutes, label, type, action });
     if (onSetTimer) {
       onSetTimer(minutes, label, type, action);
     }

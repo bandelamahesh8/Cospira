@@ -71,7 +71,7 @@ const AdminLogin = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className='pl-10 bg-black/50 border-white/5 text-white focus:border-red-500/50 transition-colors h-12'
-                  placeholder='admin@cospira.com'
+                  placeholder='Enter the secret email address'
                 />
               </div>
             </div>
@@ -85,7 +85,7 @@ const AdminLogin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className='pl-10 bg-black/50 border-white/5 text-white focus:border-red-500/50 transition-colors h-12'
-                  placeholder='••••••••'
+                  placeholder='Enter the secret passcode'
                 />
               </div>
             </div>

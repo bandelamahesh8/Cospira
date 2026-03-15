@@ -1,0 +1,1 @@
+import{u as e,r}from"./react-vendor-DHeKo4x0.js";import"./ui-vendor-BQCqNqg0.js";import"./vendor-Bcysai0i.js";const i=()=>{const t=e();return r.useEffect(()=>{t("/profile",{replace:!0})},[t]),null};export{i as default};

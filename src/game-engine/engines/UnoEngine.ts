@@ -6,6 +6,7 @@ import {
   ValidationResult,
   WinnerResult,
 } from '../core/GameEngine.interface';
+import { generateUUID } from '@/utils/uuid';
 
 export type CardColor = 'red' | 'blue' | 'green' | 'yellow' | 'wild';
 export type CardValue =
@@ -118,7 +119,7 @@ export class UnoEngine extends BaseGameEngine {
 
   private createCard(color: CardColor, value: CardValue): UnoCard {
     return {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       color,
       value,
     };

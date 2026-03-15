@@ -24,9 +24,9 @@ const MockRoomPreview = () => {
       <div className='p-4 h-[calc(100%-2rem)] flex gap-4'>
         {/* Sidebar / Participants */}
         <div className='hidden md:flex flex-col gap-3 w-16 items-center py-4 bg-white/5 rounded-2xl border border-white/5'>
-          <div className='w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 animate-pulse' />
-          <div className='w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500' />
-          <div className='w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500' />
+          <div className='w-10 h-10 rounded-full bg-white/20 animate-pulse' />
+          <div className='w-10 h-10 rounded-full bg-white/10' />
+          <div className='w-10 h-10 rounded-full bg-white/5' />
           <div className='mt-auto w-10 h-10 rounded-full bg-white/10 flex items-center justify-center'>
             <Settings className='w-5 h-5 text-white/50' />
           </div>
@@ -37,7 +37,7 @@ const MockRoomPreview = () => {
           {/* Video Grid Mock */}
           <div className='flex-1 grid grid-cols-2 gap-4'>
             <div className='relative rounded-2xl bg-zinc-900/50 overflow-hidden border border-white/5 group'>
-              <div className='absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-50' />
+              <div className='absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50' />
               <div className='absolute bottom-4 left-4 flex gap-2'>
                 <div className='px-2 py-1 rounded bg-black/50 text-[10px] text-white'>You</div>
               </div>

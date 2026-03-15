@@ -150,11 +150,18 @@ class WebRTCBrowserManager extends EventEmitter {
 
           if (session.ffmpegAudioProc && !session.ffmpegAudioProc.killed) {
               session.stats.audioChunks++;
+              
+              // Log every 100th chunk to verify audio flow
+              if (session.stats.audioChunks % 100 === 0) {
+                  logger.info(`[Audio] Received 100 chunks. Total: ${session.stats.audioChunks}`);
+              }
+
               try {
                   const buffer = Buffer.from(base64Chunk, 'base64');
                   session.ffmpegAudioProc.stdin.write(buffer);
               } catch (e) {
                   // Pipe might be closing
+                  logger.debug(`[Audio] Pipe write error: ${e.message}`);
               }
           }
       });
@@ -242,7 +249,7 @@ class WebRTCBrowserManager extends EventEmitter {
             // Record as WebM/Opus and send back to Node
             const recorder = new MediaRecorder(destination.stream, {
               mimeType: 'audio/webm;codecs=opus',
-              audioBitsPerSecond: 128000
+              audioBitsPerSecond: 64000
             });
             window.__cospira_recorder = recorder;
             
@@ -256,13 +263,19 @@ class WebRTCBrowserManager extends EventEmitter {
                 reader.readAsDataURL(event.data);
               }
             };
-            recorder.start(500); // 500ms chunks for lower latency
+            recorder.start(200); // 200ms chunks for better balance of latency and overhead
 
             // Periodically resume AudioContext if it gets suspended
             setInterval(() => {
-              if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
-            }, 2000);
-          } catch (e) {}
+              if (audioCtx.state === 'suspended') {
+                  audioCtx.resume().catch(() => {});
+              }
+            }, 1000);
+            
+            console.log('[Cospira] Audio capture successfully initialized');
+          } catch (e) {
+            console.error('[Cospira] Audio capture initialization failed:', e);
+          }
         }
 
         // Initialize on DOMContentLoaded (fires before load but after DOM is ready)
@@ -277,10 +290,13 @@ class WebRTCBrowserManager extends EventEmitter {
         window.addEventListener('load', () => setTimeout(initCospiraAudio, 300));
       });
 
+      // Signal start EARLY so client can show the viewport while page loads
+      this.io.to(roomId).emit('browser-started', { url: initialUrl });
+
       // Start WebRTC streaming via Mediasoup SFU
       await this.startWebRTCStream(session);
 
-      // Create primary tab and activate screencast
+      // Create primary tab (internal navigation within createTab is now non-blocking for the start flow)
       await this.createTab(session.activeTabId, initialUrl, true);
 
       browser.on('disconnected', () => {
@@ -290,8 +306,6 @@ class WebRTCBrowserManager extends EventEmitter {
       });
 
       logger.info(`✅ WebRTC CDP browser session started for room ${roomId}`);
-      this.io.to(roomId).emit('browser-started', { url: initialUrl });
-
       return session;
 
     } catch (error) {
@@ -305,7 +319,10 @@ class WebRTCBrowserManager extends EventEmitter {
       const session = this.session;
 
       const page = await session.context.newPage();
+      // Small delay to ensure the page target is ready for CDP attachment on some Windows systems
+      await new Promise(r => setTimeout(r, 100));
       const client = await session.context.newCDPSession(page);
+      logger.info(`[Browser] Created new tab ${tabId} with CDP session`);
 
       session.pages.set(tabId, { id: tabId, page, client, url, title: 'New Tab' });
 
@@ -338,11 +355,9 @@ class WebRTCBrowserManager extends EventEmitter {
           logger.error(`Browser page crashed for room ${session.roomId}, tab ${tabId}`);
       });
 
-      try {
-          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      } catch (e) {
-          logger.warn(`Navigation failed for tab ${tabId}: ${e.message}`);
-      }
+      // Trigger navigation but don't block the session setup
+      page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
+          .catch(e => logger.warn(`Navigation failed for tab ${tabId}: ${e.message}`));
 
       if (switchImmediately) {
           await this.switchTab(tabId);
@@ -404,17 +419,26 @@ class WebRTCBrowserManager extends EventEmitter {
       });
   }
 
-  async activateScreencast(client) {
+  async activateScreencast(client, retryCount = 0) {
       if (!client || !this.session) return;
       try {
+          const page = this.activePage;
+          const url = page ? page.url() : 'unknown';
+          
+          // Wait for page to be "ready" if it's still navigating
+          if (page && page.isClosed()) return;
+
+          logger.info(`[Screencast] Activating for URL: ${url} (Attempt ${retryCount + 1})`);
+          
           await client.send('Page.startScreencast', {
               format: 'jpeg',
-              quality: 60,
+              quality: 50,
               maxWidth: this.session.viewport.width,
               maxHeight: this.session.viewport.height,
               everyNthFrame: 1
           });
 
+          client.removeAllListeners('Page.screencastFrame');
           client.on('Page.screencastFrame', async ({ data, sessionId: cdpSessionId }) => {
               try {
                   await client.send('Page.screencastFrameAck', { sessionId: cdpSessionId }).catch(()=>{});
@@ -422,9 +446,23 @@ class WebRTCBrowserManager extends EventEmitter {
                   if (this.activeClient !== client) return;
 
                   this.session.lastFrameBuffer = Buffer.from(data, 'base64');
-              } catch (e) {}
+                  
+                  // LOG EVERY 100th FRAME
+                  if (this.session.stats.framesStreamed % 100 === 0) {
+                      logger.info(`[Screencast] Received frame. Size: ${this.session.lastFrameBuffer.length} bytes`);
+                  }
+              } catch (e) {
+                  // Silent
+              }
           });
-      } catch (e) {}
+          logger.info(`[Screencast] Successfully activated for ${url}`);
+      } catch (e) {
+          logger.error(`[Screencast] Failed to start (Attempt ${retryCount + 1}): ${e.message}`);
+          if (retryCount < 3 && !e.message.includes('closed')) {
+              logger.info(`[Screencast] Retrying in 500ms...`);
+              setTimeout(() => this.activateScreencast(client, retryCount + 1), 500);
+          }
+      }
   }
 
   async deactivateScreencast(client) {
@@ -498,15 +536,16 @@ class WebRTCBrowserManager extends EventEmitter {
       const videoArgs = [
           '-f', 'image2pipe',
           '-vcodec', 'mjpeg',
-          '-framerate', '30',
+          '-framerate', '24',
           '-i', 'pipe:0', // Read from stdin
           '-c:v', 'libvpx',
-          '-b:v', '1500k',
-          '-maxrate', '1500k',
-          '-bufsize', '3000k',
-          '-g', '60',
+          '-b:v', '2000k',
+          '-maxrate', '3000k',
+          '-bufsize', '4000k',
+          '-g', '48',
           '-deadline', 'realtime',
-          '-cpu-used', '5',
+          '-cpu-used', '8',
+          '-threads', '0',
           '-error-resilient', '1',
           '-f', 'rtp',
           '-payload_type', videoPayloadType.toString(),
@@ -514,27 +553,54 @@ class WebRTCBrowserManager extends EventEmitter {
           `rtp://127.0.0.1:${sfuTransport.port}`
       ];
 
+      logger.info(`[VideoPipe] Spawning FFmpeg with args: ${videoArgs.join(' ')}`);
       session.ffmpegVideoProc = spawn(ffmpegPath.path, videoArgs, { stdio: ['pipe', 'ignore', 'pipe'] });
       
+      session.ffmpegVideoProc.on('error', (err) => {
+          logger.error(`[VideoPipe] FFmpeg spawn error: ${err.message}`);
+      });
+
+      session.ffmpegVideoProc.on('exit', (code, signal) => {
+          logger.error(`[VideoPipe] FFmpeg EXITED with code ${code} and signal ${signal}`);
+      });
+
+      if (session.ffmpegVideoProc.pid) {
+          logger.info(`[VideoPipe] FFmpeg successfully spawned. PID: ${session.ffmpegVideoProc.pid}`);
+      }
+      
+      session.ffmpegVideoProc.stdin.on('error', (err) => {
+          logger.debug(`[VideoPipe] stdin error: ${err.message}`);
+      });
+
       session.frameInterval = setInterval(() => {
           if (session.ffmpegVideoProc && !session.ffmpegVideoProc.killed && session.lastFrameBuffer) {
+              if (session.ffmpegVideoProc.stdin.writableNeedDrain) {
+                  // Pipe is full, skip this frame to prevent buffer buildup
+                  session.frameSkipCount++;
+                  if (session.frameSkipCount % 100 === 0) {
+                      logger.warn(`[VideoPipe] Backpressure detected. Skipped ${session.frameSkipCount} frames total.`);
+                  }
+                  return;
+              }
+
               try {
                   session.ffmpegVideoProc.stdin.write(session.lastFrameBuffer);
                   session.stats.framesStreamed++;
-              } catch (e) {}
+              } catch (e) {
+                  logger.debug(`[VideoPipe] Write error: ${e.message}`);
+              }
           }
-      }, 1000 / 30);
+      }, 1000 / 24);
       
       session.ffmpegVideoProc.stderr.on('data', (data) => {
           const str = data.toString();
-          if (str.includes('Error') || str.includes('failed')) {
-              logger.debug(`[VideoPipe] ${str.trim()}`);
-          }
+          // LOG EVERYTHING for now
+          logger.info(`[VideoPipe] ${str.trim()}`);
       });
 
       session.audioPayloadType = audioPayloadType;
       
-      session.restartAudioPipe = () => {
+          session.restartAudioPipe = () => {
           if (session.ffmpegAudioProc) {
               session.ffmpegAudioProc.kill('SIGKILL');
           }
@@ -550,11 +616,17 @@ class WebRTCBrowserManager extends EventEmitter {
               '-ssrc', '22222222', // Audio SSRC
               `rtp://127.0.0.1:${audioProxyPort}`
           ];
+          logger.info(`[AudioPipe] Spawning FFmpeg with args: ${audioArgs.join(' ')}`);
           session.ffmpegAudioProc = spawn(ffmpegPath.path, audioArgs, { stdio: ['pipe', 'ignore', 'pipe'] });
+          
+          session.ffmpegAudioProc.on('error', (err) => {
+              logger.error(`[AudioPipe] FFmpeg error: ${err.message}`);
+          });
+
           session.ffmpegAudioProc.stderr.on('data', (data) => {
               const str = data.toString();
-              if (str.includes('Error') || str.includes('failed')) {
-                  logger.debug(`[AudioPipe] ${str.trim()}`);
+              if (str.includes('Error') || str.includes('failed') || str.includes('Invalid')) {
+                  logger.info(`[AudioPipe] stderr: ${str.trim()}`);
               }
           });
       };
@@ -677,44 +749,57 @@ class WebRTCBrowserManager extends EventEmitter {
       const height = session.viewport?.height || 720;
       const touch = session.touchState;
 
-      // Touch Handling
-      if (input.pointerType === 'touch') {
-          const x = input.x * width;
-          const y = input.y * height;
-
-          switch (input.type) {
-              case 'mousedown':
-                  touch.startX = x; touch.startY = y;
-                  touch.lastX = x; touch.lastY = y;
-                  touch.isScrolling = false;
-                  break;
-              case 'mousemove':
-                  if (touch.isScrolling) {
-                      await page.mouse.wheel(touch.lastX - x, touch.lastY - y);
-                      touch.lastX = x; touch.lastY = y;
-                  } else {
-                      if (Math.hypot(x - touch.startX, y - touch.startY) > touch.scrollThreshold) {
-                          touch.isScrolling = true;
-                          await page.mouse.wheel(touch.lastX - x, touch.lastY - y);
-                          touch.lastX = x; touch.lastY = y;
-                      }
-                  }
-                  break;
-              case 'mouseup':
-                  if (!touch.isScrolling) await page.mouse.click(x, y);
-                  touch.isScrolling = false;
-                  break;
-          }
+      // Input Throttling: Skip mousemove/touchmove if one is already in flight
+      if ((input.type === 'mousemove' || input.type === 'touchmove') && session.isProcessingInput) {
           return;
       }
+      session.isProcessingInput = true;
 
-      // Mouse/Keyboard
+      // Touch Handling - NATIVE Playwright Touch
+      if (input.pointerType === 'touch') {
+          const x = Math.round(input.x * width);
+          const y = Math.round(input.y * height);
+
+          // Raw touch events (mousedown=touchstart, mousemove=touchmove, mouseup=touchend)
+          if (['mousedown', 'mousemove', 'mouseup'].includes(input.type)) {
+               try {
+                   switch (input.type) {
+                       case 'mousedown': 
+                           touch.startX = x; touch.startY = y;
+                           touch.lastX = x; touch.lastY = y;
+                           touch.isScrolling = false;
+                           await page.touchscreen.start(x, y).catch(()=>{});
+                           break;
+                       case 'mousemove': 
+                           const dx = Math.abs(x - touch.startX);
+                           const dy = Math.abs(y - touch.startY);
+                           if (!touch.isScrolling && (dx > touch.scrollThreshold || dy > touch.scrollThreshold)) {
+                               touch.isScrolling = true;
+                           }
+                           await page.touchscreen.move(x, y).catch(()=>{});
+                           touch.lastX = x; touch.lastY = y;
+                           break;
+                       case 'mouseup': 
+                           await page.touchscreen.end().catch(()=>{});
+                           touch.isScrolling = false;
+                           break;
+                   }
+               } catch (e) {
+                   logger.debug(`Touch error: ${e.message}`);
+               }
+               return; // Return only for these raw touch movement events
+          }
+          // Other touch-initated events like 'click', 'dblclick', 'wheel' will fall through to mouse handlers
+      }
+
+      // Mouse/Keyboard/Processed Touch Gestures
       switch (input.type) {
         case 'mousemove': await page.mouse.move(input.x * width, input.y * height); break;
         case 'click': await page.mouse.click(input.x * width, input.y * height); break;
         case 'dblclick': await page.mouse.dblclick(input.x * width, input.y * height); break;
         case 'mousedown': await page.mouse.down(); break;
         case 'mouseup': await page.mouse.up(); break;
+        case 'wheel': await page.mouse.wheel(input.deltaX || 0, input.deltaY || 0); break;
         case 'keydown': 
             if (input.key) {
                 await page.keyboard.down(input.key).catch(()=>{}); 
@@ -730,15 +815,22 @@ class WebRTCBrowserManager extends EventEmitter {
                 await page.keyboard.up(input.key).catch(()=>{});
             }
             break;  
-        case 'wheel': 
-            if (input.x !== undefined && input.y !== undefined) {
-                await page.mouse.move(input.x * width, input.y * height);
+        case 'zoom': 
+            // Handle pinch-to-zoom gestures
+            if (input.scale) {
+                // Convert pinch scale to zoom commands
+                const zoomFactor = input.scale > 1 ? 1.1 : 0.9;
+                await page.keyboard.down('Control');
+                await page.mouse.wheel(0, input.scale > 1 ? -100 : 100);
+                await page.keyboard.up('Control');
             }
-            await page.mouse.wheel(input.deltaX || 0, input.deltaY || 0); 
             break;
         case 'navigate': await this.navigate(input.url || input.action); break;
       }
-    } catch (error) {}
+    } catch (error) {
+    } finally {
+      session.isProcessingInput = false;
+    }
   }
 
   async stopSession() {

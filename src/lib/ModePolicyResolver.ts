@@ -103,7 +103,7 @@ const POLICIES: Record<Exclude<OrgMode, 'MIXED'>, PolicyProfile> = {
       showHostPresenceIndicator: true,
       modeBadgeColor:
         'bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.15)] scanlines',
-      modeBadgeLabel: 'ULTRA SECURE',
+      modeBadgeLabel: 'SECURE',
       modeEmoji: '🔴',
     },
   },

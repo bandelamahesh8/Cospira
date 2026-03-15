@@ -135,6 +135,27 @@ const roomSettingsSchema = new mongoose.Schema({
   hidden_room: {
     type: Boolean,
     default: false
+  },
+  smart_room_mode: {
+    type: String,
+    enum: ['free', 'presentation', 'townhall', 'lecture', 'workshop'],
+    default: 'free'
+  },
+  neural_protocols_enabled: {
+    type: Boolean,
+    default: false
+  },
+  require_reapproval_on_rejoin: {
+    type: Boolean,
+    default: false
+  },
+  autoApprove: {
+    type: Boolean,
+    default: false
+  },
+  stopJoiningTime: {
+    type: Number,
+    default: 0
   }
 }, { _id: false });
 

@@ -14,6 +14,7 @@ import {
   RoomType,
   SecurityLevel,
 } from '@/types/organization';
+import { toast } from 'sonner';
 import {
   Plus,
   Play,
@@ -33,6 +34,7 @@ import {
   Box,
   Layers,
   GitMerge,
+  Ghost,
 } from 'lucide-react';
 import AIInsightsPanel from '@/components/AIInsightsPanel';
 import UserAvatar from '@/components/UserAvatar';
@@ -85,7 +87,19 @@ const BreakoutCard: React.FC<{
     roomType?: RoomType,
     securityLevel?: SecurityLevel
   ) => Promise<void>;
-}> = ({ breakout, isOwner, orgMode, onStart, onClose, onEnter, onResume, onCreateChild }) => {
+  onGhostObserve: () => void;
+}> = ({
+  breakout,
+  isOwner,
+  orgMode,
+  onStart,
+  onClose,
+  onEnter,
+  onGhostObserve,
+  onResume,
+  onCreateChild,
+}) => {
+
   const [showChildForm, setShowChildForm] = useState(false);
   const [childName, setChildName] = useState('');
   const [childRoomType, setChildRoomType] = useState<RoomType>('GENERAL');
@@ -158,7 +172,7 @@ const BreakoutCard: React.FC<{
 
       <div className='space-y-1.5 mb-4'>
         <div className='flex items-center justify-between text-[10px]'>
-          <span className='text-white/30 uppercase tracking-widest font-bold'>Host</span>
+          <span className='text-white/30 uppercase tracking-widest font-bold'>Super Host</span>
           <span className='text-white/70 font-medium'>
             {breakout.host?.display_name || (breakout.host_id ? 'Assigned' : '— Unassigned')}
           </span>
@@ -293,19 +307,29 @@ const BreakoutCard: React.FC<{
 
       <div className='flex gap-2'>
         {(breakout.status === 'LIVE' || breakout.status === 'PAUSED') && (
-          <button
-            onClick={onEnter}
-            disabled={breakout.status === 'PAUSED'}
-            title={breakout.status === 'PAUSED' ? 'Breakout is paused — host disconnected' : ''}
-            className='flex-1 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all'
-          >
-            {breakout.status === 'PAUSED' ? (
-              <Pause className='w-3 h-3' />
-            ) : (
-              <ChevronRight className='w-3 h-3' />
-            )}
-            {breakout.status === 'PAUSED' ? 'Paused' : 'Enter'}
-          </button>
+          <div className='flex-1 flex gap-2'>
+            <button
+              onClick={onGhostObserve}
+              title='Ghost Observe — enter invisibly'
+              className='h-8 w-10 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 flex items-center justify-center transition-all border border-purple-500/20'
+            >
+              <Ghost size={14} />
+            </button>
+            <button
+              onClick={onEnter}
+              disabled={breakout.status === 'PAUSED'}
+              title={breakout.status === 'PAUSED' ? 'Breakout is paused — host disconnected' : ''}
+              className='flex-1 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all'
+            >
+              {breakout.status === 'PAUSED' ? (
+                <Pause className='w-3 h-3' />
+              ) : (
+                <ChevronRight className='w-3 h-3' />
+              )}
+              {breakout.status === 'PAUSED' ? 'Paused' : 'Enter'}
+            </button>
+          </div>
+
         )}
         {isOwner && breakout.status === 'CREATED' && (
           <button
@@ -585,6 +609,16 @@ const OrganizationRoom: React.FC<{ embeddedOrgId?: string; onEmbeddedClose?: () 
     }
   }, [orgMode]);
 
+  // Guest access restriction check
+  useEffect(() => {
+    if (org?.authorized_only && !user?.email) {
+      toast.error('Restricted Access', {
+        description: 'This organization requires a full account. Guest access is disabled.',
+      });
+      navigate('/dashboard');
+    }
+  }, [org, user, navigate]);
+
   // Set current org from param
   useEffect(() => {
     if (orgId && organizations.length > 0) {
@@ -678,7 +712,7 @@ const OrganizationRoom: React.FC<{ embeddedOrgId?: string; onEmbeddedClose?: () 
         <div className='relative z-20 bg-red-500/10 border-b border-red-500/20 px-6 py-2.5 flex items-center gap-3'>
           <AlertTriangle className='w-4 h-4 text-red-400 shrink-0' />
           <p className='text-red-300 text-[10px] font-black uppercase tracking-widest'>
-            ULTRA SECURE MODE — All sessions are recorded. All actions are immutably logged. No
+            SECURE MODE — All sessions are recorded. All actions are immutably logged. No
             silent joins.
           </p>
         </div>
@@ -708,7 +742,7 @@ const OrganizationRoom: React.FC<{ embeddedOrgId?: string; onEmbeddedClose?: () 
               <ModeBadge mode={orgMode} size='sm' />
             </div>
             <p className='text-[10px] text-white/30 uppercase font-bold tracking-widest'>
-              Organization Room · {isOwner ? 'Owner' : 'Member'}
+              Organization Room · {isOwner ? 'Super Host' : 'Member'}
             </p>
           </div>
           {/* Phase 10: Mode switch guard — owner only, blocked when LIVE breakouts exist */}
@@ -768,7 +802,7 @@ const OrganizationRoom: React.FC<{ embeddedOrgId?: string; onEmbeddedClose?: () 
               Participant Lobby
             </h2>
             <p className='text-white/40 font-medium max-w-md'>
-              You are currently in the waiting lobby. The organization owner will assign you to a
+              You are currently in the waiting lobby. The super host will assign you to a
               breakout session shortly.
             </p>
 
@@ -939,9 +973,15 @@ const OrganizationRoom: React.FC<{ embeddedOrgId?: string; onEmbeddedClose?: () 
                           onStart={() => startBreakout(breakout.id)}
                           onClose={() => closeBreakout(breakout.id)}
                           onEnter={() => handleEnterBreakout(breakout)}
+                          onGhostObserve={() => {
+                            // First set the breakout in context, then navigate with ghost param
+                            setCurrentBreakout(breakout);
+                            navigate(`/room/${breakout.id}?ghost=true`);
+                          }}
                           onResume={() => resumeBreakout(breakout.id)}
                           onCreateChild={createChildRoom}
                         />
+
                       ))}
                     </AnimatePresence>
                   </div>

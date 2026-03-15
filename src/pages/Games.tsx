@@ -23,20 +23,24 @@ import { GuestNotification } from '@/components/GuestNotification';
 
 // Import game posters
 import chessP from '@/assets/chess_game_poster_1769337462731.png';
-import ludoP from '@/assets/ludo_game_poster_1769337480481.png';
 import connect4P from '@/assets/connect4_poster_1769337496441.png';
 import tictactoeP from '@/assets/tictactoe_poster_1769337515157.png';
-import battleshipP from '@/assets/battleship_poster_1769337532384.png';
+// import battleshipP from '@/assets/battleship_poster_1769337532384.png';
+import ludoP from '@/assets/ludo_poster_v2.png';
+import carromP from '@/assets/carrom_poster_v2.png';
+import kartP from '@/assets/kart_racing_poster.png';
 
 type GameId =
   | 'xoxo'
   | 'ultimate-xoxo'
   | 'chess'
-  | 'ludo'
   | 'snakeladder'
   | 'connect4'
   | 'checkers'
-  | 'battleship';
+  | 'ludo'
+  | 'battleship'
+  | 'carrom'
+  | 'kart-racing';
 
 const Games = () => {
   const { users, startGame, socket } = useWebSocket();
@@ -67,16 +71,16 @@ const Games = () => {
       tags: ['Competitive', 'Ranked'],
     },
     {
-      id: 'ludo',
-      name: 'Ludo Pro',
-      desc: 'Strategic chance dominance',
-      category: 'Multiplayer',
+      id: 'carrom',
+      name: 'Carrom Elite',
+      desc: 'Precision strikes and tactical pocketing',
+      category: 'Strategy',
       available: true,
-      color: '#10B981',
-      featured: false,
+      color: '#fbbf24',
+      featured: true,
       players: 892,
-      poster: ludoP,
-      tags: ['Casual', 'Social'],
+      poster: carromP,
+      tags: ['Competitive', 'Physics'],
     },
     {
       id: 'connect4',
@@ -115,6 +119,18 @@ const Games = () => {
       tags: ['Hardcore', 'Brain'],
     },
     {
+      id: 'ludo',
+      name: 'Ludo Pro',
+      desc: 'The ultimate race to victory',
+      category: 'Casual',
+      available: true,
+      color: '#8B5CF6',
+      featured: true,
+      players: 1842,
+      poster: ludoP,
+      tags: ['Competitive', 'Classic'],
+    },
+    {
       id: 'snakeladder',
       name: 'Apex Serpents',
       desc: 'Ruthless climb to the top',
@@ -123,7 +139,7 @@ const Games = () => {
       color: '#EF4444',
       featured: false,
       players: 567,
-      poster: ludoP,
+      poster: tictactoeP,
       tags: ['Casual', 'Luck'],
     },
     {
@@ -138,17 +154,29 @@ const Games = () => {
       poster: chessP,
       tags: ['Classic', 'Board'],
     },
+    // {
+    //   id: 'battleship',
+    //   name: 'Battleship',
+    //   desc: 'Naval warfare strategy',
+    //   category: 'Strategy',
+    //   available: true,
+    //   color: '#06B6D4',
+    //   featured: false,
+    //   players: 189,
+    //   poster: battleshipP,
+    //   tags: ['Tactical', 'War'],
+    // },
     {
-      id: 'battleship',
-      name: 'Battleship',
-      desc: 'Naval warfare strategy',
-      category: 'Strategy',
+      id: 'kart-racing',
+      name: 'Kart Racing',
+      desc: 'High-speed multiplayer racing action',
+      category: 'Arcade',
       available: true,
-      color: '#06B6D4',
-      featured: false,
-      players: 189,
-      poster: battleshipP,
-      tags: ['Tactical', 'War'],
+      color: '#f43f5e',
+      featured: true,
+      players: 2451,
+      poster: kartP,
+      tags: ['Multiplayer', 'Racing'],
     },
   ];
 
@@ -160,14 +188,6 @@ const Games = () => {
       time: 'Starts in 2h',
       participants: 42,
       color: 'from-amber-500/20 to-transparent',
-    },
-    {
-      id: '2',
-      title: 'Ludo Master Series',
-      prize: '2500 XP',
-      time: 'Active Now',
-      participants: 128,
-      color: 'from-emerald-500/20 to-transparent',
     },
   ];
 

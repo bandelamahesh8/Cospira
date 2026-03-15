@@ -20,13 +20,23 @@ class PermissionEngine {
         if (!user) return { allowed: false, reason: 'Authentication required', status: 'UNAUTHENTICATED' };
 
         const settings = room.settings || {};
-        const isOwner = room.hostId === user.id || room.host === user.id || room.createdBy === user.id;
+        const isOwner = room.hostId === user.id || room.host === user.id || room.createdBy === user.id || user.isSuperHost;
         const isMember = Array.isArray(room.users) ? room.users.some(u => u.id === user.id) : (room.users && (room.users[user.id] || Object.values(room.users).some(u => u.id === user.id)));
 
         const isApproved = room.approvedUsers && room.approvedUsers[user.id];
 
         // Owners and existing members are always allowed
-        if (isOwner || isMember || isApproved) {
+        // Wait, if required_reapproval is ON, do we let existing members re-join?
+        // Typically existing members shouldn't need re-approval, only those who were "approved" but left.
+        // But the prompt says "if user leave the session want to join again need to ask permission or not".
+        // If they are an existing member (room.users), they are actively in the session, they don't need to re-join.
+        // If they already exist in approvedUsers, we can bypass lobby IF require_reapproval_on_rejoin is false.
+        
+        if (isOwner || isMember) {
+            return { allowed: true };
+        }
+        
+        if (isApproved && !settings.require_reapproval_on_rejoin) {
             return { allowed: true };
         }
 
@@ -54,10 +64,14 @@ class PermissionEngine {
         }
 
         // 4. Waiting Lobby Check
-        if ((room.hasWaitingRoom || settings.waiting_lobby || settings.waitingRoom) && !isOwner && !isMember) {
+        const lobbyEnabled = room.hasWaitingRoom || settings.waiting_lobby || settings.waitingRoom;
+        const autoApprove = settings.autoApprove === true;
+
+        if (lobbyEnabled && !autoApprove && !isOwner && !isMember) {
             // Check if user is already approved in lobby (this logic would be in socket handler)
             return { allowed: true, status: 'WAITING_LOBBY', reason: 'Waiting for host approval.' };
         }
+
 
         return { allowed: true };
     }
@@ -68,7 +82,7 @@ class PermissionEngine {
      * @param {string} userId - User ID
      * @returns {boolean}
      */
-    canSpeak(room, userId) {
+    canSpeak(room, userId, userContext = {}) {
         if (!room) return false;
         const settings = room.settings || {};
         
@@ -76,8 +90,10 @@ class PermissionEngine {
 
         const isOwner = room.hostId === userId || room.host === userId || room.createdBy === userId;
         const isCoHost = Array.isArray(room.coHosts) && room.coHosts.includes(userId);
+        // Super Host (org owner) can always speak
+        const isSuperHost = userContext.isSuperHost === true;
 
-        if (isOwner || isCoHost) return true;
+        if (isOwner || isCoHost || isSuperHost) return true;
 
         // Check explicit speaker list (this would be in room state)
         if (room.speakers && room.speakers[userId]) {
@@ -93,8 +109,10 @@ class PermissionEngine {
      * @param {string} userId - User ID
      * @returns {boolean}
      */
-    canManageSettings(room, userId) {
+    canManageSettings(room, userId, userContext = {}) {
         if (!room) return false;
+        // Super Host (org owner) can always manage settings across all rooms
+        if (userContext.isSuperHost === true) return true;
         return room.hostId === userId || room.host === userId || (Array.isArray(room.coHosts) && room.coHosts.includes(userId));
     }
 }

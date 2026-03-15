@@ -67,8 +67,12 @@ export default function registerBrowserHandlers(io, socket, sfuHandler) {
 
         roomSessions.set(rid, sessionId);
 
-        // Actually start the WebRTC session now
-        await manager.startSession(rid, url || 'https://www.google.com');
+        // Actually start the WebRTC session now - Non-blocking for immediate UI response
+        manager.startSession(rid, url || 'https://www.google.com')
+          .catch(err => {
+            logger.error(`[BrowserSocket] Startup failed: ${err.message}`);
+            socket.emit('error', `Virtual browser failed to start: ${err.message}`);
+          });
 
         manager.once('closed', () => {
           roomSessions.delete(rid);
@@ -230,6 +234,34 @@ export default function registerBrowserHandlers(io, socket, sfuHandler) {
       if (error.message && !error.message.includes('Target closed') && !error.message.includes('Session closed')) {
         logger.debug(`Browser input error: ${error.message}`);
       }
+    }
+  });
+
+  /**
+   * Update browser viewport
+   */
+  socket.on('browser-set-viewport', async (data) => {
+    try {
+      const { roomId, width, height, isMobile } = data || {};
+      const rid = sanitizeRoomId(roomId);
+      if (!rid || !width || !height) return;
+
+      const room = await getRoom(rid);
+      const userId = socket.handshake.auth?.userId || socket.user?.id || socket.id;
+      const isHost = room && room.hostId === userId;
+      const isCoHost = room && Array.isArray(room.coHosts) && room.coHosts.includes(userId);
+      
+      if (!isHost && !isCoHost) return;
+
+      const sessionId = roomSessions.get(rid);
+      if (!sessionId) return;
+
+      const manager = browserPool.getSession(sessionId);
+      if (manager) {
+        await manager.setViewport(width, height, isMobile);
+      }
+    } catch (error) {
+      logger.error(`Viewport update error: ${error.message}`);
     }
   });
 

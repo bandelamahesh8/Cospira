@@ -35,7 +35,7 @@ export const MobileRoomCard = ({ room, onClick }: MobileRoomCardProps) => {
       className='relative mx-6 p-5 rounded-[24px] bg-white/[0.03] border border-white/10 backdrop-blur-xl overflow-hidden group'
     >
       {/* Subtle Gradient Background Effect */}
-      <div className='absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 opacity-50' />
+      <div className='absolute inset-0 bg-white/[0.02] opacity-50' />
 
       {/* Animated Glow Highlight */}
       <div className='absolute -right-20 -top-20 w-40 h-40 bg-indigo-500/10 blur-[60px] rounded-full group-hover:bg-indigo-500/20 transition-all duration-700' />
@@ -75,7 +75,7 @@ export const MobileRoomCard = ({ room, onClick }: MobileRoomCardProps) => {
         </div>
 
         {/* Connect Button */}
-        <button className='flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-white/10 shadow-xl group-hover:border-indigo-500/50 transition-all'>
+        <button className='flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-black border border-white/10 shadow-xl transition-all shadow-[0_5px_15px_rgba(255,255,255,0.1)] active:scale-95'>
           {room.requiresPassword ? (
             <Lock size={12} className='text-white/60' />
           ) : (

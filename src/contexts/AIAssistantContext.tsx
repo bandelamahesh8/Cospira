@@ -23,7 +23,8 @@ export const AIAssistantContext = createContext<AIAssistantContextType | undefin
 export const AIAssistantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const { currentOrganization } = useOrganization();
-  const { breakouts, lobbyUsers, batchAssignParticipants } = useBreakout();
+  const breakout = useBreakout();
+  const { breakouts = [], lobbyUsers = [], batchAssignParticipants = async () => {} } = breakout || {};
 
   const [isAutoMatchmaking, setIsAutoMatchmaking] = useState(false);
 

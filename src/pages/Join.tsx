@@ -18,8 +18,8 @@ const Join = () => {
 
     if (!user) {
       // Must be logged in to join
-      toast.message('Authentication Required', {
-        description: 'Please sign in to accept this invitation',
+      toast.error('Authentication Required', {
+        description: 'This room requires sign-in. Guest users are not allowed.',
       });
       // Consider saving redirect intent if needed, but for now redirect to auth
       navigate('/auth');

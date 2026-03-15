@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { RoomMode } from '@/services/RoomIntelligence';
 import { Bot, Lock } from 'lucide-react';
+import { generateUUID } from '@/utils/uuid';
 
 interface TranscriptionOverlayProps {
   text: string;
@@ -32,7 +33,7 @@ export const TranscriptionOverlay = ({
 
     if (isFinal) {
       setHistory((prev) => {
-        const newHistory = [...prev, { id: crypto.randomUUID(), text }];
+        const newHistory = [...prev, { id: generateUUID(), text }];
         return newHistory.slice(-2); // Keep last 2 lines
       });
     }

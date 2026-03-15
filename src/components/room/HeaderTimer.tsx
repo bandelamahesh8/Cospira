@@ -8,6 +8,9 @@ import {
   Presentation,
   ShieldAlert,
   Settings2,
+  Pause,
+  Play,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,6 +22,10 @@ interface HeaderTimerProps {
   status?: string;
   onClick?: () => void;
   compact?: boolean;
+  isHost?: boolean;
+  onPause?: () => void;
+  onResume?: () => void;
+  onStop?: () => void;
 }
 
 const TYPE_CONFIG: Record<
@@ -75,6 +82,10 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
   status,
   onClick,
   compact = false,
+  isHost = false,
+  onPause,
+  onResume,
+  onStop,
 }) => {
   const [displayTime, setDisplayTime] = useState<string>('00:00');
   const [label, setLabel] = useState<string>('SESSION');
@@ -89,6 +100,27 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
   useEffect(() => {
     const updateTimer = () => {
       if (activeTimer) {
+        if (activeTimer.isPaused && activeTimer.pausedAt) {
+          const startedAt =
+            typeof activeTimer.startedAt === 'string'
+              ? new Date(activeTimer.startedAt).getTime()
+              : activeTimer.startedAt;
+          const totalMs = activeTimer.duration * 60 * 1000;
+          const elapsedMs = activeTimer.pausedAt - startedAt;
+          const remaining = Math.max(0, totalMs - elapsedMs);
+          setRemainingMs(remaining);
+
+          const minutes = Math.floor(remaining / 60000);
+          const seconds = Math.floor((remaining % 60000) / 1000);
+
+          setDisplayTime(
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+          );
+          setLabel(`${activeTimer.label?.toUpperCase() || 'PAUSED'}`);
+          setIsCountdown(true);
+          return;
+        }
+
         const startedAt =
           typeof activeTimer.startedAt === 'string'
             ? new Date(activeTimer.startedAt).getTime()
@@ -146,10 +178,10 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
   const spokenMilestones = React.useRef<Set<number>>(new Set());
   useEffect(() => {
     spokenMilestones.current.clear();
-  }, [activeTimer?.startedAt]);
+  }, [activeTimer?.startedAt, activeTimer?.isPaused]);
 
   useEffect(() => {
-    if (!activeTimer) return;
+    if (!activeTimer || activeTimer.isPaused) return;
 
     const checkVoice = () => {
       const startedAt =
@@ -209,99 +241,158 @@ const HeaderTimer: React.FC<HeaderTimerProps> = ({
     return () => clearInterval(interval);
   }, [activeTimer]);
 
-  const isCritical = isCountdown && remainingMs < 60000;
-  const isDanger = isCountdown && remainingMs < 15000;
+  const isCritical = isCountdown && remainingMs < 60000 && !activeTimer?.isPaused;
+  const isDanger = isCountdown && remainingMs < 15000 && !activeTimer?.isPaused;
 
-  // Animation variants
   const pulseColors = isDanger
-    ? ['rgba(239, 68, 68, 0.05)', 'rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)']
-    : isCountdown
-      ? [
-          `${config.bg.replace('/10', '/05')}`,
-          `${config.bg.replace('/10', '/20')}`,
-          `${config.bg.replace('/10', '/05')}`,
-        ]
-      : 'rgba(255, 255, 255, 0.05)';
+    ? ['rgba(239, 68, 68, 0.05)', 'rgba(239, 68, 68, 0.3)', 'rgba(239, 68, 68, 0.05)']
+    : isCritical
+      ? ['rgba(239, 68, 68, 0.02)', 'rgba(239, 68, 68, 0.15)', 'rgba(239, 68, 68, 0.02)']
+      : isCountdown && !activeTimer?.isPaused
+        ? [
+            `${config.bg.replace('/10', '/05')}`,
+            `${config.bg.replace('/10', '/20')}`,
+            `${config.bg.replace('/10', '/05')}`,
+          ]
+        : 'rgba(255, 255, 255, 0.05)';
 
   return (
-    <motion.div
-      layout
-      onClick={onClick}
-      animate={{
-        backgroundColor: pulseColors,
-        borderColor: isDanger
-          ? 'rgba(239, 68, 68, 0.3)'
-          : isCountdown
-            ? 'rgba(255,255,255,0.1)'
-            : 'rgba(255,255,255,0.05)',
-        scale: isDanger ? [1, 1.02, 1] : 1,
-      }}
-      transition={{ duration: isDanger ? 0.6 : 3, repeat: Infinity, ease: 'easeInOut' }}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-700 overflow-hidden group active:scale-95 ${
-        isCountdown ? `${config.glow}` : 'bg-white/5 border-white/5 hover:bg-white/10'
-      } ${onClick ? 'cursor-pointer' : 'cursor-default'}`}
-    >
-      <div className='relative shrink-0'>
-        <AnimatePresence mode='wait'>
-          {isCountdown ? (
-            <motion.div
-              key={`icon-${activeTimer?.type}`}
-              initial={{ scale: 0, opacity: 0, rotate: -180 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              exit={{ scale: 0, opacity: 0, rotate: 180 }}
-              className={`${isCritical ? 'bg-red-500/20 text-red-500 border-red-500/30' : `${config.bg} ${config.color} ${config.border}`} p-1.5 rounded-full border`}
-            >
-              <config.icon className={`w-3.5 h-3.5 ${isCritical ? 'animate-pulse' : ''}`} />
-            </motion.div>
-          ) : (
-            <motion.div
-              key='elapsed-icon'
-              initial={{ scale: 0, opacity: 0, rotate: 180 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              exit={{ scale: 0, opacity: 0, rotate: -180 }}
-              className='bg-emerald-500/10 p-1.5 rounded-full border border-emerald-500/20 text-emerald-500/70'
-            >
-              <Clock className='w-3.5 h-3.5' />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+    <div className='flex items-center gap-2'>
+      <motion.div
+        layout
+        animate={{
+          backgroundColor: pulseColors,
+          borderColor: isDanger
+            ? 'rgba(239, 68, 68, 0.4)'
+            : isCritical
+              ? 'rgba(239, 68, 68, 0.2)'
+              : isCountdown
+                ? 'rgba(255,255,255,0.1)'
+                : 'rgba(255,255,255,0.05)',
+          scale: isDanger ? [1, 1.03, 1] : isCritical ? [1, 1.01, 1] : 1,
+          boxShadow: isDanger
+            ? '0 0 20px rgba(239, 68, 68, 0.2)'
+            : isCritical
+              ? '0 0 10px rgba(239, 68, 68, 0.1)'
+              : 'none',
+        }}
+        transition={{
+          duration: isDanger ? 0.5 : isCritical ? 1 : 3,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+        className={`flex items-center rounded-full border transition-all duration-700 overflow-hidden group ${
+          isCountdown ? `${config.glow}` : 'bg-white/5 border-white/5 hover:bg-white/10'
+        }`}
+      >
+        <div 
+          className={`flex items-center gap-2 px-3 py-1.5 ${onClick ? 'cursor-pointer hover:bg-white/5 active:bg-white/10' : 'cursor-default'}`}
+          onClick={onClick}
+        >
+          <div className='relative shrink-0'>
+            <AnimatePresence mode='wait'>
+              {isCountdown ? (
+                <motion.div
+                  key={`icon-${activeTimer?.type}`}
+                  initial={{ scale: 0, opacity: 0, rotate: -180 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  exit={{ scale: 0, opacity: 0, rotate: 180 }}
+                  className={`${isCritical ? 'bg-red-500/20 text-red-500 border-red-500/30' : `${config.bg} ${config.color} ${config.border}`} p-1.5 rounded-full border transition-colors duration-500`}
+                >
+                  <config.icon className={`w-3.5 h-3.5 ${isCritical ? 'animate-pulse' : ''}`} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key='elapsed-icon'
+                  initial={{ scale: 0, opacity: 0, rotate: 180 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  exit={{ scale: 0, opacity: 0, rotate: -180 }}
+                  className='bg-emerald-500/10 p-1.5 rounded-full border border-emerald-500/20 text-emerald-500/70'
+                >
+                  <Clock className='w-3.5 h-3.5' />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-      <div className={`flex flex-col ${compact ? 'min-w-0' : 'min-w-[100px]'}`}>
-        <AnimatePresence mode='wait'>
-          <motion.div
-            key={isCountdown ? `${activeTimer?.type}-${label}` : 'elapsed-mode'}
-            initial={{ opacity: 0, filter: 'blur(10px)', y: 10 }}
-            animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-            exit={{ opacity: 0, filter: 'blur(10px)', y: -10 }}
-            transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-            className='flex flex-col'
-          >
-            {!compact && (
-              <span
-                className={`text-[8px] font-black uppercase tracking-[0.2em] leading-none mb-1 transition-colors duration-500 ${isCritical ? 'text-red-500' : isCountdown ? config.color : 'text-white/40'}`}
+          <div className={`flex flex-col ${compact ? 'min-w-0' : 'min-w-[100px]'}`}>
+            <AnimatePresence mode='wait'>
+              <motion.div
+                key={isCountdown ? `${activeTimer?.isPaused ? 'paused' : 'running'}-${label}` : 'elapsed-mode'}
+                initial={{ opacity: 0, filter: 'blur(10px)', y: 10 }}
+                animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                exit={{ opacity: 0, filter: 'blur(10px)', y: -10 }}
+                transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+                className='flex flex-col'
               >
-                {label}
-              </span>
-            )}
-            <span
-              className={`text-sm font-mono font-bold tabular-nums leading-none tracking-tight transition-colors duration-500 ${isCritical ? 'text-red-400' : isCountdown ? 'text-white' : 'text-white/90'}`}
-            >
-              {displayTime}
-            </span>
-          </motion.div>
-        </AnimatePresence>
-      </div>
+                {!compact && (
+                  <span
+                    className={`text-[8px] font-black uppercase tracking-[0.2em] leading-none mb-1 transition-colors duration-500 ${isCritical ? 'text-red-500' : isCountdown ? config.color : 'text-white/40'}`}
+                  >
+                    {label}
+                  </span>
+                )}
+                <span
+                  className={`text-sm font-mono font-bold tabular-nums leading-none tracking-tight transition-colors duration-500 ${isCritical ? 'text-red-400' : isCountdown ? (activeTimer?.isPaused ? 'text-white/60' : 'text-white') : 'text-white/90'}`}
+                >
+                  {displayTime}
+                </span>
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
-      {!compact && (
-        <>
-          <div className='h-6 w-px bg-white/5 mx-1' />
-          <Rocket
-            className={`w-3.5 h-3.5 transition-all duration-500 ${isCountdown ? `${config.color} scale-110 active:animate-ping` : 'text-white/10 group-hover:text-emerald-500/40'}`}
-          />
-        </>
-      )}
-    </motion.div>
+          {!compact && !activeTimer && (
+            <Rocket
+              className='w-3.5 h-3.5 ml-1 transition-all duration-500 text-white/10 group-hover:text-emerald-500/40'
+            />
+          )}
+        </div>
+
+        {/* Sync Controls (Host Only) */}
+        {isCountdown && isHost && (
+          <div className='flex items-center gap-2 px-3'>
+            {activeTimer?.isPaused ? (
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onResume?.();
+                  }}
+                  className='h-8 px-4 rounded-full bg-gradient-to-r from-emerald-500/20 to-emerald-500/10 hover:from-emerald-500/30 hover:to-emerald-500/20 text-emerald-400 transition-all duration-300 flex items-center gap-2 group border border-emerald-500/20 hover:border-emerald-500/40 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                  title='Resume Timer'
+                >
+                  <Play className='w-3 h-3 fill-current' />
+                  <span className='text-[9px] font-black uppercase tracking-[0.15em] group-hover:text-emerald-300'>Resume</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStop?.();
+                  }}
+                  className='h-8 px-4 rounded-full bg-gradient-to-r from-red-500/20 to-red-500/10 hover:from-red-500/30 hover:to-red-500/20 text-red-500 transition-all duration-300 flex items-center gap-2 group border border-red-500/20 hover:border-red-500/40 hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                  title='Stop Timer'
+                >
+                  <X className='w-3 h-3 stroke-[3px]' />
+                  <span className='text-[9px] font-black uppercase tracking-[0.15em] group-hover:text-red-400'>Stop</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPause?.();
+                }}
+                className='h-8 px-4 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-500/10 hover:from-amber-500/30 hover:to-amber-500/20 text-amber-500 transition-all duration-300 flex items-center gap-2 group border border-amber-500/20 hover:border-amber-500/40 hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                title='Pause Timer'
+              >
+                <Pause className='w-3 h-3 fill-current' />
+                <span className='text-[9px] font-black uppercase tracking-[0.15em] group-hover:text-amber-300'>Pause</span>
+              </button>
+            )}
+          </div>
+        )}
+      </motion.div>
+    </div>
   );
 };
 

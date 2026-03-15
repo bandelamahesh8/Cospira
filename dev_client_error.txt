@@ -1,0 +1,31 @@
+
+> vite_react_shadcn_ts@0.0.0 dev:client
+> vite
+
+
+  [32m[1mVITE[22m v7.3.1[39m  [2mready in [0m[1m637[22m[2m[0m ms[22m
+
+  [32mΓ₧£[39m  [1mLocal[22m:   [36mhttps://localhost:[1m8080[22m/[39m
+  [32mΓ₧£[39m  [1mNetwork[22m: [36mhttps://192.168.1.10:[1m8080[22m/[39m
+  [32mΓ₧£[39m  [1mNetwork[22m: [36mhttps://172.27.240.1:[1m8080[22m/[39m
+[2m[32m  Γ₧£[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+6:50:51 pm [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=cszhef23
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+6:50:58 pm [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=ct4vv43p
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+6:51:04 pm [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=ctabqcug
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+6:51:09 pm [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=ctewu2at
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+6:51:15 pm [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=ctjjgphd
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)

@@ -110,8 +110,14 @@ const UserMenu = () => {
             recentRooms.map((room, i) => (
               <DropdownMenuItem
                 key={i}
-                onClick={() => navigate(`/room/${room.id}`)}
-                className='flex items-center justify-between p-3 rounded-xl focus:bg-white/5 cursor-pointer'
+                onClick={(e) => {
+                  if (room.status === 'active') {
+                    navigate(`/room/${room.id}`);
+                  } else {
+                    e.preventDefault();
+                  }
+                }}
+                className={`flex items-center justify-between p-3 rounded-xl focus:bg-white/5 ${room.status === 'active' ? 'cursor-pointer' : 'cursor-default opacity-60'}`}
               >
                 <div className='flex flex-col gap-0.5'>
                   <span className='text-xs font-medium text-white/80'>{room.name}</span>
@@ -162,7 +168,7 @@ const UserMenu = () => {
           description='Explore upcoming architectural upgrades and feature deployments planned for the Cospira ecosystem.'
         >
           <DropdownMenuItem
-            onClick={() => navigate('/upcoming')}
+            onClick={() => navigate('/upcoming-features')}
             className='group flex items-center gap-2 p-2 rounded-lg focus:bg-white/5 cursor-pointer text-white/50 hover:text-white text-left'
           >
             <Rocket className='w-3.5 h-3.5 text-pink-400' />

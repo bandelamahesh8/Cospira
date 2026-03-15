@@ -4,6 +4,7 @@
 
 import assistantService from '../services/AssistantService.js';
 import { getBrowserManager } from './browser.socket.js';
+import { getRoom, saveRoom } from '../redis.js';
 import logger from '../logger.js';
 
 export default function registerAssistantHandlers(io, socket, sfuHandler) {
@@ -65,11 +66,31 @@ async function handleAssistantAction(io, roomId, response, sfuHandler) {
       break;
     
     case 'poll_create':
-      io.to(roomId).emit('room:poll-created', {
+      const pollId = Math.random().toString(36).substr(2, 9);
+      const pollData = {
+        id: pollId,
         question: response.question,
         options: response.options,
-        id: Math.random().toString(36).substr(2, 9)
-      });
+        results: response.options.reduce((acc, _, i) => {
+          acc[i] = 0;
+          return acc;
+        }, {}),
+        totalVotes: 0,
+        votedUsers: [],
+        expiresAt: Date.now() + 2 * 60 * 1000 // 2 minute default
+      };
+
+      try {
+        const room = await getRoom(roomId);
+        if (room) {
+          room.activePoll = pollData;
+          await saveRoom(room);
+        }
+      } catch (err) {
+        logger.error('[Assistant] Failed to save AI Poll to Redis:', err.message);
+      }
+
+      io.to(roomId).emit('room:poll-created', pollData);
       break;
   }
 }

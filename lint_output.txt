@@ -1,0 +1,238 @@
+
+> vite_react_shadcn_ts@0.0.0 lint
+> eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\AnimatedRoutes.tsx
+  32:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\PageLayout.tsx
+  1:22  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\SettingsModal.test.tsx
+  1:37  error  'waitFor' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\SynchronizedVideoPlayer.tsx
+  34:9  error  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\behavior\ReportDialog.tsx
+  21:10  error  'AlertTriangle' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  63:17  error  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\creators\CreatorDashboard.tsx
+  16:6  warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\dashboard\RandomMatchPanel.tsx
+   26:36  error    'onMatch' is defined but never used. Allowed unused args must match /^_/u                                                 @typescript-eslint/no-unused-vars
+   64:6   warning  React Hook useEffect has a missing dependency: 'checkMediaPermissions'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  261:61  error    Unexpected any. Specify a different type                                                                                  @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\games\GameArenaContainer.tsx
+  13:22  error  'users' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  77:28  error  'i' is defined but never used. Allowed unused args must match /^_/u               @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\games\TicTacToe.tsx
+  46:9  error  'isTimeAttackActive' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\games\UltimateTicTacToe.tsx
+  63:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\games\chess\PlayerAvatar.tsx
+  19:3  error  'name' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\games\chess\SettingsPanel.tsx
+   6:20  error    'useEffect' is defined but never used. Allowed unused vars must match /^_/u                                                     @typescript-eslint/no-unused-vars
+  27:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\games\chess\TimeControl.tsx
+   3:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u                @typescript-eslint/no-unused-vars
+   4:17  error  'Play' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+   4:23  error  'Pause' is defined but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+  25:20  error  'setIsPaused' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\games\ludo\LudoPlayerAvatar.tsx
+  21:3  error  'position' is assigned a value but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\layout\Sidebar.tsx
+  13:3  error  'User' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\meta\MetaLeaderboard.tsx
+  6:17  error  'Trophy' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+  6:25  error  'Swords' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+  6:33  error  'TrendingUp' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\quests\QuestWidget.tsx
+   4:10  error    'Card' is defined but never used. Allowed unused vars must match /^_/u                                         @typescript-eslint/no-unused-vars
+  17:6   warning  React Hook useEffect has a missing dependency: 'loadQuests'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\replay\ReplayViewer.tsx
+    4:10  error  'Card' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+   52:16  error  'e' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  179:27  error  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\room\AIGovernancePanel.tsx
+  18:3  error  'BarChart2' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\room\CommandNetworkPanel.tsx
+  24:10  error    'RoomStateBadge' is defined but never used. Allowed unused vars must match /^_/u                           @typescript-eslint/no-unused-vars
+  68:6   warning  React Hook useEffect has a missing dependency: 'socket'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\room\MobileModeSelector.tsx
+   3:23  error  'Shield' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  21:22  error  'playHover' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\room\NeuralMap.tsx
+  15:62  error  'onRoomClick' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\room\PolicyEditorPanel.tsx
+  36:8  error  'PolicyCondition' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\room\UltraSecureBlocker.tsx
+  3:49  error  'Lock' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\seasons\SeasonHub.tsx
+  19:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  30:14  error    'e' is defined but never used. Allowed unused caught errors must match /^_/u                                 @typescript-eslint/no-unused-vars
+  43:17  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\shop\Shop.tsx
+  42:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\social\ClanManager.tsx
+   12:40  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+   21:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   43:17  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+   54:14  error    'e' is defined but never used. Allowed unused caught errors must match /^_/u                                 @typescript-eslint/no-unused-vars
+   54:17  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+   70:14  error    'e' is defined but never used. Allowed unused caught errors must match /^_/u                                 @typescript-eslint/no-unused-vars
+  110:45  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  115:36  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  222:36  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\social\GlobalChat.tsx
+   7:34  error  'AvatarImage' is defined but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+  17:64  error  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  19:33  error  'playSuccess' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\tournament\TournamentBracket.tsx
+  25:29  error  'i' is defined but never used. Allowed unused args must match /^_/u    @typescript-eslint/no-unused-vars
+  36:34  error  'idx' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\components\tournament\TournamentLobby.tsx
+  16:10  error  'selectedTournament' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\contexts\BreakoutContext.tsx
+  283:5   error  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  286:14  error  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\contexts\WebSocket\useMediaStream.ts
+  309:6  warning  React Hook useCallback has a missing dependency: 'stopScreenShare'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\examples\GameEngineExamples.tsx
+   39:9   error  'handleMakeMove' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   39:33  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  131:50  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  164:42  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\game-engine\engines\BattleshipEngine.ts
+  210:17  error  'state' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\game-engine\engines\BilliardsEngine.ts
+  243:25  error  'state' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\game-engine\engines\SnakeLadderEngine.ts
+  156:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\game-engine\engines\TicTacToeEngine.ts
+  190:31  error  'difficulty' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\game-engine\engines\WordBattleEngine.ts
+  123:28  error  'state' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\hooks\useAuthorityEngine.ts
+  72:6  warning  React Hook useEffect has a missing dependency: 'socket'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\hooks\useChat.tsx
+  38:9  error  Unused eslint-disable directive (no problems were reported from 'no-console')
+  95:7  error  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\hooks\useDeviceType.ts
+   38:9   error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  121:14  error  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                         @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\hooks\usePolicyEngine.ts
+  87:6  warning  React Hook useEffect has a missing dependency: 'socket'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\hooks\useRecording.ts
+  61:7  error  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\hooks\useRoomState.ts
+  94:6  warning  React Hook useEffect has a missing dependency: 'socket'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\pages\Activity.tsx
+  74:6  warning  React Hook useEffect has a missing dependency: 'user?.id'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\pages\Join.tsx
+  42:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\pages\JoinOrganization.tsx
+  20:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  70:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\pages\NotFound.tsx
+  8:5  error  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\pages\Profile.tsx
+     7:10   error    'ForgotPasswordModal' is defined but never used. Allowed unused vars must match /^_/u                                                     @typescript-eslint/no-unused-vars
+    36:3    error    'Hash' is defined but never used. Allowed unused vars must match /^_/u                                                                    @typescript-eslint/no-unused-vars
+    38:3    error    'FileDigit' is defined but never used. Allowed unused vars must match /^_/u                                                               @typescript-eslint/no-unused-vars
+    39:3    error    'LogOut' is defined but never used. Allowed unused vars must match /^_/u                                                                  @typescript-eslint/no-unused-vars
+    50:8    error    'useSound' is defined but never used. Allowed unused vars must match /^_/u                                                                @typescript-eslint/no-unused-vars
+    94:47   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+   119:10   error    'showForgotPassword' is assigned a value but never used. Allowed unused vars must match /^_/u                                             @typescript-eslint/no-unused-vars
+   128:60   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+   139:31   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+   171:6    warning  React Hook useEffect has a missing dependency: 'user'. Either include it or remove the dependency array                                   react-hooks/exhaustive-deps
+   171:48   warning  React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked  react-hooks/exhaustive-deps
+   171:57   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+   176:61   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+   269:29   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+   294:39   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+   300:67   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+   418:9    error    'currentUsername' is assigned a value but never used. Allowed unused vars must match /^_/u                                                @typescript-eslint/no-unused-vars
+   419:59   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+   601:73   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+  1091:272  error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+  1098:41   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+  1113:39   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+  1133:43   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+  1148:43   error    Unexpected any. Specify a different type                                                                                                  @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\pages\Projects.tsx
+    3:18  error    'AnimatePresence' is defined but never used. Allowed unused vars must match /^_/u                                 @typescript-eslint/no-unused-vars
+   73:6   warning  React Hook useEffect has a missing dependency: 'fetchProjects'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   78:38  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+   94:14  error    'error' is defined but never used. Allowed unused caught errors must match /^_/u                                  @typescript-eslint/no-unused-vars
+   94:21  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  116:21  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  142:22  error    'err' is defined but never used. Allowed unused caught errors must match /^_/u                                    @typescript-eslint/no-unused-vars
+  149:14  error    'error' is defined but never used. Allowed unused caught errors must match /^_/u                                  @typescript-eslint/no-unused-vars
+  149:21  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  169:14  error    'error' is defined but never used. Allowed unused caught errors must match /^_/u                                  @typescript-eslint/no-unused-vars
+  180:14  error    'error' is defined but never used. Allowed unused caught errors must match /^_/u                                  @typescript-eslint/no-unused-vars
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\services\OrganizationService.ts
+  17:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\services\QuestService.ts
+  137:9   error  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  140:40  error  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+  140:63  error  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+
+C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\src\services\TournamentService.ts
+  110:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 124 problems (107 errors, 17 warnings)
+  7 errors and 0 warnings potentially fixable with the `--fix` option.
+

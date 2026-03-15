@@ -6,13 +6,22 @@ interface AITimerProps {
   duration: number; // in minutes
   startedAt: number; // timestamp
   label: string;
+  isPaused?: boolean;
   onComplete?: () => void;
 }
 
-const AITimer: React.FC<AITimerProps> = ({ duration, startedAt, label, onComplete }) => {
+const AITimer: React.FC<AITimerProps> = ({
+  duration,
+  startedAt,
+  label,
+  isPaused = false,
+  onComplete,
+}) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
   useEffect(() => {
+    if (isPaused) return;
+
     const calculateTimeLeft = () => {
       const totalMs = duration * 60 * 1000;
       const elapsedMs = Date.now() - startedAt;
@@ -28,7 +37,7 @@ const AITimer: React.FC<AITimerProps> = ({ duration, startedAt, label, onComplet
     const interval = setInterval(calculateTimeLeft, 1000);
 
     return () => clearInterval(interval);
-  }, [duration, startedAt, onComplete]);
+  }, [duration, startedAt, onComplete, isPaused]);
 
   const minutes = Math.floor(timeLeft / 60000);
   const seconds = Math.floor((timeLeft % 60000) / 1000);
@@ -49,10 +58,10 @@ const AITimer: React.FC<AITimerProps> = ({ duration, startedAt, label, onComplet
       </div>
 
       <div className='flex flex-col'>
-        <span className='text-[9px] uppercase tracking-[0.2em] font-black text-amber-500/60 leading-none mb-1'>
-          {label || 'Protocol Timer'}
+        <span className={`text-[9px] uppercase tracking-[0.2em] font-black leading-none mb-1 transition-colors duration-500 ${isPaused ? 'text-amber-500' : 'text-amber-500/60'}`}>
+          {isPaused ? 'PAUSED' : (label || 'Protocol Timer')}
         </span>
-        <span className='text-xl font-mono font-black tabular-nums text-white leading-none tracking-tight filter drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]'>
+        <span className={`text-xl font-mono font-black tabular-nums leading-none tracking-tight transition-all duration-500 ${isPaused ? 'text-white/40 filter-none' : 'text-white filter drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`}>
           {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
         </span>
       </div>

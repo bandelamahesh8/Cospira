@@ -18,6 +18,7 @@ interface VideoGridProps {
   isSocialMode?: boolean;
   isSearching?: boolean;
   isVideoEnabled?: boolean;
+  revealNames?: boolean; // New prop for Ultra Security blinding
 }
 
 const VideoGrid: React.FC<VideoGridProps> = ({
@@ -34,6 +35,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
   isSocialMode = false,
   isSearching = false,
   isVideoEnabled = true,
+  revealNames = true,
 }) => {
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -70,11 +72,11 @@ const VideoGrid: React.FC<VideoGridProps> = ({
     >
       <VideoTile
         stream={stream}
-        username={name}
+        username={hideName ? 'Participant' : name} // Fallback name
         isLocal={isLocal}
         isMuted={isMuted}
-        photoUrl={photoUrl}
-        gender={gender}
+        photoUrl={hideName ? undefined : photoUrl} // Hide avatars too to prevent identification
+        gender={hideName ? undefined : gender}
         seed={id}
         isVideoEnabled={isVideoOn}
         hideName={hideName}
@@ -228,7 +230,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
                   remoteUser.gender,
                   remoteUser.status as 'online' | 'away' | undefined,
                   remoteUser.isVideoOn,
-                  isSocialMode
+                  !revealNames && !isSocialMode // Social mode has its own rules, but default strictly hide
                 )}
                 <div className='absolute top-6 left-6 z-20 bg-emerald-500/90 text-background text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-2xl backdrop-blur-md border border-white/10 flex items-center gap-2'>
                   <div className='w-1.5 h-1.5 bg-background rounded-full animate-pulse' />
@@ -274,7 +276,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
             localUserTile.gender,
             undefined,
             isVideoEnabled,
-            isSocialMode
+            false // NEVER hide the local user's own name from themselves
           )}
           <div className='absolute top-6 left-6 z-20 bg-primary/90 text-background text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-2xl backdrop-blur-md border border-white/10'>
             Signal: You
@@ -385,7 +387,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
                 u.gender,
                 u.status as 'online' | 'away' | undefined,
                 u.isVideoOn,
-                isSocialMode
+                !revealNames && !u.isLocal // Hide name if revealNames is false and user is NOT local
               )}
             </div>
           ))}
@@ -484,7 +486,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
                     pinnedUser.gender,
                     undefined,
                     pinnedUser.isVideoOn,
-                    false
+                    !revealNames && !pinnedUser.isLocal
                   )}
                   {pinnedUser.isMuted && (
                     <div className='absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 border border-red-500/30 backdrop-blur-md'>

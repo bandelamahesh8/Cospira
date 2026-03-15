@@ -60,6 +60,12 @@ function getServerPolicy(effectiveMode) {
       mandatoryRecording: true,
       requiresImmutableAudit: true,
     },
+    MIXED: {
+      canParticipantRequestMove: true,
+      canHostReassignParticipant: true,
+      mandatoryRecording: false,
+      requiresImmutableAudit: false,
+    },
   };
   return policies[effectiveMode] ?? policies.PROF;
 }
@@ -91,6 +97,13 @@ function getHostFailurePolicy(effectiveMode) {
       bannerMessage:
         'ULTRA SECURE: Session paused because host disconnected. Owner must resume before continuing.',
     },
+    MIXED: {
+      gracePeriodMs: 15_000,
+      action: 'CONTINUE',
+      notifyOwner: true,
+      requireOwnerIntervention: false,
+      bannerMessage: 'Host disconnected — session continues. Mode: MIXED (Flex Access Enabled).',
+    },
   };
   return policies[effectiveMode] ?? policies.PROF;
 }
@@ -100,12 +113,17 @@ function getHostFailurePolicy(effectiveMode) {
 // ─────────────────────────────────────────────────────────────
 
 async function getOrg(orgId) {
+  if (!orgId) return null;
   const { data, error } = await supabase
     .from('organizations')
     .select('id, owner_id, mode')
     .eq('id', orgId)
-    .single();
-  if (error) throw error;
+    .maybeSingle();
+  
+  if (error) {
+    logger.error(`[BreakoutSocket] Error fetching org ${orgId}:`, error.message);
+    throw error;
+  }
   return data;
 }
 
@@ -678,23 +696,26 @@ export default function registerBreakoutHandlers(io, socket) {
     await broadcastLobbyPresence(io, orgId);
   });
 
-  // ── org:join (join org socket room on page load) ──────────
   socket.on('org:join', async ({ orgId }) => {
-    socket.join(`org:${orgId}`);
-    socket.join(`lobby:${orgId}`);
-    
-    // Broadcast updated lobby presence
-    await broadcastLobbyPresence(io, orgId);
+    try {
+      const org = await getOrg(orgId);
+      if (!org) return;
 
-    // If this user is the owner, also join the owner private room
-    if (userId) {
-      try {
-        const org = await getOrg(orgId);
+      socket.join(`org:${orgId}`);
+      socket.join(`lobby:${orgId}`);
+
+      // Broadcast updated lobby presence
+      await broadcastLobbyPresence(io, orgId);
+
+      // If this user is the owner, also join the owner private room
+      if (userId) {
         if (org.owner_id === userId) {
           socket.join(`org:${orgId}:owner`);
           logger.debug(`[BreakoutSocket] Owner ${userId} joined org:${orgId}:owner`);
         }
-      } catch (_) {}
+      }
+    } catch (err) {
+      logger.error(`[BreakoutSocket] org:join error:`, err.message);
     }
   });
 
@@ -763,76 +784,87 @@ export async function handleBreakoutHostDisconnect(io, userId) {
     if (hostingBreakouts.length === 0) return;
 
     for (const breakout of hostingBreakouts) {
-      try {
-        const org = await getOrg(breakout.organization_id);
-        const effectiveMode = resolveEffectiveMode(org.mode, breakout.mode_override);
-        const failurePolicy = getHostFailurePolicy(effectiveMode);
+        if (!breakout.organization_id) {
+          logger.warn(`[BreakoutSocket] Host ${userId} disconnected from breakout ${breakout.id} which has NO organization_id. Skipping.`);
+          continue;
+        }
 
-        if (failurePolicy.action === 'PAUSE') {
-          // ULTRA_SECURE: pause immediately
-          await updateBreakoutStatus(breakout.id, 'PAUSED');
-
-          io.to(`breakout:${breakout.id}`).emit('breakout:paused', {
-            breakoutId: breakout.id,
-            reason: 'HOST_DISCONNECTED',
-            requiresOwnerIntervention: failurePolicy.requireOwnerIntervention,
-            bannerMessage: failurePolicy.bannerMessage,
-          });
-
-          io.to(`org:${breakout.organization_id}`).emit('breakout:state-updated', {
-            breakoutId: breakout.id,
-            status: 'PAUSED',
-          });
-
-          if (failurePolicy.notifyOwner) {
-            io.to(`org:${breakout.organization_id}:owner`).emit('breakout:host-disconnected', {
-              breakoutId: breakout.id,
-              breakoutName: breakout.name,
-            });
+        try {
+          const org = await getOrg(breakout.organization_id);
+          if (!org) {
+            logger.warn(`[BreakoutSocket] Organization ${breakout.organization_id} not found for breakout ${breakout.id}. Skipping.`);
+            continue;
           }
 
-          // Audit the auto-pause (ULTRA always)
-          await writeAuditEvent({
-            orgId: breakout.organization_id,
-            breakoutId: breakout.id,
-            actorId: userId,
-            action: 'BREAKOUT_PAUSED',
-            payload: { reason: 'HOST_DISCONNECTED', breakoutId: breakout.id },
-            mode: effectiveMode,
-          });
+          const effectiveMode = resolveEffectiveMode(org.mode, breakout.mode_override);
+          const failurePolicy = getHostFailurePolicy(effectiveMode);
 
-          // ── AI Ingestion ──
-          enqueueForAI({
-            type: AI_EVENT_TYPES.HOST_DISCONNECTED,
-            orgId: breakout.organization_id,
-            breakoutId: breakout.id,
-            mode: effectiveMode,
-            payload: { status: 'PAUSED', hostId: userId },
-          });
+          if (failurePolicy.action === 'PAUSE') {
+            // ULTRA_SECURE: pause immediately
+            await updateBreakoutStatus(breakout.id, 'PAUSED');
 
-          logger.info(`[BreakoutSocket] Breakout ${breakout.id} PAUSED — host ${userId} disconnected (${effectiveMode})`);
-        } else {
-          // FUN/PROF: session continues
-          io.to(`breakout:${breakout.id}`).emit('breakout:state-updated', {
-            breakoutId: breakout.id,
-            hostDisconnected: true,
-            bannerMessage: failurePolicy.bannerMessage,
-          });
+            io.to(`breakout:${breakout.id}`).emit('breakout:paused', {
+              breakoutId: breakout.id,
+              reason: 'HOST_DISCONNECTED',
+              requiresOwnerIntervention: failurePolicy.requireOwnerIntervention,
+              bannerMessage: failurePolicy.bannerMessage,
+            });
 
-          // PROF: notify owner after grace period
-          if (failurePolicy.notifyOwner && failurePolicy.gracePeriodMs > 0) {
-            setTimeout(() => {
-              io.to(`org:${breakout.organization_id}:owner`).emit('breakout:host-absent-warning', {
+            io.to(`org:${breakout.organization_id}`).emit('breakout:state-updated', {
+              breakoutId: breakout.id,
+              status: 'PAUSED',
+            });
+
+            if (failurePolicy.notifyOwner) {
+              io.to(`org:${breakout.organization_id}:owner`).emit('breakout:host-disconnected', {
                 breakoutId: breakout.id,
                 breakoutName: breakout.name,
-                gracePeriodMs: failurePolicy.gracePeriodMs,
               });
-            }, failurePolicy.gracePeriodMs);
+            }
+
+            // Audit the auto-pause (ULTRA always)
+            await writeAuditEvent({
+              orgId: breakout.organization_id,
+              breakoutId: breakout.id,
+              actorId: userId,
+              action: 'BREAKOUT_PAUSED',
+              payload: { reason: 'HOST_DISCONNECTED', breakoutId: breakout.id },
+              mode: effectiveMode,
+            });
+
+            // ── AI Ingestion ──
+            enqueueForAI({
+              type: AI_EVENT_TYPES.HOST_DISCONNECTED,
+              orgId: breakout.organization_id,
+              breakoutId: breakout.id,
+              mode: effectiveMode,
+              payload: { status: 'PAUSED', hostId: userId },
+            });
+
+            logger.info(`[BreakoutSocket] Breakout ${breakout.id} PAUSED — host ${userId} disconnected (${effectiveMode})`);
+          } else {
+            // FUN/PROF: session continues
+            io.to(`breakout:${breakout.id}`).emit('breakout:state-updated', {
+              breakoutId: breakout.id,
+              hostDisconnected: true,
+              bannerMessage: failurePolicy.bannerMessage,
+            });
+
+            // PROF: notify owner after grace period
+            if (failurePolicy.notifyOwner && failurePolicy.gracePeriodMs > 0) {
+              setTimeout(() => {
+                io.to(`org:${breakout.organization_id}:owner`).emit('breakout:host-absent-warning', {
+                  breakoutId: breakout.id,
+                  breakoutName: breakout.name,
+                  gracePeriodMs: failurePolicy.gracePeriodMs,
+                });
+              }, failurePolicy.gracePeriodMs);
+            }
           }
+        } catch (breakoutErr) {
+          const errorMsg = breakoutErr instanceof Error ? breakoutErr.message : JSON.stringify(breakoutErr);
+          logger.error(`[BreakoutSocket] Error handling host disconnect for breakout ${breakout.id}: ${errorMsg}`);
         }
-      } catch (breakoutErr) {
-        logger.error(`[BreakoutSocket] Error handling host disconnect for breakout ${breakout.id}:`, breakoutErr.message);
-      }
     }
   } catch (err) {
     logger.error('[BreakoutSocket] handleBreakoutHostDisconnect error:', err.message);

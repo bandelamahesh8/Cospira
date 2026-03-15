@@ -1,5 +1,4 @@
 import { useRef, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -30,6 +29,8 @@ import {
   X,
   Disc,
   Square,
+  Users as UsersIcon,
+  RefreshCw,
 } from 'lucide-react';
 import { TERMINOLOGY } from '@/utils/terminology';
 import { trackFeatureUsage, Features } from '@/utils/featureHygiene';
@@ -56,6 +57,10 @@ import {
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { NeuralInformer } from '@/components/intelligence';
+import { useBreakout } from '@/contexts/useBreakout';
+import { BreakoutService } from '@/services/BreakoutService';
+import { toast } from 'sonner';
+import { logger } from '@/utils/logger';
 
 interface RoomControlsProps {
   roomId: string;
@@ -84,7 +89,7 @@ interface RoomControlsProps {
   setShowStopShareConfirm: (show: boolean) => void;
   confirmStopShare: () => void;
   showDisbandConfirm: boolean;
-  disbandRoom: () => void;
+  disbandRoom: (isMainRoom?: boolean) => void;
 
   stopYoutubeVideo: () => void;
   unreadCount: number;
@@ -112,6 +117,9 @@ interface RoomControlsProps {
   fileUploadEnabled?: boolean;
   recordingEnabled?: boolean;
   inviteEnabled?: boolean;
+  isMainRoom?: boolean;
+  isBreakout?: boolean;
+  repairMedia: () => void;
 }
 
 interface ControlButtonProps {
@@ -128,6 +136,7 @@ interface ControlButtonProps {
 }
 
 const RoomControls: React.FC<RoomControlsProps> = ({
+  roomId,
   isAudioEnabled,
   toggleAudio,
   isVideoEnabled,
@@ -162,6 +171,9 @@ const RoomControls: React.FC<RoomControlsProps> = ({
   screenShareEnabled = true,
   fileUploadEnabled = true,
   recordingEnabled = true,
+  isMainRoom = false,
+  isBreakout = false,
+  repairMedia,
   ...props
 }) => {
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -172,6 +184,10 @@ const RoomControls: React.FC<RoomControlsProps> = ({
   const [isDisbandConfirming, setIsDisbandConfirming] = useState(false);
   const [disbandInput, setDisbandInput] = useState('');
   const [isTerminating, setIsTerminating] = useState(false);
+  const [isBatchDisbanding, setIsBatchDisbanding] = useState(false);
+
+  const { breakouts } = useBreakout() || { breakouts: [] };
+  const activeBreakouts = breakouts.filter(b => b.status !== 'CLOSED');
 
   // Reset disband state when modal closes
   useEffect(() => {
@@ -183,21 +199,57 @@ const RoomControls: React.FC<RoomControlsProps> = ({
   }, [showDisbandConfirm]);
 
   const handleDisbandRequest = () => {
-    setIsDisbandConfirming(true);
+    if (isMainRoom) {
+      if (activeBreakouts.length > 0) {
+        setIsDisbandConfirming(false); // Ensure stage 2 is off
+        setShowDisbandConfirm(true); // Open the modal
+      } else {
+        setDisbandInput('');
+        setIsDisbandConfirming(true); // Jump to Stage 2 (Organization Purge)
+        setShowDisbandConfirm(true);
+      }
+    } else {
+      // Single Stage for breakouts
+      handleFinalDisband(true); 
+    }
   };
 
-  const navigate = useNavigate();
+  const handleBulkDisband = async () => {
+    setIsBatchDisbanding(true);
+    try {
+      await BreakoutService.deleteAllBreakouts(roomId);
+      toast.success('All child rooms disbanded');
+      // Logic: Transition to Organization Purge immediately or wait for state update?
+      // Since refreshBreakouts is called in context, activeBreakouts will eventually become 0.
+      // For immediate feel, we can jump to confirming stage.
+      setIsDisbandConfirming(true);
+    } catch (_err) {
+      toast.error('Failed to disband some rooms');
+    } finally {
+      setIsBatchDisbanding(false);
+    }
+  };
 
-  const handleFinalDisband = () => {
-    if (disbandInput !== 'DISBAND') return;
+
+  const handleFinalDisband = async (bypassCheck = false) => {
+    if (!bypassCheck && disbandInput !== 'DISBAND') return;
     setIsTerminating(true);
+    
     // Artificial delay for "Terminating..." feel
-    setTimeout(() => {
-      disbandRoom();
-      // Close modal and navigate away after disband
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    try {
+      await disbandRoom(isMainRoom);
+      // Close modal after disband
       setShowDisbandConfirm(false);
-      navigate('/dashboard');
-    }, 1500);
+      // Navigation is now handled by disbandRoom for better coordination
+    } catch (error) {
+      logger.error('[RoomControls] Error during disband:', error);
+      toast.error('Disband Failed', {
+        description: 'An error occurred while closing the room.',
+      });
+      setIsTerminating(false);
+    }
   };
 
   const handleUrlSubmit = (e?: React.FormEvent) => {
@@ -206,7 +258,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
     const hasProtocol = /^https?:\/\//i.test(target);
     const hasDomain = /\.[a-z]{2,}$/i.test(target);
     if (!hasProtocol && !hasDomain) {
-      target = `https://www.google.com/search?q=${encodeURIComponent(target)}`;
+      target = `https://duckduckgo.com/?q=${encodeURIComponent(target)}`;
     } else if (!hasProtocol) {
       target = `https://${target}`;
     }
@@ -323,6 +375,13 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                     onClick={toggleVideo}
                     tooltip={isVideoEnabled ? 'Stop Video' : 'Start Video'}
                     size='large'
+                  />
+                  <ControlButton
+                    icon={RefreshCw}
+                    onClick={repairMedia}
+                    tooltip='Repair Feed'
+                    size='large'
+                    className='md:w-10 md:h-10'
                   />
                 </div>
 
@@ -446,7 +505,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                         trackFeatureUsage(Features.AI_SUMMARY);
                         props.onGenerateSummary?.();
                       }}
-                      tooltip='AI Summary'
+                      tooltip='Superior Summary'
                     />
                   )}
                 </div>
@@ -523,7 +582,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                           className='flex items-center gap-3 p-3 rounded-xl focus:bg-white/10 cursor-pointer'
                         >
                           <FileText size={18} className='text-yellow-400' />
-                          <span className='font-medium text-sm'>AI Summary</span>
+                          <span className='font-medium text-sm'>Superior Summary</span>
                         </DropdownMenuItem>
                       )}
 
@@ -551,7 +610,9 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) props.onFileSelected?.(file);
+                  e.target.value = '';
                 }}
+                accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.webm,.ogg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pps,.ppsx,.txt"
               />
             </motion.div>
           </div>
@@ -578,7 +639,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmStopShare}
-              className='h-16 rounded-3xl btn-luxury uppercase font-black text-[10px] tracking-widest shadow-[0_10px_30px_rgba(0,200,255,0.3)]'
+              className='h-16 rounded-3xl btn-luxury uppercase font-black text-[10px] tracking-widest shadow-[0_10px_30px_rgba(255,255,255,0.1)]'
             >
               Establish Terminate
             </AlertDialogAction>
@@ -591,37 +652,93 @@ const RoomControls: React.FC<RoomControlsProps> = ({
           <AnimatePresence mode='wait'>
             {!isDisbandConfirming ? (
               <motion.div
-                key='stage1'
+                key='stage-selector'
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
               >
-                <AlertDialogHeader className='mb-8 text-center sm:text-left'>
-                  <div className='w-20 h-20 bg-red-500/10 border border-red-500/20 rounded-3xl flex items-center justify-center mb-6 mx-auto sm:mx-0'>
-                    <Trash2 className='w-10 h-10 text-red-500' />
-                  </div>
-                  <AlertDialogTitle className='text-3xl font-black uppercase tracking-tighter text-red-500 mb-2 italic'>
-                    Critical Zone
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className='text-slate-400 text-sm font-medium leading-relaxed'>
-                    This will permanently destroy the room for all participants. Existing links will
-                    be severed immediately.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className='flex-col sm:flex-row gap-3 sm:gap-4 sm:space-x-0 w-full'>
-                  <AlertDialogCancel className='w-full sm:w-auto h-14 sm:h-16 px-8 rounded-2xl md:rounded-3xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white uppercase font-black text-[10px] tracking-widest soft-transition order-2 sm:order-1'>
-                    Cancel
-                  </AlertDialogCancel>
+                {isMainRoom && activeBreakouts.length > 0 ? (
+                  <div className='space-y-6'>
+                    <AlertDialogHeader>
+                      <div className='w-20 h-20 bg-amber-500/10 border border-amber-500/20 rounded-3xl flex items-center justify-center mb-6 mx-auto sm:mx-0'>
+                        <UsersIcon className='w-10 h-10 text-amber-500' />
+                      </div>
+                      <AlertDialogTitle className='text-3xl font-black uppercase tracking-tighter text-amber-500 mb-2 italic text-center sm:text-left'>
+                        Active Sessions Detected
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className='text-slate-400 text-sm font-medium leading-relaxed text-center sm:text-left'>
+                        The following rooms are still active. To prevent orphaned sessions, you must disband all child rooms before purging the organization.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
 
-                  <div className='flex flex-col sm:flex-row gap-3 w-full sm:w-auto order-1 sm:order-2'>
-                    <button
-                      onClick={handleDisbandRequest}
-                      className='w-full sm:w-auto h-14 sm:h-16 px-6 rounded-2xl md:rounded-3xl bg-red-500 text-white shadow-[0_10px_30px_rgba(239,68,68,0.3)] uppercase font-black text-[10px] tracking-widest hover:bg-red-600 soft-transition'
-                    >
-                      {TERMINOLOGY.DISBAND_ROOM}
-                    </button>
+                    <div className='max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar'>
+                      {activeBreakouts.map((room) => (
+                        <div
+                          key={room.id}
+                          className='flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-colors'
+                        >
+                          <div className='flex items-center gap-3'>
+                            <div className='w-2 h-2 bg-green-500 rounded-full animate-pulse' />
+                            <span className='font-bold text-white/80'>{room.name}</span>
+                          </div>
+                          <span className='text-[10px] font-black uppercase tracking-widest text-white/20'>
+                            {room.participants_count || 0} Members
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <AlertDialogFooter className='flex-col sm:flex-row gap-4'>
+                      <AlertDialogCancel className='h-14 md:h-16 rounded-2xl md:rounded-3xl bg-white/5 border-white/10 text-white/50 uppercase font-black text-[10px] tracking-widest order-2 sm:order-1'>
+                        Abort
+                      </AlertDialogCancel>
+                      <Button
+                        onClick={handleBulkDisband}
+                        disabled={isBatchDisbanding}
+                        className='h-14 md:h-16 rounded-2xl md:rounded-3xl bg-amber-600 hover:bg-amber-700 text-white shadow-[0_10px_30px_rgba(217,119,6,0.2)] uppercase font-black text-[10px] tracking-widest order-1 sm:order-2 flex-1'
+                      >
+                        {isBatchDisbanding ? 'Disbanding All...' : 'Disband All Child Rooms'}
+                      </Button>
+                    </AlertDialogFooter>
                   </div>
-                </AlertDialogFooter>
+                ) : (
+                  <div className='space-y-8'>
+                    <AlertDialogHeader className='text-center sm:text-left'>
+                      <div className='w-20 h-20 bg-red-500/10 border border-red-500/20 rounded-3xl flex items-center justify-center mb-6 mx-auto sm:mx-0'>
+                        <Trash2 className='w-10 h-10 text-red-500' />
+                      </div>
+                      <AlertDialogTitle className='text-3xl font-black uppercase tracking-tighter text-red-500 mb-2 italic'>
+                        {isMainRoom ? 'Organization Purge' : isBreakout ? 'Disband Breakout' : 'Terminate Sector'}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className='text-slate-400 text-sm font-medium leading-relaxed'>
+                        {isMainRoom ? (
+                          <span className='text-red-400 font-bold'>
+                            WARNING: This will permanently DELETE the entire organization and all its data. 
+                            This action is irreversible. All access links will be severed.
+                          </span>
+                        ) : isBreakout ? (
+                          'You are about to disband this breakout session. All participants will be returned to the main lobby and this sub-space will be permanently closed.'
+                        ) : (
+                          'You are about to terminate this communication sector. All participants will be disconnected and this room will be decommissioned.'
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className='flex-col sm:flex-row gap-3 sm:gap-4 sm:space-x-0 w-full'>
+                      <AlertDialogCancel className='w-full sm:w-auto h-14 sm:h-16 px-8 rounded-2xl md:rounded-3xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white uppercase font-black text-[10px] tracking-widest soft-transition order-2 sm:order-1'>
+                        Cancel
+                      </AlertDialogCancel>
+
+                      <div className='flex flex-col sm:flex-row gap-3 w-full sm:w-auto order-1 sm:order-2'>
+                        <button
+                          onClick={handleDisbandRequest}
+                          className='w-full sm:w-auto h-14 sm:h-16 px-6 rounded-2xl md:rounded-3xl bg-red-500 text-white shadow-[0_10px_30px_rgba(239,68,68,0.3)] uppercase font-black text-[10px] tracking-widest hover:bg-red-600 soft-transition'
+                        >
+                          {TERMINOLOGY.DISBAND_ROOM}
+                        </button>
+                      </div>
+                    </AlertDialogFooter>
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -637,7 +754,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                   </h3>
                   <p className='text-slate-400 text-xs font-bold uppercase tracking-widest'>
                     Type <span className='text-white bg-white/10 px-1 rounded'>DISBAND</span> to
-                    confirm destruction.
+                    confirm {isMainRoom ? 'ORGANIZATION DELETION' : isBreakout ? 'breakout destruction' : 'sector termination'}.
                   </p>
                 </div>
 
@@ -658,7 +775,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                     Back
                   </Button>
                   <Button
-                    onClick={handleFinalDisband}
+                    onClick={() => handleFinalDisband()}
                     disabled={disbandInput !== 'DISBAND' || isTerminating}
                     className={`flex-[2] h-14 rounded-2xl uppercase font-black text-[10px] tracking-widest transition-all ${
                       disbandInput === 'DISBAND'
@@ -712,7 +829,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
               <Input
                 value={urlInputValue}
                 onChange={(e) => setUrlInputValue(e.target.value)}
-                placeholder="google.com or 'search query'"
+                placeholder="duckduckgo.com or 'search query'"
                 className='h-14 pl-12 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-primary/20 text-lg font-medium'
                 autoFocus
               />

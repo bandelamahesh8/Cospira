@@ -29,6 +29,7 @@ export interface AdvancedSettings {
   auto_close_minutes: number;
   smart_room_mode: 'free' | 'presentation' | 'townhall' | 'lecture' | 'workshop';
   neural_protocols_enabled: boolean;
+  require_reapproval_on_rejoin: boolean;
 }
 
 const SMART_MODES = [
@@ -282,6 +283,26 @@ export const AdvancedRoomSettings: React.FC<Props> = ({ settings, onChange }) =>
             <Switch
               checked={settings.waiting_lobby}
               onCheckedChange={(val) => updateSetting('waiting_lobby', val)}
+            />
+          </div>
+
+          <div className='flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/[0.08] hover:border-white/10 transition-all group'>
+            <div className='flex items-center gap-3'>
+              <div className='w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:bg-blue-500/20 transition-all'>
+                <Lock className='w-5 h-5 text-blue-400' />
+              </div>
+              <div className='text-left'>
+                <Label className='text-xs font-bold text-white uppercase tracking-tight'>
+                  Require Approval on Rejoin
+                </Label>
+                <p className='text-[9px] text-zinc-500 uppercase tracking-tighter'>
+                  Force re-approval if guest refreshes
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.require_reapproval_on_rejoin}
+              onCheckedChange={(val) => updateSetting('require_reapproval_on_rejoin', val)}
             />
           </div>
         </div>

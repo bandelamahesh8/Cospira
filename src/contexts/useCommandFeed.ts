@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { roomEventBus, BreakoutEventMap } from '@/lib/breakout/EventBus';
+import { generateUUID } from '@/utils/uuid';
 
 export type FeedEventType =
   | 'JOIN'
@@ -32,7 +33,7 @@ export function useCommandFeed(maxEvents = 50) {
   const addEvent = useCallback(
     (event: Omit<FeedEvent, 'id'>) => {
       setEvents((prev) => {
-        const newEvent = { ...event, id: crypto.randomUUID() };
+        const newEvent = { ...event, id: generateUUID() };
         const nextState = [newEvent, ...prev];
         if (nextState.length > maxEvents) {
           return nextState.slice(0, maxEvents);

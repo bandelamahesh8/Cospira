@@ -33,17 +33,17 @@ const AISummaryService = {
       // No transcript — return an honest empty state
       return {
         id: `sum-${roomId}-${Date.now()}`,
-        title: `${modeLabel} Session Summary`,
+        title: `${modeLabel} INTELLIGENCE REPORT`,
         mode: mode || 'mixed',
         duration: durationStr,
         markdown: '',
         highlights: [
-          'No transcript was captured for this session.',
-          'Enable microphone and allow speech-to-text to generate AI highlights.',
+          'Neural link established — awaiting telemetry.',
+          'No significant voice or chat data detected in this session cycle.',
         ],
         actionItems: [
-          'Review session manually if notes were taken.',
-          'Enable transcription in room settings for future sessions.',
+          'Enable microphone and real-time transcription to unlock neural mapping.',
+          'Interact with participants to generate session metadata.',
         ],
         sentiment: 'neutral',
       };
@@ -56,25 +56,25 @@ const AISummaryService = {
       .filter((s) => s.length > 20);
 
     // Extract highlights: take up to 3 notable sentences
-    const highlights = extractHighlights(sentences, 3);
+    const highlights = extractHighlights(sentences, 4);
 
     // Extract action items: look for keywords like "will", "should", "need to", "please", "can you"
-    const actionItems = extractActionItems(sentences, 3);
+    const actionItems = extractActionItems(sentences, 4);
 
     const sentiment = analyzeSentiment(context);
 
     return {
       id: `sum-${roomId}-${Date.now()}`,
-      title: `${modeLabel} Session Summary`,
+      title: `${modeLabel} INTELLIGENCE REPORT`,
       mode: mode || 'mixed',
       duration: durationStr,
-      markdown: `# ${modeLabel} Session — ${durationStr}\n\n${context.slice(0, 300)}...`,
+      markdown: `# ${modeLabel} SESSION LOG • ${durationStr}\n\n${context.slice(0, 500)}...`,
       highlights:
         highlights.length > 0
           ? highlights
-          : ['Session active — transcript captured.', 'Conversation data processed successfully.'],
+          : ['Session active — data packets processed.', 'Telemetry stream captured successfully.'],
       actionItems:
-        actionItems.length > 0 ? actionItems : ['Review session transcript for follow-up items.'],
+        actionItems.length > 0 ? actionItems : ['Monitor session stream for future action protocols.'],
       sentiment,
     };
   },

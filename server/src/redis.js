@@ -131,7 +131,7 @@ export const getSystemStats = async () => {
 
 export const removeInactiveRooms = async (maxAgeMs = 24 * 60 * 60 * 1000) => {
     const now = Date.now();
-    let removedCount = 0;
+    const removedIds = [];
 
     const AGGRESSIVE_AGE = 30 * 60 * 1000; // 30 minutes for empty rooms
     const TEST_ROOM_AGE = 5 * 60 * 1000;    // 5 minutes for "test" rooms
@@ -165,18 +165,18 @@ export const removeInactiveRooms = async (maxAgeMs = 24 * 60 * 60 * 1000) => {
 
             if (shouldRemove(room)) {
                 await deleteRoom(id);
-                removedCount++;
+                removedIds.push(id);
             }
         }
     } else {
         for (const [id, room] of localRooms.entries()) {
             if (shouldRemove(room)) {
                 localRooms.delete(id);
-                removedCount++;
+                removedIds.push(id);
             }
         }
     }
-    return removedCount;
+    return removedIds;
 };
 
 export const getSystemConfig = async () => {

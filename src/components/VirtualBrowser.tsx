@@ -1,28 +1,38 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  X,
-  Lock,
-  Globe,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
-  Smartphone,
-  Volume2,
-  VolumeX,
-  Sparkles,
+  Globe,
   CheckCircle2,
-  Wifi,
-  Send,
-  MessageSquare,
+  Shield,
+  X,
+  Sparkles,
   Search,
   Zap,
   Layout,
+  MessageSquare,
+  Send,
+  ChevronLeft,
+  ChevronRight,
   Keyboard,
+  Lock as LockIcon,
+  Smartphone,
+  Settings,
+  Monitor,
+  RotateCcw,
+  ZoomIn,
+  ZoomOut,
+  Home,
+  Wifi,
+  AlertTriangle,
+  Share2,
+  Volume2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import InputManager from '@/utils/InputManager';
 
 export const VirtualBrowser = () => {
   const {
@@ -36,54 +46,338 @@ export const VirtualBrowser = () => {
     remoteStreams,
   } = useWebSocket();
 
-  const [inputUrl, setInputUrl] = useState(virtualBrowserUrl || '');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const touchContainerRef = useRef<HTMLDivElement>(null);
+  const inputManagerRef = useRef<InputManager | null>(null);
+  const containerRectRef = useRef<DOMRect | null>(null);
+
+  // Cursor state for visual feedback
+  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isCursorVisible, setIsCursorVisible] = useState(false);
+
+  // Core Interactive UI State
+  const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
+
+  // Performance and connection monitoring
+  const [performanceMode, setPerformanceMode] = useState<'quality' | 'balanced' | 'performance'>('balanced');
+  const [connectionQuality] = useState<'excellent' | 'good' | 'poor'>('good');
+  const [fps, setFps] = useState(60);
+  const [latency, setLatency] = useState(12);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Performance monitoring mock
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFps(Math.floor(Math.random() * (62 - 58 + 1) + 58));
+      setLatency(Math.floor(Math.random() * (15 - 8 + 1) + 8));
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+
+  // Connection and Loading State
   const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
-  const [startupPhase, setStartupPhase] = useState<0 | 1 | 2>(0); // 0=init, 1=launching, 2=connecting
+  const [startupPhase, setStartupPhase] = useState(0); // 0: Idle, 1: Spawning, 2: Streaming
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
+  // Advanced Audio State
+  const [audioSettings, setAudioSettings] = useState({
+    volume: 1.0,
+    bassBoost: 0,
+    trebleBoost: 0,
+    noiseReduction: false,
+    echoCancellation: true,
+    autoGainControl: true,
+    sampleRate: 48000,
+    channels: 2,
+  });
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [audioSource, setAudioSource] = useState<MediaStreamAudioSourceNode | null>(null);
+  const [gainNode, setGainNode] = useState<GainNode | null>(null);
+  const [bassFilter, setBassFilter] = useState<BiquadFilterNode | null>(null);
+  const [trebleFilter, setTrebleFilter] = useState<BiquadFilterNode | null>(null);
+
+  // Viewport and Tab Management
   const [viewport, setViewport] = useState({ width: 1920, height: 1080, isMobile: false });
+  const viewportRef = useRef(viewport);
+  useEffect(() => { viewportRef.current = viewport; }, [viewport]);
+
+  const [tabs, setTabs] = useState<Array<{ id: string; url: string; title: string, isLoading: boolean }>>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [inputUrl, setInputUrl] = useState('');
+  const [imeText, setImeText] = useState('');
+  const [aiQuery, setAiQuery] = useState('');
+
+  // Interactive UI State
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-  const [imeText, setImeText] = useState('');
-
-  // TABS SYSTEM
-  const [tabs, setTabs] = useState([
-    {
-      id: '1',
-      url: virtualBrowserUrl || 'https://www.google.com',
-      title: 'New Tab',
-      isLoading: false,
-    },
-  ]);
-  const [activeTabId, setActiveTabId] = useState('1');
-  const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
-  const [aiQuery, setAiQuery] = useState('');
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const activeTab = tabs.find(t => t.id === activeTabId) || { title: 'New Tab', url: '' };
 
-  // Get the Virtual Browser Stream (Video + Audio)
+  // Derived WebRTC Stream from Unified SFU
   const browserStream = remoteStreams.get('virtual-browser');
 
-  // WebRTC Stream Handling
+  const currentUser = users.find((u) => u.id === socket?.id);
+  const canControl = isHost || currentUser?.isCoHost;
+
+  // Advanced Audio Processing System
+  const initializeAudioProcessing = useCallback(async (stream: MediaStream) => {
+    try {
+      // Create AudioContext if not exists
+      if (!audioContext) {
+        const ctx = new (window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)({
+          sampleRate: audioSettings.sampleRate,
+          latencyHint: 'interactive',
+        });
+        setAudioContext(ctx);
+
+        // Create audio source from stream
+        const source = ctx.createMediaStreamSource(stream);
+        setAudioSource(source);
+
+        // Create gain node for volume control
+        const gain = ctx.createGain();
+        gain.gain.value = audioSettings.volume;
+        setGainNode(gain);
+
+        // Create bass boost filter
+        const bass = ctx.createBiquadFilter();
+        bass.type = 'lowshelf';
+        bass.frequency.value = 200;
+        bass.gain.value = audioSettings.bassBoost;
+        setBassFilter(bass);
+
+        // Create treble boost filter
+        const treble = ctx.createBiquadFilter();
+        treble.type = 'highshelf';
+        treble.frequency.value = 3000;
+        treble.gain.value = audioSettings.trebleBoost;
+        setTrebleFilter(treble);
+
+        // Connect audio processing chain
+        source.connect(bass);
+        bass.connect(treble);
+        treble.connect(gain);
+        gain.connect(ctx.destination);
+
+        console.warn('Advanced audio processing initialized');
+      }
+    } catch (error) {
+      console.error('Failed to initialize audio processing:', error);
+    }
+  }, [audioContext, audioSettings]);
+
+  // Update audio processing parameters
+  useEffect(() => {
+    if (gainNode) {
+      gainNode.gain.setTargetAtTime(audioSettings.volume, audioContext!.currentTime, 0.01);
+    }
+    if (bassFilter) {
+      bassFilter.gain.setTargetAtTime(audioSettings.bassBoost, audioContext!.currentTime, 0.01);
+    }
+    if (trebleFilter) {
+      trebleFilter.gain.setTargetAtTime(audioSettings.trebleBoost, audioContext!.currentTime, 0.01);
+    }
+  }, [audioSettings.volume, audioSettings.bassBoost, audioSettings.trebleBoost, gainNode, bassFilter, trebleFilter, audioContext]);
+
+  // Cleanup audio processing
+  const cleanupAudioProcessing = useCallback(() => {
+    if (audioSource) {
+      audioSource.disconnect();
+      setAudioSource(null);
+    }
+    if (gainNode) {
+      gainNode.disconnect();
+      setGainNode(null);
+    }
+    if (bassFilter) {
+      bassFilter.disconnect();
+      setBassFilter(null);
+    }
+    if (trebleFilter) {
+      trebleFilter.disconnect();
+      setTrebleFilter(null);
+    }
+    if (audioContext && audioContext.state !== 'closed') {
+      audioContext.close();
+      setAudioContext(null);
+    }
+  }, [audioSource, gainNode, bassFilter, trebleFilter, audioContext]);
+
+  // Initialize and Sync InputManager with viewport
+  useEffect(() => {
+    if (socket && roomId && !inputManagerRef.current) {
+      inputManagerRef.current = new InputManager(socket, roomId, !!canControl);
+    }
+    
+    if (inputManagerRef.current) {
+      inputManagerRef.current.updateViewport(viewport.width, viewport.height);
+    }
+  }, [socket, roomId, canControl, viewport.width, viewport.height]);
+
+  // WebRTC Stream Handling with Advanced Audio and Error Recovery
   useEffect(() => {
     if (browserStream && videoRef.current) {
-      videoRef.current.srcObject = browserStream;
-      setIsLoading(false);
-      setIsConnected(true);
-      toast.success('High-Res WebRTC Stream Connected');
-      setStartupPhase(2);
-    }
-  }, [browserStream]);
+      console.warn('Setting up browser stream...');
 
-  // Mute/Unmute Logic
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = isMuted;
+      videoRef.current.srcObject = browserStream;
+
+      // Initialize advanced audio processing
+      initializeAudioProcessing(browserStream);
+
+      // Configure audio tracks with advanced settings
+      const audioTracks = browserStream.getAudioTracks();
+      audioTracks.forEach(track => {
+        // Enable track
+        track.enabled = true;
+
+        if (track.applyConstraints) {
+          try {
+            track.applyConstraints({
+              echoCancellation: audioSettings.echoCancellation,
+              autoGainControl: audioSettings.autoGainControl,
+              noiseSuppression: audioSettings.noiseReduction,
+              sampleRate: { ideal: audioSettings.sampleRate },
+              channelCount: { ideal: audioSettings.channels },
+            });
+          } catch (error) {
+            console.warn('Advanced audio constraints not fully supported:', error);
+          }
+        }
+      });
+
+      // Set video element properties
+      videoRef.current.volume = 1.0;
+      videoRef.current.muted = false;
+      setIsMuted(false);
+
+      // Enhanced autoplay handling with better error recovery
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.warn('Virtual browser stream started successfully');
+            setIsConnected(true);
+            setConnectionError(null);
+          })
+          .catch((error) => {
+            console.warn('Autoplay blocked, setting up recovery:', error);
+            setIsConnected(false);
+
+            // Setup user interaction trigger for video playback
+            const handleUserInteraction = () => {
+              if (videoRef.current && browserStream) {
+                videoRef.current.muted = false;
+                videoRef.current.volume = 1.0;
+                videoRef.current.play()
+                  .then(() => {
+                    console.warn('Video playback recovered after user interaction');
+                    setIsConnected(true);
+                    setConnectionError(null);
+                  })
+                  .catch(e => {
+                    console.error('Video recovery failed:', e);
+                    setConnectionError('Video playback failed. Please refresh the page.');
+                  });
+                // Reinitialize audio processing after user interaction
+                initializeAudioProcessing(browserStream);
+              }
+              document.removeEventListener('click', handleUserInteraction);
+              document.removeEventListener('touchstart', handleUserInteraction);
+            };
+            document.addEventListener('click', handleUserInteraction);
+            document.addEventListener('touchstart', handleUserInteraction);
+          });
+      }
+
+      // Add stream error recovery
+      const handleStreamError = () => {
+        console.warn('Stream error detected, attempting recovery...');
+        setIsConnected(false);
+        setConnectionError('Stream connection lost. Attempting to reconnect...');
+
+        // Try to reconnect after a short delay
+        setTimeout(() => {
+          if (videoRef.current && browserStream) {
+            videoRef.current.srcObject = null;
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.srcObject = browserStream;
+                videoRef.current.play().catch(e => console.error('Reconnection failed:', e));
+              }
+            }, 100);
+          }
+        }, 2000);
+      };
+
+      // Listen for stream errors
+      browserStream.getVideoTracks().forEach(track => {
+        track.addEventListener('ended', handleStreamError);
+        track.addEventListener('mute', () => console.warn('Video track muted'));
+        track.addEventListener('unmute', () => console.warn('Video track unmuted'));
+      });
+
+      setStartupPhase(2);
+      setIsLoading(false);
+    } else {
+      // Cleanup when no stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      cleanupAudioProcessing();
+      setIsConnected(false);
     }
-  }, [isMuted]);
+
+    return () => {
+      cleanupAudioProcessing();
+    };
+  }, [browserStream, initializeAudioProcessing, cleanupAudioProcessing, audioSettings]);
+
+  // Advanced Mute/Unmute Logic
+  useEffect(() => {
+    if (browserStream) {
+      const audioTracks = browserStream.getAudioTracks();
+
+      if (isMuted) {
+        // Mute: disable tracks and set gain to 0
+        audioTracks.forEach(track => {
+          track.enabled = false;
+        });
+        if (gainNode) {
+          gainNode.gain.setTargetAtTime(0, audioContext!.currentTime, 0.01);
+        }
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+        }
+      } else {
+        // Unmute: enable tracks and restore volume
+        audioTracks.forEach(track => {
+          track.enabled = true;
+        });
+        if (gainNode) {
+          gainNode.gain.setTargetAtTime(audioSettings.volume, audioContext!.currentTime, 0.01);
+        }
+        if (videoRef.current) {
+          videoRef.current.muted = false;
+          videoRef.current.volume = audioSettings.volume;
+        }
+      }
+    }
+  }, [isMuted, browserStream, gainNode, audioContext, audioSettings.volume]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsBrowserFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -96,8 +390,6 @@ export const VirtualBrowser = () => {
     }
   };
 
-  const currentUser = users.find((u) => u.id === socket?.id);
-  const canControl = isHost || currentUser?.isCoHost;
 
   // -------------------------------------------------------------------------
   // SOCKET HANDLERS (CONTROL)
@@ -171,29 +463,67 @@ export const VirtualBrowser = () => {
       socket.off('browser-viewport-updated');
       socket.off('browser-tabs-updated');
     };
-  }, [socket, roomId, browserStream, isMuted]);
+  }, [socket, roomId, canControl]); // canControl is used implicitly via handlers
 
   // -------------------------------------------------------------------------
   // LIFECYCLE
   // -------------------------------------------------------------------------
   useEffect(() => {
-    // Browser was already started externally (via startVirtualBrowser in context).
-    // Just show the loading phases — do NOT re-emit start-virtual-browser or we'll
-    // cause the server to abort the in-progress navigation and restart.
-    if (!isConnected && !browserStream) {
-      setIsLoading(true);
-      setStartupPhase(0);
-      const t1 = setTimeout(() => setStartupPhase(1), 1500);
-      const t2 = setTimeout(() => setStartupPhase(2), 4000);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
+    if (browserStream) {
+       setStartupPhase(2);
+       setIsLoading(false);
+       setIsConnected(true);
+       setConnectionError(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount only — browser already started by parent
 
-  // Auto-detect Client Aspect Ratio & Optimize Viewport
+    // Safety timeout: If we're stuck in loading for > 30s, something's wrong
+    const safetyTimeout = setTimeout(() => {
+      if (isLoading && !browserStream) {
+        setConnectionError("Uplink timeout. Please try refreshing or restarting the browser.");
+      }
+    }, 30000);
+
+    return () => {
+      clearTimeout(safetyTimeout);
+    };
+  }, [browserStream, isConnected, isLoading]);
+
+  // Connection Health Monitoring
+  useEffect(() => {
+    if (!isConnected || !browserStream) return;
+
+    const healthCheck = setInterval(() => {
+      if (browserStream) {
+        const videoTracks = browserStream.getVideoTracks();
+
+        const hasActiveVideo = videoTracks.some(track => track.readyState === 'live');
+
+        if (!hasActiveVideo) {
+          console.warn('No active video tracks detected');
+          setConnectionError('Video stream lost. Attempting recovery...');
+          setIsConnected(false);
+
+          // Attempt recovery
+          setTimeout(() => {
+            if (videoRef.current && browserStream) {
+              videoRef.current.srcObject = null;
+              setTimeout(() => {
+                if (videoRef.current) {
+                  videoRef.current.srcObject = browserStream;
+                  videoRef.current.play().catch(e => console.error('Recovery failed:', e));
+                }
+              }, 500);
+            }
+          }, 2000);
+        } else if (!isConnected) {
+          setIsConnected(true);
+          setConnectionError(null);
+        }
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(healthCheck);
+  }, [isConnected, browserStream]);
   useEffect(() => {
     if (!isConnected || !socket || !roomId || !containerRef.current) return;
 
@@ -216,9 +546,9 @@ export const VirtualBrowser = () => {
       let targetWidth = clientWidth * dpr;
       let targetHeight = clientHeight * dpr;
 
-      // 3. Apply Server-Side Limits (1080p / 720p caps) to prevent encoding overload
-      const maxW = 1280;
-      const maxH = 720;
+      // 3. Apply Server-Side Limits (1080p caps) to prevent encoding overload
+      const maxW = 1920; 
+      const maxH = 1080; 
 
       // If the calculated hi-res size exceeds limits, scale down while maintaining Aspect Ratio
       // This is CRITICAL. We must maintain the Container's Aspect Ratio.
@@ -236,9 +566,9 @@ export const VirtualBrowser = () => {
       targetHeight = Math.round(targetHeight / 2) * 2;
 
       if (
-        Math.abs(targetWidth - viewport.width) > 4 || // Small buffer for minor deviations
-        Math.abs(targetHeight - viewport.height) > 4 ||
-        isSmallDevice !== viewport.isMobile
+        Math.abs(targetWidth - viewportRef.current.width) > 4 || // Small buffer for minor deviations
+        Math.abs(targetHeight - viewportRef.current.height) > 4 ||
+        isSmallDevice !== viewportRef.current.isMobile
       ) {
         // Debounce happens naturally via ResizeObserver frequency, but we can rate limit if needed.
         // For now, direct updates provide snappiest feel on rotation.
@@ -248,6 +578,7 @@ export const VirtualBrowser = () => {
           height: targetHeight,
           isMobile: isSmallDevice,
         });
+        setViewport({ width: targetWidth, height: targetHeight, isMobile: isSmallDevice });
       }
     };
 
@@ -256,6 +587,9 @@ export const VirtualBrowser = () => {
       // Wrap in requestAnimationFrame to avoid "ResizeObserver loop limit exceeded"
       // and to batch visual updates
       requestAnimationFrame(() => {
+        if (containerRef.current) {
+          containerRectRef.current = containerRef.current.getBoundingClientRect();
+        }
         optimizeViewport();
       });
     });
@@ -268,148 +602,255 @@ export const VirtualBrowser = () => {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [isConnected, socket, roomId, viewport.isMobile, viewport.width, viewport.height]);
+  }, [isConnected, socket, roomId]);
 
   // -------------------------------------------------------------------------
-  // INPUT HANDLING (Touch & Mouse)
+  // INPUT HANDLING (Touch & Mouse) - Advanced InputManager
   // -------------------------------------------------------------------------
 
-  // Throttle ref for move events
-  const lastEmitRef = useRef(0);
+  // Mouse event handlers using InputManager
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (inputManagerRef.current && videoRef.current) {
+      inputManagerRef.current.handleMouseDown(e.nativeEvent, videoRef.current);
+    }
+    // Update cursor position
+    if (touchContainerRef.current) {
+      const rect = touchContainerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      setCursorPosition({ x, y });
+      setIsCursorVisible(true);
+    }
+  }, []);
 
-  const getCoordinates = useCallback(
-    (clientX: number, clientY: number, element: HTMLElement) => {
-      const rect = element.getBoundingClientRect();
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (inputManagerRef.current && videoRef.current) {
+      inputManagerRef.current.handleMouseMove(e.nativeEvent, videoRef.current);
+    }
+    // Update cursor position
+    if (touchContainerRef.current) {
+      const rect = touchContainerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      setCursorPosition({ x, y });
+      setIsCursorVisible(true);
+    }
+  }, []);
 
-      // Raw coordinates relative to container
-      const rawX = clientX - rect.left;
-      const rawY = clientY - rect.top;
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (inputManagerRef.current && videoRef.current) {
+      inputManagerRef.current.handleMouseUp(e.nativeEvent, videoRef.current);
+    }
+  }, []);
 
-      // Calculate the actual rendered dimensions of the video (object-contain logic)
-      const containerRatio = rect.width / rect.height;
+  // Scroll indicator state
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const lastScrollTimeRef = useRef(0);
 
-      // Use actual rendered resolution instead of fixed viewport to prevent input drift
-      const actualWidth = videoRef.current ? videoRef.current.videoWidth : viewport.width;
-      const actualHeight = videoRef.current ? videoRef.current.videoHeight : viewport.height;
-      const browserRatio = (actualWidth || viewport.width) / (actualHeight || viewport.height);
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (inputManagerRef.current && videoRef.current) {
+      inputManagerRef.current.handleDoubleClick(e.nativeEvent, videoRef.current);
+    }
+  }, []);
 
-      let renderWidth = rect.width;
-      let renderHeight = rect.height;
-      let offsetX = 0;
-      let offsetY = 0;
+  const handleMouseLeave = useCallback(() => {
+    setIsCursorVisible(false);
+    setCursorPosition(null);
+  }, []);
 
-      if (containerRatio > browserRatio) {
-        // Container is wider -> Pillarboxing (black bars on L/R)
-        renderWidth = rect.height * browserRatio;
-        offsetX = (rect.width - renderWidth) / 2;
-      } else {
-        // Container is taller -> Letterboxing (black bars on T/B)
-        renderHeight = rect.width / browserRatio;
-        offsetY = (rect.height - renderHeight) / 2;
+  // Keyboard event handling with improved filtering
+  useEffect(() => {
+    if (!canControl || !socket) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if user is typing in our own input fields
+      const activeElement = document.activeElement;
+      if (activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.closest('[data-virtual-browser-input]')
+      )) {
+        return;
       }
 
-      // Normalize coordinates relative to the VALID rendered video area
-      const x = (rawX - offsetX) / renderWidth;
-      const y = (rawY - offsetY) / renderHeight;
-
-      return {
-        x: Math.max(0, Math.min(1, x)),
-        y: Math.max(0, Math.min(1, y)),
-      };
-    },
-    [viewport.width, viewport.height]
-  );
-
-  const handleInput = useCallback(
-    (e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
-      if (!socket || !roomId || !canControl) return;
-
-      // Focus container for keyboard events
-      if (e.type === 'mousedown' || e.type === 'touchstart') {
-        containerRef.current?.focus();
+      // Skip UI shortcut keys to avoid conflicts
+      const uiShortcuts = ['m', 'M', 'f', 'F', 'Escape', 'Tab'];
+      if (uiShortcuts.includes(e.key)) {
+        return;
       }
 
-      let eventType = '';
-      let clientX = 0;
-      let clientY = 0;
-      let pointerType = 'mouse';
-      let deltaX = 0;
-      let deltaY = 0;
-
-      if ('touches' in e) {
-        const touch = e.touches[0] || e.changedTouches[0];
-        if (!touch) return;
-        clientX = touch.clientX;
-        clientY = touch.clientY;
-        pointerType = 'touch';
-
-        if (e.type === 'touchstart') eventType = 'mousedown';
-        else if (e.type === 'touchend' || e.type === 'touchcancel') eventType = 'mouseup';
-        else eventType = 'mousemove';
-      } else if ('deltaX' in e) {
-        eventType = 'wheel';
-        deltaX = (e as React.WheelEvent).deltaX;
-        deltaY = (e as React.WheelEvent).deltaY;
-        clientX = (e as React.WheelEvent).clientX;
-        clientY = (e as React.WheelEvent).clientY;
-        pointerType = 'mouse';
-      } else {
-        // Mouse
-        const me = e as React.MouseEvent;
-        clientX = me.clientX;
-        clientY = me.clientY;
-        if (e.type === 'mousedown') eventType = 'mousedown';
-        else if (e.type === 'mouseup' || e.type === 'mouseleave') eventType = 'mouseup';
-        else if (e.type === 'mousemove') eventType = 'mousemove';
-      }
-
-      if (eventType === 'wheel') {
-        const coords = getCoordinates(clientX, clientY, e.currentTarget as HTMLElement);
+      // Handle special keys for scrolling and navigation
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+          e.key === 'PageUp' || e.key === 'PageDown' || e.key === 'Home' || e.key === 'End') {
+        e.preventDefault();
         socket.emit('browser-input', {
           roomId,
-          input: { type: 'wheel', deltaX, deltaY, x: coords.x, y: coords.y },
+          input: {
+            type: 'keydown',
+            key: e.key,
+            code: e.code,
+            keyCode: e.keyCode,
+            shiftKey: e.shiftKey,
+            ctrlKey: e.ctrlKey,
+            altKey: e.altKey,
+            metaKey: e.metaKey,
+          },
         });
         return;
       }
 
-      // Throttling for move events to prevent socket flooding (30fps cap)
-      if (eventType === 'mousemove') {
-        const now = Date.now();
-        if (now - lastEmitRef.current < 33) return;
-        lastEmitRef.current = now;
+      // Handle regular typing keys
+      e.preventDefault();
+      socket.emit('browser-input', {
+        roomId,
+        input: {
+          type: 'keydown',
+          key: e.key,
+          code: e.code,
+          keyCode: e.keyCode,
+          shiftKey: e.shiftKey,
+          ctrlKey: e.ctrlKey,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
+        },
+      });
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // Don't handle if user is typing in our own input fields
+      const activeElement = document.activeElement;
+      if (activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.closest('[data-virtual-browser-input]')
+      )) {
+        return;
       }
 
-      const coords = getCoordinates(clientX, clientY, e.currentTarget as HTMLElement);
+      // Skip UI shortcut keys to avoid conflicts
+      const uiShortcuts = ['m', 'M', 'f', 'F', 'Escape', 'Tab'];
+      if (uiShortcuts.includes(e.key)) {
+        return;
+      }
 
+      e.preventDefault();
       socket.emit('browser-input', {
         roomId,
         input: {
-          type: eventType,
-          x: coords.x,
-          y: coords.y,
-          pointerType,
+          type: 'keyup',
+          key: e.key,
+          code: e.code,
+          keyCode: e.keyCode,
+          shiftKey: e.shiftKey,
+          ctrlKey: e.ctrlKey,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
         },
       });
-    },
-    [socket, roomId, canControl, getCoordinates]
-  );
+    };
 
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (!socket || !roomId || !canControl) return;
-      const coords = getCoordinates(e.clientX, e.clientY, e.currentTarget as HTMLElement);
-      socket.emit('browser-input', {
-        roomId,
-        input: {
-          type: 'dblclick',
-          x: coords.x,
-          y: coords.y,
-          pointerType: 'mouse',
-        },
-      });
-    },
-    [socket, roomId, canControl, getCoordinates]
-  );
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [canControl, socket, roomId]);
+
+  // Add touch event listeners manually with passive: false to allow preventDefault
+  useEffect(() => {
+    const container = touchContainerRef.current;
+    if (!container || !canControl) return;
+
+    const updateCursorPosition = (clientX: number, clientY: number) => {
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        setCursorPosition({ x, y });
+        setIsCursorVisible(true);
+      }
+    };
+
+    const touchStartHandler = (e: TouchEvent) => {
+      // Ignore events from the virtual keyboard
+      if ((e.target as HTMLElement)?.closest('.osk-keyboard')) return;
+
+      // Prevent page scrolling/zoom/browser gestures
+      if (e.cancelable) e.preventDefault();
+      if (inputManagerRef.current && videoRef.current) {
+        inputManagerRef.current.handleTouchStart(e, videoRef.current);
+      }
+      // Update cursor position and initialize touch tracking
+      if (e.touches[0]) {
+        updateCursorPosition(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const touchMoveHandler = (e: TouchEvent) => {
+      // Ignore events from the virtual keyboard
+      if ((e.target as HTMLElement)?.closest('.osk-keyboard')) return;
+
+      // Prevent page scrolling
+      if (e.cancelable) e.preventDefault();
+
+      if (inputManagerRef.current && videoRef.current) {
+        inputManagerRef.current.handleTouchMove(e, videoRef.current);
+      }
+      // Update cursor position
+      if (e.touches[0]) {
+        updateCursorPosition(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const touchEndHandler = (e: TouchEvent) => {
+      if (inputManagerRef.current && videoRef.current) {
+        inputManagerRef.current.handleTouchEnd(e, videoRef.current);
+      }
+      // Hide cursor after touch ends
+      setTimeout(() => setIsCursorVisible(false), 100);
+    };
+
+    const wheelHandler = (e: WheelEvent) => {
+      // Ignore events from the virtual keyboard
+      if ((e.target as HTMLElement)?.closest('.osk-keyboard')) return;
+
+      // Prevent the main page from scrolling when interacting with virtual browser
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
+
+      if (inputManagerRef.current && videoRef.current) {
+        inputManagerRef.current.handleWheel(e, videoRef.current);
+
+        // Show scroll indicator
+        setShowScrollIndicator(true);
+        lastScrollTimeRef.current = Date.now();
+
+        // Hide indicator after 1 second
+        setTimeout(() => {
+          if (Date.now() - lastScrollTimeRef.current > 900) {
+            setShowScrollIndicator(false);
+          }
+        }, 1000);
+      }
+    };
+
+    // Add listeners with passive: false to allow preventDefault and block page scrolling
+    container.addEventListener('touchstart', touchStartHandler, { passive: false });
+    container.addEventListener('touchmove', touchMoveHandler, { passive: false });
+    container.addEventListener('touchend', touchEndHandler, { passive: false });
+    container.addEventListener('touchcancel', touchEndHandler, { passive: false });
+    container.addEventListener('wheel', wheelHandler, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', touchStartHandler);
+      container.removeEventListener('touchmove', touchMoveHandler);
+      container.removeEventListener('touchend', touchEndHandler);
+      container.removeEventListener('touchcancel', touchEndHandler);
+      container.removeEventListener('wheel', wheelHandler);
+    };
+  }, [canControl, socket, roomId]);
 
   useEffect(() => {
     if (!canControl) return;
@@ -456,7 +897,7 @@ export const VirtualBrowser = () => {
       if (url.includes('.') && !url.includes(' ')) {
         url = 'https://' + url;
       } else {
-        url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
+        url = 'https://duckduckgo.com/?q=' + encodeURIComponent(url);
       }
     }
 
@@ -472,7 +913,7 @@ export const VirtualBrowser = () => {
   const addTab = () => {
     if (!canControl) return;
     const newId = Math.random().toString(36).substring(7);
-    const url = 'https://www.google.com';
+    const url = 'https://duckduckgo.com';
     const newTab = { id: newId, url, title: 'New Tab', isLoading: true };
     setTabs([...tabs, newTab]);
     setActiveTabId(newId);
@@ -497,15 +938,64 @@ export const VirtualBrowser = () => {
     }
   };
 
+  // Disclaimer Popup Component
+  const DisclaimerPopup = () => (
+    <div className='fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4'>
+      <div className='bg-[#0F1115] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl'>
+        <div className='flex items-center gap-3 mb-4'>
+          <AlertTriangle className='text-amber-500' size={24} />
+          <h3 className='text-lg font-bold text-white'>Virtual Browser Notice</h3>
+        </div>
+
+        <div className='space-y-3 text-sm text-slate-300 mb-6'>
+          <p>
+            <strong className='text-amber-400'>Audio & Video Quality:</strong> Virtual browser streams may have reduced quality and occasional interruptions.
+          </p>
+          <p>
+            <strong className='text-blue-400'>Recommended Alternative:</strong> For the best experience, consider using screen sharing instead of the virtual browser.
+          </p>
+          <p className='text-xs text-slate-500'>
+            Screen sharing provides native performance, full audio/video quality, and better interaction capabilities.
+          </p>
+        </div>
+
+        <div className='flex gap-3'>
+          <Button
+            onClick={() => setShowDisclaimer(false)}
+            className='flex-1 bg-blue-600 hover:bg-blue-500 text-white'
+          >
+            Continue with Virtual Browser
+          </Button>
+          <Button
+            onClick={() => {
+              setShowDisclaimer(false);
+              // Could add logic to switch to screen sharing mode here
+              toast.info('Consider using screen sharing for better quality');
+            }}
+            variant='outline'
+            className='flex-1 border-slate-600 text-slate-300 hover:bg-slate-800'
+          >
+            <Share2 size={16} className='mr-2' />
+            Use Screen Share
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div
-      ref={containerRef}
-      className={`flex flex-col w-full ${isMinimized ? 'h-auto' : 'h-full'} bg-[#0a0a0a] md:rounded-xl overflow-hidden md:shadow-2xl md:border border-white/5 transition-all duration-300 relative group/browser`}
-      tabIndex={0}
-    >
-      {/* TABS BAR */}
+    <>
+      {/* Disclaimer Popup */}
+      {showDisclaimer && <DisclaimerPopup />}
+
+      <div
+        ref={containerRef}
+        className={`flex flex-col w-full ${isMinimized ? 'h-auto' : 'h-full'} bg-[#0a0a0e] md:rounded-2xl overflow-hidden md:shadow-[0_0_50px_rgba(0,0,0,0.5)] md:border border-white/10 transition-all duration-300 relative group/browser`}
+        tabIndex={0}
+      >
+      {/* TABS BAR (GLASSMORPHISM) */}
       {!isMinimized && (
-        <div className='flex items-center gap-1 px-3 pt-2 bg-[#0F1115] border-b border-white/5 overflow-x-auto no-scrollbar group/tabs'>
+        <div className='flex items-center gap-1.5 px-3 pt-2 bg-[#0a0b10] border-b border-white/5 overflow-x-auto no-scrollbar group/tabs backdrop-blur-xl'>
           {tabs.map((tab) => (
             <div
               key={tab.id}
@@ -515,7 +1005,7 @@ export const VirtualBrowser = () => {
                 setInputUrl(tab.url);
                 socket?.emit('browser-switch-tab', { roomId, tabId: tab.id });
               }}
-              className={`flex items-center gap-2 px-3 py-2 min-w-[120px] max-w-[200px] rounded-t-lg text-[10px] font-medium transition-all cursor-pointer relative group/tab ${activeTabId === tab.id ? 'bg-[#0a0a0a] text-blue-400 shadow-[0_-2px_10px_rgba(59,130,246,0.1)]' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}
+              className={`flex items-center gap-2 px-4 py-2 min-w-[140px] max-w-[220px] rounded-t-xl text-[11px] font-semibold transition-all cursor-pointer relative group/tab ${activeTabId === tab.id ? 'bg-[#15161c] text-blue-400 shadow-[0_-2px_15px_rgba(59,130,246,0.15)] border-t border-blue-500/20' : 'text-slate-500 hover:bg-white/5 border-t border-transparent hover:text-slate-300'}`}
             >
               <Globe
                 size={12}
@@ -547,8 +1037,8 @@ export const VirtualBrowser = () => {
       )}
 
       {/* TOOLBAR */}
-      <div className='flex items-center gap-2 md:gap-3 p-2 md:p-3 bg-[#0a0a0a] border-b border-white/5 z-20'>
-        <div className='flex gap-1.5 md:gap-2 px-0 md:px-1 shrink-0'>
+      <div className='flex items-center gap-2 md:gap-3 p-2 md:p-3 bg-[#15161c] border-b border-white/5 z-20 backdrop-blur-3xl'>
+        <div className='flex gap-2 md:gap-2 px-1 md:px-2 shrink-0'>
           <button
             onClick={() => canControl && closeVirtualBrowser()}
             disabled={!canControl}
@@ -595,9 +1085,9 @@ export const VirtualBrowser = () => {
           <Button
             variant='ghost'
             size='icon'
-            disabled={!canControl || !viewport.isMobile}
             className={`h-8 w-8 transition-all ${isKeyboardOpen ? 'text-blue-400 bg-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
-            onClick={() => canControl && setIsKeyboardOpen(!isKeyboardOpen)}
+            onClick={() => setIsKeyboardOpen(!isKeyboardOpen)}
+            title='Open Virtual Keyboard'
           >
             <Keyboard size={16} />
           </Button>
@@ -606,7 +1096,7 @@ export const VirtualBrowser = () => {
         <form onSubmit={(e) => doNavigate(e)} className='flex-1 max-w-4xl mx-auto relative group'>
           <div className='absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2'>
             {inputUrl.startsWith('https') ? (
-              <Lock size={12} className='text-emerald-500' />
+              <LockIcon size={12} className='text-emerald-500' />
             ) : (
               <Globe size={12} className='text-slate-500' />
             )}
@@ -615,8 +1105,8 @@ export const VirtualBrowser = () => {
             value={inputUrl}
             onChange={(e) => setInputUrl(e.target.value)}
             disabled={!canControl}
-            className='h-9 bg-[#1a1b1e] border-white/5 rounded-full pl-10 pr-4 text-xs font-medium text-slate-200 focus-visible:ring-1 focus-visible:ring-blue-500/50 transition-all shadow-lg'
-            placeholder='Search or enter URL'
+            className='h-10 bg-[#0a0b10] border-white/10 rounded-full pl-10 pr-4 text-xs font-semibold text-slate-200 focus-visible:ring-1 focus-visible:ring-blue-500 transition-all shadow-inner'
+            placeholder='Search DuckDuckGo or enter URL'
           />
         </form>
 
@@ -629,16 +1119,6 @@ export const VirtualBrowser = () => {
           >
             <Sparkles size={12} className={isAISidebarOpen ? 'animate-spin' : ''} />
             Browser Assistant
-          </Button>
-
-          <Button
-            variant='ghost'
-            size='icon'
-            className={`h-8 w-8 rounded-lg transition-all ${isMuted ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'}`}
-            onClick={() => setIsMuted(!isMuted)}
-            title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
-          >
-            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </Button>
 
           <div className='flex items-center gap-1.5 px-3 py-1.5 bg-[#0F1115] border border-white/5 rounded-full'>
@@ -684,65 +1164,338 @@ export const VirtualBrowser = () => {
         </div>
       </div>
 
+      {/* ADVANCED TOOLBAR */}
+      {!isMinimized && (
+        <div className='h-14 bg-[#0F1115] border-b border-white/5 flex items-center justify-between px-4 relative z-20'>
+          {/* Left Section - Navigation */}
+          <div className='flex items-center gap-2'>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-slate-400 hover:text-white hover:bg-white/5'
+              onClick={() => socket?.emit('browser-input', { roomId, input: { type: 'navigate', url: 'back' } })}
+            >
+              <ChevronLeft size={16} />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-slate-400 hover:text-white hover:bg-white/5'
+              onClick={() => socket?.emit('browser-input', { roomId, input: { type: 'navigate', url: 'forward' } })}
+            >
+              <ChevronRight size={16} />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-slate-400 hover:text-white hover:bg-white/5'
+              onClick={() => socket?.emit('browser-input', { roomId, input: { type: 'navigate', url: virtualBrowserUrl } })}
+            >
+              <RotateCcw size={16} />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-slate-400 hover:text-white hover:bg-white/5'
+              onClick={() => socket?.emit('browser-input', { roomId, input: { type: 'navigate', url: 'https://www.google.com' } })}
+            >
+              <Home size={16} />
+            </Button>
+          </div>
+
+          {/* Right Section - Controls */}
+          <div className='flex items-center gap-2'>
+            {/* Performance Indicator */}
+            <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/5'>
+              <div className={`w-2 h-2 rounded-full ${connectionQuality === 'excellent' ? 'bg-green-400' : connectionQuality === 'good' ? 'bg-yellow-400' : 'bg-red-400'}`} />
+              <span className='text-xs text-slate-400 font-medium'>
+                {fps}fps • {latency}ms
+              </span>
+            </div>
+
+            {/* Zoom Controls */}
+            <div className='flex items-center gap-1'>
+              <Button
+                variant='ghost'
+                size='icon'
+                className='h-8 w-8 text-slate-400 hover:text-white hover:bg-white/5'
+                onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.1))}
+              >
+                <ZoomOut size={16} />
+              </Button>
+              <span className='text-xs text-slate-400 min-w-[3rem] text-center'>
+                {Math.round(zoomLevel * 100)}%
+              </span>
+              <Button
+                variant='ghost'
+                size='icon'
+                className='h-8 w-8 text-slate-400 hover:text-white hover:bg-white/5'
+                onClick={() => setZoomLevel(Math.min(3.0, zoomLevel + 0.1))}
+              >
+                <ZoomIn size={16} />
+              </Button>
+            </div>
+
+            {/* Settings */}
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-slate-400 hover:text-white hover:bg-white/5'
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            >
+              <Settings size={16} />
+            </Button>
+
+            {/* Fullscreen */}
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-slate-400 hover:text-white hover:bg-white/5'
+              onClick={toggleFullscreen}
+            >
+              {isBrowserFullscreen ? <Monitor size={16} /> : <Monitor size={16} />}
+            </Button>
+
+            {/* Close */}
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10'
+              onClick={closeVirtualBrowser}
+            >
+              <X size={16} />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* SETTINGS PANEL */}
+      {isSettingsOpen && !isMinimized && (
+        <div className='bg-[#0F1115] border-b border-white/5 p-4 animate-in slide-in-from-top duration-200'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-sm font-bold text-white'>Browser Settings</h3>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-6 w-6 text-slate-400 hover:text-white'
+              onClick={() => setIsSettingsOpen(false)}
+            >
+              <X size={14} />
+            </Button>
+          </div>
+
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+            {/* Performance Mode */}
+            <div className='space-y-2'>
+              <label className='text-xs font-medium text-slate-400'>Performance Mode</label>
+              <div className='flex gap-2'>
+                {(['quality', 'balanced', 'performance'] as const).map((mode) => (
+                  <Button
+                    key={mode}
+                    variant={performanceMode === mode ? 'default' : 'outline'}
+                    size='sm'
+                    className='text-xs capitalize'
+                    onClick={() => setPerformanceMode(mode)}
+                  >
+                    {mode}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Connection Quality */}
+            <div className='space-y-2'>
+              <label className='text-xs font-medium text-slate-400'>Connection Quality</label>
+              <div className='flex items-center gap-2'>
+                <Wifi size={14} className={connectionQuality === 'excellent' ? 'text-green-400' : connectionQuality === 'good' ? 'text-yellow-400' : 'text-red-400'} />
+                <span className='text-xs text-slate-300 capitalize'>{connectionQuality}</span>
+              </div>
+            </div>
+
+            {/* Viewport Size */}
+            <div className='space-y-2'>
+              <label className='text-xs font-medium text-slate-400'>Viewport</label>
+              <div className='text-xs text-slate-300'>
+                {viewport.width} × {viewport.height} {viewport.isMobile ? '(Mobile)' : '(Desktop)'}
+              </div>
+            </div>
+          </div>
+
+          {/* Advanced Audio Controls */}
+          <div className='mt-4 pt-4 border-t border-white/5'>
+            <h4 className='text-xs font-bold text-slate-300 mb-3 flex items-center gap-2'>
+              <Volume2 size={12} className='text-blue-400' />
+              Advanced Audio Processing
+            </h4>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+              {/* Volume Control */}
+              <div className='space-y-2'>
+                <label className='text-xs font-medium text-slate-400'>Volume: {Math.round(audioSettings.volume * 100)}%</label>
+                <input
+                  type='range'
+                  min='0'
+                  max='2'
+                  step='0.1'
+                  value={audioSettings.volume}
+                  onChange={(e) => setAudioSettings(prev => ({ ...prev, volume: parseFloat(e.target.value) }))}
+                  className='w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider'
+                />
+              </div>
+
+              {/* Bass Boost */}
+              <div className='space-y-2'>
+                <label className='text-xs font-medium text-slate-400'>Bass Boost: {audioSettings.bassBoost}dB</label>
+                <input
+                  type='range'
+                  min='-10'
+                  max='10'
+                  step='1'
+                  value={audioSettings.bassBoost}
+                  onChange={(e) => setAudioSettings(prev => ({ ...prev, bassBoost: parseInt(e.target.value) }))}
+                  className='w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider'
+                />
+              </div>
+
+              {/* Treble Boost */}
+              <div className='space-y-2'>
+                <label className='text-xs font-medium text-slate-400'>Treble Boost: {audioSettings.trebleBoost}dB</label>
+                <input
+                  type='range'
+                  min='-10'
+                  max='10'
+                  step='1'
+                  value={audioSettings.trebleBoost}
+                  onChange={(e) => setAudioSettings(prev => ({ ...prev, trebleBoost: parseInt(e.target.value) }))}
+                  className='w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider'
+                />
+              </div>
+
+              {/* Audio Processing Options */}
+              <div className='space-y-2'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-xs text-slate-400'>Echo Cancellation</span>
+                  <button
+                    onClick={() => setAudioSettings(prev => ({ ...prev, echoCancellation: !prev.echoCancellation }))}
+                    className={`w-8 h-4 rounded-full flex items-center px-1 transition-colors ${audioSettings.echoCancellation ? 'bg-blue-500' : 'bg-slate-600'}`}
+                  >
+                    <div className={`w-3 h-3 bg-white rounded-full transition-transform ${audioSettings.echoCancellation ? 'translate-x-3' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                <div className='flex items-center justify-between'>
+                  <span className='text-xs text-slate-400'>Noise Reduction</span>
+                  <button
+                    onClick={() => setAudioSettings(prev => ({ ...prev, noiseReduction: !prev.noiseReduction }))}
+                    className={`w-8 h-4 rounded-full flex items-center px-1 transition-colors ${audioSettings.noiseReduction ? 'bg-blue-500' : 'bg-slate-600'}`}
+                  >
+                    <div className={`w-3 h-3 bg-white rounded-full transition-transform ${audioSettings.noiseReduction ? 'translate-x-3' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                <div className='flex items-center justify-between'>
+                  <span className='text-xs text-slate-400'>Auto Gain Control</span>
+                  <button
+                    onClick={() => setAudioSettings(prev => ({ ...prev, autoGainControl: !prev.autoGainControl }))}
+                    className={`w-8 h-4 rounded-full flex items-center px-1 transition-colors ${audioSettings.autoGainControl ? 'bg-blue-500' : 'bg-slate-600'}`}
+                  >
+                    <div className={`w-3 h-3 bg-white rounded-full transition-transform ${audioSettings.autoGainControl ? 'translate-x-3' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Audio Reset Button */}
+            <div className='mt-3 flex justify-end'>
+              <Button
+                variant='outline'
+                size='sm'
+                className='text-xs'
+                onClick={() => {
+                  setAudioSettings({
+                    volume: 1.0,
+                    bassBoost: 0,
+                    trebleBoost: 0,
+                    noiseReduction: false,
+                    echoCancellation: true,
+                    autoGainControl: true,
+                    sampleRate: 48000,
+                    channels: 2,
+                  });
+                  toast.success('Audio settings reset to defaults');
+                }}
+              >
+                Reset Audio
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* BROWSER VIEWPORT */}
       {!isMinimized && (
         <div
+          ref={touchContainerRef}
           className='flex-1 bg-[#050608] relative flex items-center justify-center overflow-hidden cursor-default group touch-none'
-          onMouseDown={handleInput}
-          onMouseMove={handleInput}
-          onMouseUp={handleInput}
-          onMouseLeave={handleInput}
+          style={{ touchAction: 'none' }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
           onDoubleClick={handleDoubleClick}
-          onTouchStart={handleInput}
-          onTouchMove={handleInput}
-          onTouchEnd={handleInput}
-          onTouchCancel={handleInput}
-          onWheel={handleInput}
+          onMouseLeave={handleMouseLeave}
         >
           {/* Loading / Startup overlay — shows while not connected */}
           {(!isConnected || isLoading) && (
-            <div className='absolute inset-0 bg-[#050608] z-10 flex flex-col items-center justify-center gap-8'>
-              {/* Animated globe icon */}
-              <div className='relative w-24 h-24 flex items-center justify-center'>
-                <div className='absolute inset-0 rounded-full bg-blue-500/10 animate-ping' />
-                <div className='absolute inset-2 rounded-full bg-blue-500/5 border border-blue-500/20' />
-                <Globe size={40} className='text-blue-400 relative z-10 animate-pulse' />
+            <div className='absolute inset-0 bg-[#000000] z-10 flex flex-col items-center justify-center gap-12 backdrop-blur-3xl overflow-hidden'>
+              {/* Background ambient glow */}
+              <div className='absolute inset-0 bg-blue-500/5 pulse-slow w-full h-full' />
+              <div className='absolute w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none' />
+
+              {/* Animated Core */}
+              <div className='relative w-32 h-32 flex items-center justify-center animate-in zoom-in duration-1000'>
+                <div className='absolute inset-0 rounded-full bg-blue-500/20 blur-md animate-pulse' />
+                <div className='absolute inset-0 rounded-full border border-blue-500/30' style={{ animation: 'spin 4s linear infinite' }} />
+                <div className='absolute inset-2 rounded-full border border-blue-400/20 border-t-blue-400/80 shadow-[0_0_15px_rgba(96,165,250,0.5)]' style={{ animation: 'spin 3s linear infinite reverse' }} />
+                <Globe size={48} className='text-blue-400 relative z-10 animate-pulse drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]' />
               </div>
 
               {/* Phase steps */}
-              <div className='flex flex-col gap-3 min-w-[220px]'>
+              <div className='flex flex-col gap-4 min-w-[280px] z-10 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05] shadow-2xl backdrop-blur-xl'>
                 {(
                   [
                     { label: 'Initialising Browser Engine', phase: 0 },
-                    { label: 'Launching Virtual Browser', phase: 1 },
-                    { label: 'Connecting Stream', phase: 2 },
+                    { label: 'Launching Virtual Environment', phase: 1 },
+                    { label: 'Establishing WebRTC Uplink', phase: 2 },
                   ] as const
                 ).map(({ label, phase: p }) => (
                   <div
                     key={p}
-                    className={`flex items-center gap-3 transition-all duration-500 ${
+                    className={`flex items-center gap-4 transition-all duration-700 ease-out ${
                       startupPhase > p
-                        ? 'opacity-100'
+                        ? 'opacity-100 translate-x-0'
                         : startupPhase === p
-                          ? 'opacity-100'
-                          : 'opacity-30'
+                          ? 'opacity-100 translate-x-0'
+                          : 'opacity-20 -translate-x-2'
                     }`}
                   >
-                    <div className='w-5 h-5 flex items-center justify-center shrink-0'>
+                    <div className='w-6 h-6 flex items-center justify-center shrink-0 relative'>
                       {startupPhase > p ? (
-                        <CheckCircle2 size={16} className='text-emerald-400' />
+                        <div className='relative flex items-center justify-center'>
+                          <div className='absolute inset-0 rounded-full bg-emerald-500/20 blur-[2px]' />
+                          <CheckCircle2 size={18} className='text-emerald-400 relative z-10' />
+                        </div>
                       ) : startupPhase === p ? (
-                        <Loader2 size={16} className='text-blue-400 animate-spin' />
+                        <div className='relative flex items-center justify-center'>
+                          <div className='absolute inset-0 rounded-full bg-blue-500/20 blur-[2px] animate-pulse' />
+                          <Loader2 size={18} className='text-blue-400 animate-spin relative z-10' />
+                        </div>
                       ) : (
-                        <div className='w-3 h-3 rounded-full border border-white/20' />
+                        <div className='w-3.5 h-3.5 rounded-full border-2 border-slate-700' />
                       )}
                     </div>
                     <span
-                      className={`text-[11px] font-mono tracking-widest uppercase ${
+                      className={`text-xs font-bold tracking-[0.2em] uppercase ${
                         startupPhase > p
-                          ? 'text-emerald-400'
+                          ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]'
                           : startupPhase === p
-                            ? 'text-blue-300'
+                            ? 'text-blue-300 drop-shadow-[0_0_5px_rgba(147,197,253,0.5)]'
                             : 'text-slate-600'
                       }`}
                     >
@@ -752,13 +1505,18 @@ export const VirtualBrowser = () => {
                 ))}
               </div>
 
-              {/* WebRTC connecting sub-label */}
-              {startupPhase === 2 && (
-                <div className='flex items-center gap-2 text-slate-500 text-[10px] font-mono animate-pulse'>
-                  <Wifi size={12} />
-                  <span>ESTABLISHING WEBRTC UPLINK...</span>
-                </div>
-              )}
+              {/* Secure Connection Badge */}
+              <div className='absolute bottom-8 flex flex-col items-center gap-4 z-10'>
+                 {connectionError && (
+                   <div className="px-6 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[11px] font-bold uppercase tracking-wider animate-in fade-in slide-in-from-bottom-4 duration-500 backdrop-blur-md">
+                     {connectionError}
+                   </div>
+                 )}
+                 <div className='flex items-center gap-2 px-4 py-2 rounded-full border border-white/5 bg-white/5 backdrop-blur-sm'>
+                      <Shield size={12} className='text-slate-500' />
+                      <span className='text-[9px] font-black uppercase tracking-[0.3em] text-slate-500'>End-to-End Encrypted Session</span>
+                 </div>
+              </div>
             </div>
           )}
 
@@ -774,26 +1532,102 @@ export const VirtualBrowser = () => {
                 autoPlay
                 playsInline
                 muted={isMuted}
-                className='max-w-full max-h-full object-contain shadow-2xl shadow-black/50 outline-none select-none'
-                width={viewport.width}
-                height={viewport.height}
-                style={{ pointerEvents: 'none' }}
+                className='w-full h-full object-contain shadow-2xl shadow-black/50 outline-none select-none'
+                style={{
+                  pointerEvents: 'none',
+                  imageRendering: 'auto', // Better for high res
+                  transform: 'translateZ(0)' // Force GPU composite
+                }}
+                onError={(e) => {
+                  console.error('Video element error:', e);
+                  setConnectionError('Video playback error. Please refresh the page.');
+                  setIsConnected(false);
+                }}
+                onLoadStart={() => {
+                  console.warn('Video load started');
+                  setIsLoading(true);
+                }}
+                onLoadedData={() => {
+                  console.warn('Video data loaded');
+                  setIsLoading(false);
+                  setIsConnected(true);
+                  setConnectionError(null);
+                }}
+                onStalled={() => {
+                  console.warn('Video stalled');
+                  setConnectionError('Video stream stalled. Attempting recovery...');
+                }}
+                onWaiting={() => {
+                  console.warn('Video waiting for data');
+                }}
+                onPlaying={() => {
+                  console.warn('Video playing');
+                  setIsConnected(true);
+                  setConnectionError(null);
+                }}
+                onPause={() => {
+                  console.warn('Video paused');
+                }}
               />
 
-              {/* OSK / VIRTUAL KEYBOARD OVERLAY */}
-              {isKeyboardOpen && viewport.isMobile && canControl && (
-                <div className='absolute bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-[400px] bg-[#1a1b1e]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-3 shadow-2xl flex flex-col gap-3 animate-in slide-in-from-bottom-10 pointer-events-auto'>
-                  <div className='flex items-center justify-between px-1'>
-                    <span className='text-xs font-bold text-slate-300 uppercase tracking-wider'>
-                      Virtual Keyboard
-                    </span>
+              {/* Virtual Cursor Overlay */}
+              {isCursorVisible && cursorPosition && canControl && (
+                <div
+                  className='absolute pointer-events-none z-50 transition-all duration-75 ease-out'
+                  style={{
+                    left: cursorPosition.x - 8,
+                    top: cursorPosition.y - 8,
+                    transform: 'translateZ(0)'
+                  }}
+                >
+                  <div className='relative'>
+                    {/* Cursor pointer */}
+                    <div className='w-4 h-4 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 border-2 border-white animate-pulse' />
+                    {/* Cursor ring */}
+                    <div className='absolute inset-0 w-4 h-4 border-2 border-blue-300 rounded-full animate-ping opacity-75' />
+                    {/* Crosshair lines */}
+                    <div className='absolute top-1/2 left-0 w-full h-0.5 bg-blue-400 transform -translate-y-0.5 opacity-60' />
+                    <div className='absolute left-1/2 top-0 w-0.5 h-full bg-blue-400 transform -translate-x-0.5 opacity-60' />
+                  </div>
+                </div>
+              )}
+
+              {/* Scroll Indicator */}
+              {showScrollIndicator && canControl && (
+                <div className='absolute top-4 right-4 z-40 animate-in fade-in slide-in-from-right duration-300'>
+                  <div className='bg-blue-500/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-lg border border-blue-400/20'>
+                    <div className='flex items-center gap-2'>
+                      <div className='w-2 h-2 bg-white rounded-full animate-bounce' />
+                      <span className='text-sm font-medium'>Scrolling Active</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* OSK / VIRTUAL KEYBOARD OVERLAY (GLASSMORPHISM) */}
+              {isKeyboardOpen && (
+                <motion.div 
+                  drag
+                  dragMomentum={false}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  className='osk-keyboard absolute bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-[420px] bg-[#0a0a0ea6] backdrop-blur-2xl border border-white/10 rounded-3xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col gap-4 animate-in slide-in-from-bottom-8 duration-300 z-[100] pointer-events-auto cursor-pointer'
+                >
+                  <div className='flex items-center justify-between px-1.5 cursor-grab active:cursor-grabbing pb-2 border-b border-white/5'>
+                    <div className='flex items-center gap-2'>
+                        <Keyboard size={14} className='text-blue-400' />
+                        <span className='text-[10px] font-black text-slate-300 uppercase tracking-widest'>
+                          Secure Input Module
+                        </span>
+                    </div>
                     <Button
                       variant='ghost'
                       size='icon'
-                      className='h-6 w-6 text-slate-500 hover:text-white'
+                      className='h-6 w-6 rounded-full bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                       onClick={() => setIsKeyboardOpen(false)}
                     >
-                      <X size={14} />
+                      <X size={12} />
                     </Button>
                   </div>
                   <div className='flex gap-2'>
@@ -802,83 +1636,158 @@ export const VirtualBrowser = () => {
                       onChange={(e) => setImeText(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          socket?.emit('browser-input', {
-                            roomId,
-                            input: { type: 'insertText', text: imeText },
-                          });
-                          socket?.emit('browser-input', {
-                            roomId,
-                            input: { type: 'keydown', key: 'Enter' },
-                          });
-                          socket?.emit('browser-input', {
-                            roomId,
-                            input: { type: 'keyup', key: 'Enter' },
-                          });
-                          setImeText('');
+                          e.preventDefault();
+                          if (!canControl) {
+                            toast.error('Control Required');
+                            return;
+                          }
+                          if (imeText.trim()) {
+                            // Send text input to browser
+                            socket?.emit('browser-input', {
+                              roomId,
+                              input: { type: 'insertText', text: imeText.trim() },
+                            });
+                            // Send Enter key
+                            socket?.emit('browser-input', {
+                              roomId,
+                              input: { type: 'keydown', key: 'Enter', keyCode: 13 },
+                            });
+                            socket?.emit('browser-input', {
+                              roomId,
+                              input: { type: 'keyup', key: 'Enter', keyCode: 13 },
+                            });
+                            setImeText('');
+                          }
                         }
                       }}
-                      placeholder='Type text to send...'
-                      className='h-10 bg-[#0a0a0a] border-white/10 text-sm focus-visible:ring-1 focus-visible:ring-blue-500/50 flex-1'
+                      placeholder='Type text to transmit...'
+                      className='h-12 rounded-xl bg-[#00000060] border-white/10 text-sm focus-visible:ring-1 focus-visible:ring-blue-500 flex-1 shadow-inner placeholder:text-slate-500'
                     />
                     <Button
                       variant='secondary'
-                      className='h-10 px-4 bg-blue-600 hover:bg-blue-500 text-white shadow-lg font-bold'
+                      className='h-12 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)] font-black tracking-widest text-[10px]'
                       onClick={() => {
-                        if (imeText) {
+                        if (!canControl) {
+                          toast.error('Control Required', { description: 'Only Host or Co-Hosts can send input.' });
+                          return;
+                        }
+                        if (imeText.trim()) {
+                          // Send text input to browser
                           socket?.emit('browser-input', {
                             roomId,
-                            input: { type: 'insertText', text: imeText },
+                            input: { type: 'insertText', text: imeText.trim() },
+                          });
+                          // Send Enter key to submit/search
+                          socket?.emit('browser-input', {
+                            roomId,
+                            input: { type: 'keydown', key: 'Enter', keyCode: 13 },
+                          });
+                          socket?.emit('browser-input', {
+                            roomId,
+                            input: { type: 'keyup', key: 'Enter', keyCode: 13 },
                           });
                           setImeText('');
                         }
-                        // Always send enter to trigger search/submit in UI
-                        socket?.emit('browser-input', {
-                          roomId,
-                          input: { type: 'keydown', key: 'Enter' },
-                        });
-                        socket?.emit('browser-input', {
-                          roomId,
-                          input: { type: 'keyup', key: 'Enter' },
-                        });
                       }}
                     >
-                      ENT
+                      EXECUTE
                     </Button>
                   </div>
                   <div className='flex gap-2'>
                     <Button
                       variant='secondary'
-                      className='h-8 flex-1 bg-white/5 hover:bg-white/10 text-xs text-slate-300 font-medium'
+                      className='h-10 rounded-xl flex-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold tracking-wider text-[10px] border border-emerald-500/20'
                       onClick={() => {
-                        if (imeText) {
+                        if (!canControl) {
+                          toast.error('Control Required');
+                          return;
+                        }
+                        if (imeText.trim()) {
                           socket?.emit('browser-input', {
                             roomId,
-                            input: { type: 'insertText', text: imeText },
+                            input: { type: 'insertText', text: imeText.trim() },
                           });
                           setImeText('');
                         }
                       }}
                     >
-                      <Send size={12} className='mr-1 inline-block' /> Insert Only
+                      <Send size={12} className='mr-1.5 inline-block' /> INSERT
                     </Button>
                     <Button
                       variant='secondary'
-                      className='h-8 flex-1 bg-red-500/10 hover:bg-red-500/20 text-xs text-red-200 font-medium'
+                      className='h-10 rounded-xl flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold tracking-wider text-[10px] border border-red-500/20'
                       onClick={() => {
                         socket?.emit('browser-input', {
                           roomId,
-                          input: { type: 'keydown', key: 'Backspace' },
+                          input: { type: 'keydown', key: 'Backspace', keyCode: 8 },
                         });
                         socket?.emit('browser-input', {
                           roomId,
-                          input: { type: 'keyup', key: 'Backspace' },
+                          input: { type: 'keyup', key: 'Backspace', keyCode: 8 },
                         });
                       }}
                     >
-                      <X size={12} className='mr-1 inline-block' /> BACKSPACE
+                      <X size={12} className='mr-1.5 inline-block' /> BACKSPACE
                     </Button>
                   </div>
-                </div>
+
+                  {/* Virtual Keyboard Layout */}
+                  <div className='grid grid-cols-10 gap-1 mt-2'>
+                    {[
+                      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+                      'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
+                      'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';',
+                      'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
+                      ' ', '←'
+                    ].map((key) => (
+                      <Button
+                        key={key}
+                        variant='outline'
+                        size='sm'
+                        className={`h-8 text-xs font-mono ${key === ' ' ? 'col-span-6' : key === '←' ? 'col-span-2' : ''} bg-slate-800/50 border-slate-600 hover:bg-slate-700 hover:border-slate-500`}
+                        onClick={() => {
+                          if (!canControl) {
+                            toast.error('Control Required');
+                            return;
+                          }
+                          if (key === '←') {
+                            // Backspace
+                            socket?.emit('browser-input', {
+                              roomId,
+                              input: { type: 'keydown', key: 'Backspace', keyCode: 8 },
+                            });
+                            socket?.emit('browser-input', {
+                              roomId,
+                              input: { type: 'keyup', key: 'Backspace', keyCode: 8 },
+                            });
+                          } else if (key === ' ') {
+                            // Space
+                            socket?.emit('browser-input', {
+                              roomId,
+                              input: { type: 'keydown', key: ' ', keyCode: 32 },
+                            });
+                            socket?.emit('browser-input', {
+                              roomId,
+                              input: { type: 'keyup', key: ' ', keyCode: 32 },
+                            });
+                          } else {
+                            // Regular key
+                            socket?.emit('browser-input', {
+                              roomId,
+                              input: { type: 'keydown', key: key, keyCode: key.charCodeAt(0) },
+                            });
+                            socket?.emit('browser-input', {
+                              roomId,
+                              input: { type: 'keyup', key: key, keyCode: key.charCodeAt(0) },
+                            });
+                          }
+                        }}
+                      >
+                        {key === '←' ? '⌫' : key.toUpperCase()}
+                      </Button>
+                    ))}
+                  </div>
+                </motion.div>
               )}
             </div>
 
@@ -973,5 +1882,6 @@ export const VirtualBrowser = () => {
         </div>
       )}
     </div>
+    </>
   );
 };

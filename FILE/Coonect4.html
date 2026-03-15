@@ -1,0 +1,551 @@
+PRODUCTION PROMPT — Connect4 Integration into Cospira Platform (Full Spec + Game Rules)
+
+ROLE & CONTEXT
+You are a senior full-stack software engineer working in a production engineering team. Your task is to integrate a Connect4 game engine sourced from an open-source repository into **Cospira**, a real-time collaboration platform supporting rooms, voice calls, and chat.
+
+Repository source: https://github.com/chriskormaris/Connect4.git
+
+This must be **production-grade software** — not a prototype.
+All code must be:
+
+• typed (TypeScript)
+• modular
+• unit tested
+• observable
+• secure against cheating
+• extensible for future games
+
+The architecture must allow future mini-games (Ludo, Chess, UNO, Snake & Ladder) to plug into the same engine infrastructure.
+
+---
+
+TECHNICAL CONSTRAINTS
+
+Runtime
+Node.js 20 LTS
+React 18
+TypeScript 5
+
+Transport
+Cospira's existing WebSocket infrastructure (CospiraSocketClient)
+
+Auth context available
+
+currentUser = {
+userId: string
+roomId: string
+displayName: string
+}
+
+Styling
+Tailwind CSS v3
+
+Testing
+Jest
+React Testing Library
+Playwright (E2E)
+
+Performance targets
+
+60 FPS UI rendering
+≤ 50ms P99 move latency on LAN
+Move-delta sync only (no full board broadcasts)
+
+---
+
+PHASE 1 — REPOSITORY AUDIT
+
+Clone the repository and analyze its structure.
+
+Classify all files into these four layers:
+
+Rendering Layer
+Responsible for board drawing, DOM updates, animation.
+
+Rules Layer
+Responsible for win detection and legal move validation.
+
+Interaction Layer
+Responsible for player input events.
+
+State Layer
+Responsible for board matrix, player turns, and game status.
+
+For each file identify:
+
+reuse as-is
+adapt
+rewrite
+
+Also detect:
+
+• global variables
+• direct DOM manipulation
+• non-React patterns
+• missing test coverage
+
+Run dependency security audit and list any HIGH/CRITICAL issues.
+
+Provide mitigation strategy for top three risks.
+
+---
+
+PHASE 2 — MODULAR ENGINE ARCHITECTURE
+
+Create the following file structure.
+
+src/modules/games/connect4
+
+Connect4Engine.ts
+BoardStateManager.ts
+MoveValidator.ts
+WinDetector.ts
+GameEventBus.ts
+
+src/modules/games/shared
+
+GameEngineAdapter.ts
+GameEvent.ts
+
+src/components
+
+Connect4Board.tsx
+GamePanelLayout.tsx
+SpectatorView.tsx
+
+---
+
+GAME ENGINE ADAPTER CONTRACT
+
+Every game in Cospira must implement this interface.
+
+interface GameEngineAdapter {
+
+gameId: string
+
+initialize(config: GameConfig): void
+
+applyMove(move: GameMove): GameState
+
+validateMove(move: GameMove, state: GameState): ValidationResult
+
+detectWin(state: GameState): WinResult | null
+
+reset(): GameState
+
+serialize(): string
+
+deserialize(snapshot: string): GameState
+
+}
+
+Future games must follow the same interface.
+
+---
+
+PHASE 3 — CANONICAL GAME STATE MODEL
+
+type CellValue = 0 | 1 | 2
+
+0 = empty
+1 = player one
+2 = player two
+
+interface BoardState {
+
+rows: 6
+cols: 7
+
+grid: CellValue[][]
+
+currentPlayer: 1 | 2
+
+status:
+waiting
+active
+won
+draw
+
+winner: 1 | 2 | null
+
+winningCells: [number, number][] | null
+
+moveCount: number
+
+lastMove: { row: number, col: number } | null
+
+}
+
+State must be immutable.
+
+BoardStateManager controls all transitions.
+
+No direct mutation allowed.
+
+---
+
+PHASE 4 — CONNECT4 GAME RULES
+
+Board size
+
+6 rows
+7 columns
+
+Goal
+
+Connect **4 pieces in a row** before your opponent.
+
+Valid win patterns
+
+horizontal
+vertical
+diagonal (both directions)
+
+---
+
+TURN RULES
+
+Players alternate turns.
+
+Player 1 → red pieces
+Player 2 → yellow pieces
+
+Example
+
+Player1 drops piece
+Player2 drops piece
+
+---
+
+MOVE RULE
+
+Players select a column.
+
+The piece falls to the lowest empty cell.
+
+Example
+
+Column 3 selected
+
+grid before
+
+0
+0
+0
+1
+2
+2
+
+new piece lands above last filled cell.
+
+---
+
+INVALID MOVE RULES
+
+Move must be rejected if:
+
+column index < 0
+column index > 6
+column already full
+game status not active
+not the player's turn
+
+---
+
+WIN RULES
+
+Win occurs when four consecutive pieces exist.
+
+Check patterns
+
+horizontal
+vertical
+diagonal ↘
+diagonal ↙
+
+Example horizontal
+
+1 1 1 1
+
+Example vertical
+
+1
+1
+1
+1
+
+Example diagonal
+
+1
+1
+1
+1
+
+---
+
+DRAW RULE
+
+If board completely filled (42 moves) and no win occurs.
+
+Game status becomes draw.
+
+---
+
+PHASE 5 — COSPIRA ROOM INTEGRATION
+
+Game entry path
+
+Room → Activities → Games → Connect4
+
+Game panel opens inside room.
+
+Voice call remains active.
+
+Chat sidebar collapses.
+
+---
+
+PLAYER ASSIGNMENT
+
+Game starter → Player1
+
+First joiner → Player2
+
+Remaining users → spectators
+
+Spectators
+
+• cannot interact
+• receive board updates
+• may watch and chat
+
+---
+
+PHASE 6 — REAL TIME MULTIPLAYER SYNC
+
+All messages must follow this structure.
+
+interface GameEvent {
+
+type: "GAME_EVENT"
+
+game: "connect4"
+
+roomId: string
+
+senderId: string
+
+sequenceId: number
+
+timestamp: number
+
+action: GameAction
+
+payload: GamePayload
+
+}
+
+GameAction
+
+REQUEST_MOVE
+MOVE_APPLIED
+MOVE_REJECTED
+GAME_WIN
+GAME_DRAW
+GAME_RESET
+PLAYER_JOINED
+PLAYER_LEFT
+
+---
+
+SEQUENCE ORDERING RULE
+
+Maintain event ordering.
+
+Pseudo logic
+
+onReceive(event)
+
+if event.seq <= lastAppliedSeq → drop
+
+if event.seq == lastAppliedSeq + 1 → apply
+
+if event.seq > lastAppliedSeq + 1 → buffer event
+
+start 800ms gap timer
+
+request state snapshot if missing packet not received.
+
+---
+
+PHASE 7 — HOST AUTHORITATIVE MODEL
+
+Host runs the authoritative engine.
+
+Clients only send move requests.
+
+Example flow
+
+Client → REQUEST_MOVE
+
+Host validates move.
+
+If valid
+
+Host broadcasts MOVE_APPLIED.
+
+If invalid
+
+Host sends MOVE_REJECTED to sender only.
+
+---
+
+VALIDATION RULES
+
+state.status must equal active
+
+senderId must equal currentPlayer
+
+column index valid
+
+column not full
+
+---
+
+HOST MIGRATION RULE
+
+If host disconnects
+
+new host = connected player with lowest joinTimestamp.
+
+New host immediately broadcasts BoardState snapshot.
+
+---
+
+PHASE 8 — WIN DETECTION ALGORITHM
+
+Only evaluate win from lastMove position.
+
+Directions
+
+horizontal
+vertical
+diagonal ↘
+diagonal ↙
+
+Pseudo logic
+
+for each direction
+
+count same pieces both directions
+
+if total ≥ 4
+
+return winner
+
+---
+
+PHASE 9 — UI COMPONENT SPEC
+
+Connect4Board must include
+
+Responsive grid layout
+
+Column hover preview
+
+Drop animation
+
+Winning highlight animation
+
+Turn indicator
+
+Reset button after game end
+
+Accessibility
+
+role="grid"
+keyboard navigation
+aria labels
+
+---
+
+PHASE 10 — PERFORMANCE REQUIREMENTS
+
+Rendering
+
+60 FPS
+
+Event payload
+
+< 2KB
+
+Network
+
+move delta sync only
+
+BoardState snapshot allowed only during reconnect.
+
+---
+
+PHASE 11 — OBSERVABILITY
+
+Track analytics events
+
+game_started
+
+move_applied
+
+move_rejected
+
+game_won
+
+game_reset
+
+spectator_joined
+
+---
+
+PHASE 12 — TEST REQUIREMENTS
+
+Unit tests
+
+WinDetector
+
+horizontal win
+vertical win
+diagonal win
+near win returns null
+
+MoveValidator
+
+reject full column
+reject wrong player
+reject invalid column
+
+Integration tests
+
+REQUEST_MOVE → MOVE_APPLIED
+
+Reconnect snapshot sync
+
+E2E tests
+
+two players finish full game
+spectator joins mid game
+host migration continues game
+reset button restarts game
+
+---
+
+FINAL DELIVERABLE
+
+A fully integrated multiplayer Connect4 module inside Cospira.
+
+Users in any room can:
+
+launch a Connect4 game
+play in real time
+invite spectators
+continue game even if host disconnects
+
+Future mini-games can plug into the same engine using the GameEngineAdapter interface.

@@ -8,7 +8,11 @@ import express from 'express';
 import roomService from '../services/RoomService.js';
 import eventLogger from '../services/EventLogger.js';
 import { checkUserPermission } from '../middleware/permissions.js';
+import { VoiceTranscript } from '../models/VoiceTranscript.js';
 import logger from '../logger.js';
+import { getRoom } from '../redis.js';
+import orpionService from '../services/OrpionService.js';
+import { deleteRoomUploads } from '../utils/fileCleanup.js';
 
 const router = express.Router();
 
@@ -269,6 +273,9 @@ router.delete('/:roomId', async (req, res) => {
     // Archive room
     await roomService.archiveRoom(roomId, userId);
 
+    // Purge assets
+    await deleteRoomUploads(roomId);
+
     res.json({
       success: true,
       message: 'Room archived successfully'
@@ -461,12 +468,6 @@ router.get('/:roomId/sessions/:sessionId', async (req, res) => {
   }
 });
 
-import { getRoom } from '../redis.js';
-import orpionService from '../services/OrpionService.js';
-
-// ... (existing imports)
-
-// ... (existing routes)
 
 /**
  * POST /api/rooms/:roomId/summary
@@ -500,34 +501,53 @@ router.post('/:roomId/summary', async (req, res) => {
             });
         }
 
-        // 2. Aggregate Conversation
-        if (!room.messages || room.messages.length === 0) {
-             return res.status(400).json({
-                status: 'blocked',
-                message: 'No conversation data detected.'
-             });
-        }
+        // 2. Aggregate Conversation & Activity Context
+        const [events, transcripts] = await Promise.all([
+            eventLogger.getRecentRoomEvents(roomId, 100),
+            VoiceTranscript.find({ roomId }).sort({ createdAt: -1 }).limit(50).lean().catch(() => [])
+        ]);
 
-        const uniqueAuthors = new Set(room.messages.map(m => m.user?.name || m.user?.id || 'Unknown'));
-        
-        // Format for AI
-        const conversationText = room.messages
-            .map(m => `[${new Date(m.timestamp).toLocaleTimeString()}] ${m.user?.name || 'User'}: ${m.text}`)
+        const eventSummary = events
+            .map(e => `[${new Date(e.timestamp).toLocaleTimeString()}] EVENT: ${e.eventType} by ${e.userId} ${JSON.stringify(e.metadata || {})}`)
             .join('\n');
 
-        const wordCount = conversationText.split(/\s+/).length;
+        const transcriptText = transcripts
+            .map(t => `[${new Date(t.createdAt).toLocaleTimeString()}] TRANSCRIPT: ${t.userName || t.userId}: ${t.text}`)
+            .join('\n');
+
+        const messageText = (room.messages || [])
+            .map(m => `[${new Date(m.timestamp).toLocaleTimeString()}] CHAT: ${m.user?.name || 'User'}: ${m.text}`)
+            .join('\n');
+
+        const enrichedContext = `
+=== SESSION EVENTS ===
+${eventSummary || 'No significant events logged.'}
+
+=== VOICE TRANSCRIPTS ===
+${transcriptText || 'No voice transcripts available.'}
+
+=== CHAT MESSAGES ===
+${messageText || 'No chat messages.'}
+        `.trim();
+
+        const uniqueAuthors = new Set([
+            ...(room.messages || []).map(m => m.user?.name || m.user?.id || 'Unknown'),
+            ...transcripts.map(t => t.userName || t.userId)
+        ]);
         
-        // Quality Gate (prevent simple "hi" messages from wasting credits)
-        if (room.messages.length < 5 || wordCount < 30) { 
+        const wordCount = enrichedContext.split(/\s+/).length;
+        
+        // Quality Gate
+        if (wordCount < 50 && (!room.messages || room.messages.length < 3)) { 
              return res.status(400).json({
                 status: 'blocked',
-                message: 'Not enough data for neural analysis (Need more conversation).',
-                stats: { msgCount: room.messages.length, wordCount }
+                message: 'Not enough data for superior analysis (Need more activity or conversation).',
+                stats: { msgCount: room.messages?.length || 0, wordCount }
              });
         }
 
         // 3. Generate Summary
-        const summary = await orpionService.generateSummary(conversationText);
+        const summary = await orpionService.generateSummary(enrichedContext);
 
         res.json({
             status: 'success',

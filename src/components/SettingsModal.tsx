@@ -45,8 +45,12 @@ import { useState, useEffect } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useOrganization } from '@/contexts/useOrganization';
 import { useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
+import { copyToClipboard } from '@/utils/clipboard';
+import { 
+  AdvancedRoomSettings, 
+  type AdvancedSettings 
+} from './rooms/AdvancedRoomSettings';
 
 interface SettingsModalProps {
   roomId: string;
@@ -74,6 +78,9 @@ const SettingsModal = ({ roomId, isHost, trigger }: SettingsModalProps) => {
     toggleNoiseSuppression,
     isAutoFramingEnabled,
     toggleAutoFraming,
+    autoApprove,
+    stopJoiningTime: currentStopJoiningTime,
+    settings: currentAdvancedSettings,
   } = useWebSocket();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -101,6 +108,24 @@ const SettingsModal = ({ roomId, isHost, trigger }: SettingsModalProps) => {
   const [autoApproveParticipants, setAutoApproveParticipants] = useState(false);
   const [stopJoiningTime, setStopJoiningTime] = useState<number>(0);
 
+  // Advanced Room Settings State
+  const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>({
+    invite_only: false,
+    join_by_link: true,
+    join_by_code: true,
+    host_only_code_visibility: false,
+    waiting_lobby: false,
+    organization_only: false,
+    host_controlled_speaking: false,
+    chat_permission: 'everyone',
+    encryption_enabled: true,
+    ai_moderation_level: 'passive',
+    auto_close_minutes: 0,
+    smart_room_mode: 'free',
+    neural_protocols_enabled: false,
+    require_reapproval_on_rejoin: false,
+  });
+
   const { currentOrganization } = useOrganization();
   const isOrgRoom =
     accessType === 'organization' ||
@@ -119,21 +144,31 @@ const SettingsModal = ({ roomId, isHost, trigger }: SettingsModalProps) => {
       } else {
         setMode('public');
       }
+      setAutoApproveParticipants(autoApprove || false);
+      setStopJoiningTime(currentStopJoiningTime || 0);
+
+      if (currentAdvancedSettings) {
+        setAdvancedSettings((prev: AdvancedSettings) => ({
+          ...prev,
+          ...(currentAdvancedSettings as unknown as AdvancedSettings),
+        }));
+      }
     }
-  }, [open, currentRoomName, accessType, hasWaitingRoom]);
+  }, [open, currentRoomName, accessType, hasWaitingRoom, autoApprove, currentStopJoiningTime, currentAdvancedSettings]);
 
   const handleLeave = () => {
     leaveRoom();
     navigate('/dashboard');
   };
 
-  const copyInviteToken = () => {
+  const copyInviteToken = async () => {
     if (inviteToken) {
-      navigator.clipboard.writeText(
-        `${window.location.origin}/room/${roomId}?token=${inviteToken}`
-      );
-      setCopiedToken(true);
-      setTimeout(() => setCopiedToken(false), 2000);
+      const link = `${window.location.origin}/room/${roomId}?token=${inviteToken}`;
+      const success = await copyToClipboard(link);
+      if (success) {
+        setCopiedToken(true);
+        setTimeout(() => setCopiedToken(false), 2000);
+      }
     }
   };
 
@@ -533,6 +568,24 @@ const SettingsModal = ({ roomId, isHost, trigger }: SettingsModalProps) => {
               </div>
             )}
           </div>
+
+          {/* Advanced Protocols Section */}
+          {isHost && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className='mt-6 border-t border-white/5 pt-6'
+            >
+              <h4 className='text-[10px] md:text-[11px] font-black uppercase tracking-[0.3em] text-primary mb-4 flex items-center gap-2 px-1'>
+                <Zap className='w-3 h-3 md:w-4 md:h-4' /> Advanced Protocols
+              </h4>
+              <AdvancedRoomSettings 
+                settings={advancedSettings} 
+                onChange={setAdvancedSettings} 
+              />
+            </motion.div>
+          )}
         </div>
 
         <div className='p-3 md:p-5 bg-black/40 border-t border-white/5 flex gap-2 md:gap-3 relative z-10 shrink-0'>
@@ -557,15 +610,23 @@ const SettingsModal = ({ roomId, isHost, trigger }: SettingsModalProps) => {
                     finalHasWaitingRoom = false;
                   }
 
-                  updateRoomSettings(
-                    undefined,
-                    finalPassword,
-                    finalHasWaitingRoom,
-                    finalAccessType
-                  );
+                  const finalSettings: Record<string, unknown> = {
+                    roomName: undefined,
+                    password: finalPassword,
+                    hasWaitingRoom: finalHasWaitingRoom,
+                    accessType: finalAccessType,
+                    autoApprove: autoApproveParticipants,
+                    stopJoiningTime: stopJoiningTime,
+                    ...advancedSettings,
+                    // Sync legacy fields with advanced counterparts if needed
+                    invite_only: advancedSettings.invite_only,
+                    mode: advancedSettings.smart_room_mode,
+                  };
+
+                  updateRoomSettings(finalSettings);
                   setOpen(false);
                 }}
-                className='flex-1 h-10 md:h-12 bg-gradient-to-r from-blue-500 to-pink-500 hover:from-blue-400 hover:to-pink-400 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-[0_5px_20px_rgba(236,72,153,0.3)] transition-all transform active:scale-[0.98]'
+                className='flex-1 h-10 md:h-12 bg-white hover:bg-white/90 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-black shadow-[0_5px_20px_rgba(255,255,255,0.1)] transition-all transform active:scale-[0.98]'
               >
                 Apply
               </button>

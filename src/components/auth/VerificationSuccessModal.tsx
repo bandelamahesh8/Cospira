@@ -30,7 +30,7 @@ export const VerificationSuccessModal = ({ isOpen, onContinue }: VerificationSuc
       >
         <div className='glass-card rounded-3xl p-10 border border-green-500/30 shadow-2xl relative overflow-hidden'>
           {/* Animated Background */}
-          <div className='absolute inset-0 bg-gradient-to-br from-green-500/10 via-primary/10 to-purple-500/10 blur-3xl -z-10' />
+          <div className='absolute inset-0 bg-green-500/5 blur-3xl -z-10' />
 
           {/* Success Particles */}
           {[...Array(12)].map((_, i) => (
@@ -61,7 +61,7 @@ export const VerificationSuccessModal = ({ isOpen, onContinue }: VerificationSuc
           <div className='relative z-10 text-center space-y-6'>
             {/* Success Icon */}
             <motion.div
-              className='mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-green-500/30 to-green-600/30 border-2 border-green-500/50 flex items-center justify-center'
+              className='mx-auto w-24 h-24 rounded-full bg-green-500/10 border-2 border-green-500/50 flex items-center justify-center'
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{
@@ -114,7 +114,7 @@ export const VerificationSuccessModal = ({ isOpen, onContinue }: VerificationSuc
             >
               <Button
                 onClick={onContinue}
-                className='w-full h-12 font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 group'
+                className='w-full h-12 font-black uppercase tracking-widest bg-white text-black hover:bg-white/90 group rounded-xl shadow-[0_5px_15px_rgba(255,255,255,0.1)]'
               >
                 Continue to Login
                 <ArrowRight className='w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform' />

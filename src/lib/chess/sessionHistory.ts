@@ -2,6 +2,7 @@
  * Session History Tracking
  * Stores game results and statistics in localStorage
  */
+import { generateUUID } from '@/utils/uuid';
 
 export interface GameSession {
   id: string;
@@ -23,7 +24,7 @@ export const saveGameSession = (session: Omit<GameSession, 'id' | 'timestamp'>):
     const history = getSessionHistory();
     const newSession: GameSession = {
       ...session,
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       timestamp: Date.now(),
     };
 

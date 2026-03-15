@@ -35,13 +35,11 @@ export const decodeRoomId = (code: string): string => {
     // Decode
     const decoded = atob(base64);
 
-    // Sanity Check: If decoded string contains control characters (garbage), it's likely a raw ID
-    // We reject any string containing non-printable ASCII (0-31, 127)
-    // eslint-disable-next-line no-control-regex
-    if (/[\x00-\x1F\x7F]/.test(decoded)) {
-      throw new Error('Decoded content contains invalid control characters');
+    // Sanity Check: The decoded string must be a valid room identifier (alphanumeric, -, _)
+    // This prevents "false positive" decodes for raw Room IDs that happen to be valid Base64
+    if (!/^[a-zA-Z0-9\-_]+$/.test(decoded)) {
+      throw new Error('Decoded content is not a valid Room ID');
     }
-
     return decoded;
   } catch (_e) {
     // If decoding fails or sanity check fails, assume it's a raw Room ID (backward compatibility)

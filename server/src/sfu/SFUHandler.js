@@ -94,15 +94,29 @@ class SFUHandler {
                 
                 // Determine announcedIp from request
                 const host = socket.handshake.headers.host;
+                const forwardedHost = socket.handshake.headers['x-forwarded-host'];
+                const effectiveHost = forwardedHost || host;
                 let suggestedAnnouncedIp = null;
                 
-                if (host && !host.includes('localhost') && !host.includes('127.0.0.1') && !host.includes('10.0.2.2')) {
-                    suggestedAnnouncedIp = host.split(':')[0];
-                    logger.info(`[SFU] Using announcedIp from Host header: ${suggestedAnnouncedIp}`);
+                if (effectiveHost) {
+                    const hostname = effectiveHost.split(':')[0];
+                    const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+                    const isNgrok = hostname.includes('ngrok');
+                    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+
+                    if (isIp) {
+                        suggestedAnnouncedIp = hostname;
+                        logger.info(`[SFU] Using LAN IP from Host header: ${suggestedAnnouncedIp}`);
+                    } else if (isNgrok) {
+                        suggestedAnnouncedIp = hostname;
+                        logger.info(`[SFU] Using ngrok domain for announcedIp: ${suggestedAnnouncedIp}. Note: UDP will likely fail without a TURN server.`);
+                    } else if (isLocal) {
+                        suggestedAnnouncedIp = '127.0.0.1';
+                    }
                 }
 
                 const transportParams = await roomRouter.createWebRtcTransport(socket.id, { 
-                    forceTcp: forceTcp === true, // Respect client preference, fallback to UDP
+                    forceTcp: forceTcp === true,
                     announcedIp: suggestedAnnouncedIp
                 });
 

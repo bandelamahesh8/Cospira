@@ -77,7 +77,12 @@ class EventLogger {
         breakoutId = (p.breakoutId as string) || (p.targetId as string);
       }
 
-      if (!breakoutId) {
+      // Strict UUID validation for Supabase persistence
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        breakoutId || ''
+      );
+
+      if (!breakoutId || breakoutId === 'all' || !isUUID) {
         return;
       }
 

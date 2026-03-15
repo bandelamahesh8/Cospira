@@ -151,15 +151,6 @@ export const DesktopLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               <span className='text-xs font-bold'>BRAIN</span>
             </button>
 
-            {/* BRAIN Button (Elite) */}
-            <button
-              onClick={() => setView((v) => (v === 'brain' ? 'desktop' : 'brain'))}
-              className='flex items-center gap-2 px-3 py-1 bg-cyan-950 hover:bg-cyan-900 text-cyan-400 rounded-lg transition-colors border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.1)]'
-            >
-              <Brain className='w-3.5 h-3.5' />
-              <span className='text-xs font-bold'>BRAIN</span>
-            </button>
-
             {/* Seasons Button */}
             <button
               onClick={() => setView((v) => (v === 'seasons' ? 'desktop' : 'seasons'))}

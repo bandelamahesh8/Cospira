@@ -7,7 +7,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+const securityDir = 'C:\\Users\\mahes\\Downloads\\PROJECTS\\COSPIRA_PROJECT\\SECURITY';
+dotenv.config({ path: path.join(securityDir, '.env') });
 // Fix for SELF_SIGNED_CERT_IN_CHAIN errors in certain development environments
 if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';

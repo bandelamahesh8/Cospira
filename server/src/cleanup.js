@@ -10,10 +10,7 @@ import logger from './logger.js';
 export const cleanupUploads = (directory, maxAgeMs) => {
     fs.readdir(directory, (err, files) => {
         if (err) {
-            if (err.code === 'ENOENT') {
-                // Directory doesn't exist yet, which is fine
-                return;
-            }
+            if (err.code === 'ENOENT') return;
             logger.error('Error reading uploads directory for cleanup:', err);
             return;
         }
@@ -24,18 +21,29 @@ export const cleanupUploads = (directory, maxAgeMs) => {
             const filePath = path.join(directory, file);
             fs.stat(filePath, (err, stats) => {
                 if (err) {
+                    if (err.code === 'ENOENT') return; // File already deleted
                     logger.error(`Error getting stats for file ${file}:`, err);
                     return;
                 }
 
                 if (now - stats.mtimeMs > maxAgeMs) {
-                    fs.unlink(filePath, err => {
-                        if (err) {
-                            logger.error(`Error deleting file ${file}:`, err);
+                    try {
+                        if (stats.isDirectory()) {
+                            // Check if directory is old enough
+                            fs.rmSync(filePath, { recursive: true, force: true });
+                            logger.info(`Deleted old upload directory: ${file}`);
                         } else {
-                            logger.info(`Deleted old upload: ${file}`);
+                            fs.unlinkSync(filePath);
+                            logger.info(`Deleted old upload file: ${file}`);
                         }
-                    });
+                    } catch (cleanupErr) {
+                        // Suppress EPERM/EBUSY on Windows if file is held by another process
+                        if (cleanupErr.code === 'EPERM' || cleanupErr.code === 'EBUSY') {
+                            logger.debug(`Skipping busy file/dir during cleanup: ${file}`);
+                        } else {
+                            logger.error(`Error during cleanup for ${file}:`, cleanupErr);
+                        }
+                    }
                 }
             });
         });

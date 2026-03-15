@@ -31,11 +31,13 @@ export const JoinRoomRequestSchema = z.object({
   roomId: z.string(),
   password: z.string().optional(),
   inviteToken: z.string().optional(),
+  isGhost: z.boolean().optional(), // Ghost Observer mode: Super Host joins silently
   user: UserSchema.omit({ isHost: true, isCoHost: true }).extend({
     // Override strict UUID check for user if needed, or keep it strict
     id: z.string(), // Allow non-uuid for guest IDs if they are generated differently? Usually guests are UUIDs too.
   }),
 });
+
 
 export const CreateRoomRequestSchema = z.object({
   roomId: z.string(),

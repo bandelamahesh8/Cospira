@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Send, X, Copy, Check, Share2, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { copyToClipboard } from '@/utils/clipboard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -38,12 +39,14 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, roomId }) =>
     );
   };
 
-  const copyLink = () => {
+  const copyLink = async () => {
     const link = `${window.location.origin}/room/${roomId}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success('Link Secured', { description: 'Access coordinates copied to clipboard' });
+    const success = await copyToClipboard(link);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success('Link Secured', { description: 'Access coordinates copied to clipboard' });
+    }
   };
 
   return (

@@ -6,6 +6,14 @@ import { RoomAnalytics } from '../models/RoomAnalytics.js';
 import logger from '../logger.js';
 
 class EventLogger {
+  constructor() {
+    this.io = null;
+  }
+
+  init(io) {
+    this.io = io;
+    logger.info('[EventLogger] Initialized with Socket.IO instance');
+  }
   
   // 1. Room Events (Join/Leave/Mute/Share)
   async logRoomEvent(roomId, userId, eventType, metadata = {}) {
@@ -24,6 +32,16 @@ class EventLogger {
       });
       
       logger.debug(`[EventLogger] ${eventType} logged successfully for ${userId} in ${roomId}`);
+
+      // NEW: Broadcast signal update to user
+      if (this.io) {
+        this.io.to(`user:${userId}`).emit('neural-signal-update', {
+            type: eventType,
+            roomId,
+            timestamp: event.timestamp
+        });
+      }
+
       return event;
     } catch (err) {
       if (err.name === 'ValidationError') {
@@ -291,11 +309,17 @@ class EventLogger {
     }
   }
 
-  async getUserGlobalActivity(userId, limit = 50) {
+  async getUserGlobalActivity(userId, limit = 50, afterDate = null) {
     try {
       if (!userId) return [];
-      logger.debug(`[EventLogger] Fetching global activity for user: ${userId}`);
-      return await RoomEvent.find({ userId })
+      logger.debug(`[EventLogger] Fetching global activity for user: ${userId}${afterDate ? ` after ${afterDate}` : ''}`);
+      
+      const query = { userId };
+      if (afterDate) {
+        query.timestamp = { $gte: afterDate };
+      }
+
+      return await RoomEvent.find(query)
         .sort({ timestamp: -1 })
         .limit(limit)
         .lean();

@@ -101,8 +101,8 @@ const PricingSection = () => {
                 asChild
                 className={`w-full ${
                   plan.popular
-                    ? 'bg-gradient-to-r from-primary to-accent text-background hover:shadow-lg hover:shadow-primary/50'
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    ? 'bg-white text-black hover:bg-white/90 font-black uppercase tracking-widest'
+                    : 'bg-white/5 text-white/40 hover:bg-white/10'
                 }`}
               >
                 <Link to='/dashboard'>

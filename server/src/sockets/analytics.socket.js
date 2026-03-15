@@ -1,6 +1,7 @@
 import logger from '../logger.js';
 import analyticsService from '../services/ai/AnalyticsService.js';
 import eventLogger from '../services/EventLogger.js';
+import { UserAnalyticsSetting } from '../models/UserAnalyticsSetting.js';
 
 /**
  * Register Analytics Socket Handlers
@@ -38,9 +39,13 @@ export default function registerAnalyticsHandlers(io, socket) {
   /**
    * Get advanced AI insights for user
    */
-  socket.on('get-user-ai-insights', async (callback) => {
+  socket.on('get-user-ai-insights', async (payload, callback) => {
     try {
-      const userId = socket.user?.id || socket.user?.sub;
+      if (typeof payload === 'function') {
+        callback = payload;
+        payload = {};
+      }
+      const userId = payload?.userId || socket.user?.id || socket.user?.sub;
       if (!userId) return callback?.({ success: false, error: 'Auth required' });
 
       const insights = await analyticsService.getUserAIInsights(userId);
@@ -198,16 +203,24 @@ export default function registerAnalyticsHandlers(io, socket) {
   /**
    * Get recent activity for the current user
    */
-  socket.on('get-user-activity', async ({ limit = 20 } = {}, callback) => {
+  socket.on('get-user-activity', async (payload = {}, callback) => {
     try {
-      const userId = socket.user?.id || socket.user?.sub;
+      if (typeof payload === 'function') {
+        callback = payload;
+        payload = {};
+      }
+      const limit = payload?.limit || 20;
+      const userId = payload?.userId || socket.user?.id || socket.user?.sub;
       console.log(`[Analytics] ${userId} is fetching activities (limit: ${limit})`);
       if (!userId) {
         console.warn(`[Analytics] Unauthenticated activity fetch attempted by ${socket.id}`);
         return callback?.({ success: false, error: 'Authentication required' });
       }
 
-      const events = await eventLogger.getUserGlobalActivity(userId, limit);
+      const settings = await UserAnalyticsSetting.findOne({ userId }).lean();
+      const afterDate = settings?.historyClearedAt || null;
+
+      const events = await eventLogger.getUserGlobalActivity(userId, limit, afterDate);
       console.log(`[Analytics] Found ${events?.length || 0} events for user ${userId}`);
       
       const activities = [];
@@ -224,41 +237,65 @@ export default function registerAnalyticsHandlers(io, socket) {
         let duration = event.metadata?.duration;
         let endTime = null;
 
-        if (event.eventType === 'leave') {
-          // Look ahead (chronologically backwards) for the corresponding join
-          const joinEvent = events.slice(i + 1).find(e => 
-            e.eventType === 'join' && 
-            e.roomId === event.roomId && 
-            !pairedIds.has(e._id.toString())
-          );
+        if (event.roomId && event.roomId !== 'global') {
+          const roomInfo = await analyticsService.resolveRoomName(event.roomId, event.metadata?.roomName);
+          const roomName = roomInfo.name;
+          
+          if (event.eventType === 'leave') {
+            // Look ahead (chronologically backwards) for the corresponding join
+            const joinEvent = events.slice(i + 1).find(e => 
+              e.eventType === 'join' && 
+              e.roomId === event.roomId && 
+              !pairedIds.has(e._id.toString())
+            );
 
-          if (joinEvent) {
-            pairedIds.add(joinEvent._id.toString());
-            title = 'Joined Room';
-            subtitle = `Sector: ${event.metadata?.roomName || event.roomId}`;
-            type = 'room';
-            time = joinEvent.timestamp;
-            endTime = event.timestamp;
-            // Use logged duration or calculate from timestamps
-            duration = duration || (new Date(event.timestamp) - new Date(joinEvent.timestamp)) / 1000;
+            if (joinEvent) {
+              pairedIds.add(joinEvent._id.toString());
+              title = 'Joined Room';
+              subtitle = `Sector: ${roomName}`;
+              type = 'room';
+              time = joinEvent.timestamp;
+              endTime = event.timestamp;
+              duration = duration || (new Date(event.timestamp) - new Date(joinEvent.timestamp)) / 1000;
+            } else {
+              title = 'Left Room';
+              subtitle = `Sector: ${roomName}`;
+              type = 'room';
+            }
           } else {
-            // Unpaired leave (truncated history or joined before limit)
-            title = 'Left Room';
-            subtitle = `Sector: ${event.metadata?.roomName || event.roomId}`;
-            type = 'room';
+            switch (event.eventType) {
+              case 'join':
+                title = 'Joined Room';
+                subtitle = `Sector: ${roomName}`;
+                type = 'room';
+                break;
+              case 'room_created':
+                title = 'Created Room';
+                subtitle = `Sector: ${roomName}`;
+                type = 'room';
+                break;
+              case 'chat':
+                title = 'New Message';
+                subtitle = `Sent in ${roomName}`;
+                type = 'social';
+                break;
+              case 'game_started':
+                title = 'Played a Game';
+                subtitle = `${event.metadata?.gameType || 'Match'} session started`;
+                type = 'match';
+                break;
+              case 'global_connect':
+                title = 'Joined Global Connect';
+                subtitle = `Mode: ${event.metadata?.mode || 'video'}`;
+                type = 'social';
+                break;
+              default:
+                title = event.eventType.charAt(0).toUpperCase() + event.eventType.slice(1);
+                subtitle = `Activity in ${roomName}`;
+            }
           }
         } else {
           switch (event.eventType) {
-            case 'join':
-              title = 'Joined Room';
-              subtitle = `Sector: ${event.metadata?.roomName || event.roomId}`;
-              type = 'room';
-              break;
-            case 'room_created':
-              title = 'Created Room';
-              subtitle = `Sector: ${event.metadata?.roomName || event.roomId}`;
-              type = 'room';
-              break;
             case 'game_started':
               title = 'Played a Game';
               subtitle = `${event.metadata?.gameType || 'Match'} session started`;
@@ -341,6 +378,32 @@ export default function registerAnalyticsHandlers(io, socket) {
         success: false,
         error: error.message
       });
+    }
+  });
+
+  /**
+   * Clear user's analytics history
+   */
+  socket.on('clear-user-history', async (callback) => {
+    try {
+      const userId = socket.user?.id || socket.user?.sub;
+      if (!userId) return callback?.({ success: false, error: 'Auth required' });
+
+      await UserAnalyticsSetting.findOneAndUpdate(
+        { userId },
+        { historyClearedAt: new Date() },
+        { upsert: true, new: true }
+      );
+
+      logger.info(`[Analytics] User history cleared for ${userId}`);
+      
+      // Broadcast to specific user room to inform other tabs
+      io.to(`user:${userId}`).emit('history-cleared');
+      
+      callback?.({ success: true });
+    } catch (error) {
+      logger.error('[Analytics] Error clearing user history:', error);
+      callback?.({ success: false, error: error.message });
     }
   });
 

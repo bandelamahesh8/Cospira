@@ -9,7 +9,7 @@ type OrganizationContextType = {
   currentOrganization: Organization | null;
   setCurrentOrganization: (org: Organization | null) => void;
   isLoading: boolean;
-  createOrganization: (name: string, slug: string, baseMode?: OrgMode) => Promise<void>;
+  createOrganization: (name: string, slug: string, baseMode?: OrgMode, advanced?: { lobby_name?: string; authorized_only?: boolean }) => Promise<void>;
   deleteOrganization: (orgId: string) => Promise<void>;
   refreshOrganizations: () => Promise<void>;
   // RBAC Capability Check
@@ -83,9 +83,9 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     [currentOrganization]
   );
 
-  const createOrganization = async (name: string, slug: string, baseMode?: OrgMode) => {
+  const createOrganization = async (name: string, slug: string, baseMode?: OrgMode, advanced: { lobby_name?: string; authorized_only?: boolean } = {}) => {
     try {
-      const newOrg = await OrganizationService.createOrganization(name, slug, baseMode);
+      const newOrg = await OrganizationService.createOrganization(name, slug, baseMode, advanced);
       toast.success('Organization created successfully');
 
       // Auto-select the new organization

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
 import type { SFUManager } from '@/services/SFUManager';
 import { logger } from '@/utils/logger';
 import NoiseProcessor from '@/services/audio/NoiseProcessor';
@@ -76,10 +77,24 @@ export function useMediaStream({
     }
   };
 
+  const checkMediaSupport = useCallback(() => {
+    if (!navigator.mediaDevices) {
+      const isLanHttp = window.location.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(window.location.hostname);
+      const message = isLanHttp 
+        ? "Media access (Camera/Mic) requires HTTPS on your local network. Please use localhost or connect via ngrok (https)."
+        : "Your browser does not support media devices. Make sure you are using a secure context (HTTPS).";
+      
+      toast.error(message);
+      return false;
+    }
+    return true;
+  }, []);
+
   // --- API: Enable Audio ---
   const enableAudio = useCallback(async () => {
     if (isAudioEnabledRef.current) return; // Already enabled
     logger.info('[useMediaStream] Enabling Audio...');
+    if (!checkMediaSupport()) return;
     setIsMediaLoading(true);
 
     try {
@@ -138,6 +153,7 @@ export function useMediaStream({
     sfuManagerRef,
     signalingRef,
     stateRef,
+    checkMediaSupport
   ]);
 
   // --- API: Disable Audio ---
@@ -182,6 +198,7 @@ export function useMediaStream({
   const enableVideo = useCallback(async () => {
     if (isVideoEnabledRef.current) return;
     logger.info('[useMediaStream] Enabling Video...');
+    if (!checkMediaSupport()) return;
     setIsMediaLoading(true);
 
     try {
@@ -244,6 +261,7 @@ export function useMediaStream({
     sfuManagerRef,
     signalingRef,
     stateRef,
+    checkMediaSupport
   ]);
 
   // --- API: Disable Video ---
@@ -284,6 +302,29 @@ export function useMediaStream({
     }
   }, [disableVideo, enableVideo]);
 
+  // --- Screen Share ---
+  const stopScreenShare = useCallback(() => {
+    logger.debug('[useMediaStream] Stopping Screen Share');
+    const sfu = sfuManagerRef.current;
+
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+    }
+
+    setLocalScreenStream(null);
+    setIsScreenSharing(false);
+    isScreenSharingRef.current = false;
+
+    if (sfu) {
+      sfu.closeProducer(SCREEN_SOURCE);
+    }
+
+    if (signalingRef.current && stateRef.current.roomId) {
+      signalingRef.current.emit('stop-screen-share', { roomId: stateRef.current.roomId });
+    }
+  }, [sfuManagerRef, setLocalScreenStream, setIsScreenSharing, signalingRef, stateRef]);
+
   // --- API: Initial Enable (Consolidated) ---
   // Mostly used for "Join with Mic/Cam on" preferences
   const enableMedia = useCallback(
@@ -306,7 +347,7 @@ export function useMediaStream({
     disableVideo();
     // Also stop screen share
     stopScreenShare();
-  }, [disableAudio, disableVideo]); // stopScreenShare below needs to be circular-dep safe, likely hoisted or used from ref
+  }, [disableAudio, disableVideo, stopScreenShare]);
 
   // --- Features: Noise Suppression ---
   const toggleNoiseSuppression = useCallback(async () => {
@@ -334,31 +375,17 @@ export function useMediaStream({
     }
   }, [setIsAutoFramingEnabled, disableVideo, enableVideo]);
 
-  // --- Screen Share ---
-  const stopScreenShare = useCallback(() => {
-    logger.debug('[useMediaStream] Stopping Screen Share');
-    const sfu = sfuManagerRef.current;
-
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach((t) => t.stop());
-      screenStreamRef.current = null;
-    }
-
-    setLocalScreenStream(null);
-    setIsScreenSharing(false);
-    isScreenSharingRef.current = false;
-
-    if (sfu) {
-      sfu.closeProducer(SCREEN_SOURCE);
-    }
-
-    if (signalingRef.current && stateRef.current.roomId) {
-      signalingRef.current.emit('stop-screen-share', { roomId: stateRef.current.roomId });
-    }
-  }, [sfuManagerRef, setLocalScreenStream, setIsScreenSharing, signalingRef, stateRef]);
 
   const startScreenShare = useCallback(async () => {
     if (isScreenSharingRef.current) return;
+    if (!checkMediaSupport()) return;
+    
+    // Additional check for getDisplayMedia specifically
+    if (!navigator.mediaDevices.getDisplayMedia) {
+       toast.error("Screen sharing is not supported in this browser or context.");
+       return;
+    }
+
     const sfu = sfuManagerRef.current;
     if (!sfu) return;
 
@@ -377,6 +404,13 @@ export function useMediaStream({
         await sfu.replaceTrack(videoTrack, SCREEN_SOURCE);
       }
 
+      if (signalingRef.current && stateRef.current.roomId) {
+        signalingRef.current.emit('start-screen-share', {
+          roomId: stateRef.current.roomId,
+          streamId: displayStream.id,
+        });
+      }
+
       videoTrack.onended = () => {
         stopScreenShare();
       };
@@ -384,7 +418,7 @@ export function useMediaStream({
       logger.error('[useMediaStream] Failed to start screen share', err);
       stopScreenShare(); // Cleanup
     }
-  }, [sfuManagerRef, setLocalScreenStream, setIsScreenSharing, stopScreenShare]);
+  }, [sfuManagerRef, setLocalScreenStream, setIsScreenSharing, stopScreenShare, signalingRef, stateRef, checkMediaSupport]);
 
   // --- Cleanup Effect ---
   useEffect(() => {

@@ -1,113 +1,103 @@
+// Production-grade Snake & Ladder Engine (Server Side)
+// Simplified from the frontend engine for core logic verification
 
-export default class SnakeLadderEngine {
-    constructor(players) {
-        this.players = (players || []).map(p => ({
+class SnakeLadderEngine {
+    constructor(players, config = {}) {
+        this.players = players.map((p, idx) => ({
             ...p,
-            pos: p.pos !== undefined ? p.pos : 0, 
-            rank: p.rank || null,
-            finished: p.finished || false
+            pos: p.pos || 0,
+            consecutiveSixes: p.consecutiveSixes || 0
         }));
-        
-        this.turnIndex = 0;
-        this.dice = null;
+        this.board = {
+            snakes: config.snakes || { 32: 10, 34: 6, 48: 26, 62: 18, 88: 24, 95: 56, 97: 78 },
+            ladders: config.ladders || { 1: 38, 4: 14, 8: 30, 21: 42, 28: 74, 50: 67, 71: 92, 80: 99 },
+            totalCells: 100
+        };
+        this.dice = 0;
+        this.phase = 'ROLL';
+        this.currentTurn = players[0].id;
         this.winner = null;
-        this.logs = [];
-        this.phase = 'ROLL'; // ROLL | MOVE | END
-        this.lastAction = null;
-
-        // Configuration
-        this.WIN_POS = 100;
-        
-        // Classic Layout
-        this.SNAKES = {
-            16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78
-        };
-        
-        this.LADDERS = {
-            1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100
-        };
-    }
-
-    setTurn(playerId) {
-        if (!this.players || this.players.length === 0) {
-            this.turnIndex = 0;
-            return;
-        }
-        const idx = this.players.findIndex(p => p.id === playerId);
-        this.turnIndex = idx === -1 ? 0 : idx;
-    }
-
-    getState() {
-        const turnId = (this.players.length > 0 && this.players[this.turnIndex]) 
-            ? this.players[this.turnIndex].id 
-            : null;
-            
-        return {
-            players: this.players,
-            turn: turnId,
-            dice: this.dice,
-            phase: this.phase,
-            winner: this.winner,
-            lastAction: this.lastAction
-        };
     }
 
     rollDice(playerId) {
-        if (this.turnIndex === -1 || !this.players[this.turnIndex]) return { error: 'Invalid turn state' };
-        if (this.phase !== 'ROLL') return { error: 'Not roll phase' };
-        if (this.players[this.turnIndex].id !== playerId) return { error: 'Not your turn' };
-
+        if (this.currentTurn !== playerId || this.phase !== 'ROLL') return { error: 'Not your turn' };
+        
         this.dice = Math.floor(Math.random() * 6) + 1;
         this.phase = 'MOVE';
-        this.lastAction = { type: 'ROLL', playerId, dice: this.dice };
+        
+        const player = this.players.find(p => p.id === playerId);
+        if (this.dice === 6) {
+            player.consecutiveSixes++;
+            if (player.consecutiveSixes === 3) {
+                player.consecutiveSixes = 0;
+                this.phase = 'ROLL';
+                this.advanceTurn();
+                return { rolled: this.dice, penalty: true };
+            }
+        } else {
+            player.consecutiveSixes = 0;
+        }
+        
         return { rolled: this.dice };
     }
 
     moveToken(playerId) {
-        if (this.turnIndex === -1 || !this.players[this.turnIndex]) return { error: 'Invalid turn state' };
-        if (this.phase !== 'MOVE') return { error: 'Not move phase' };
-        if (this.players[this.turnIndex].id !== playerId) return { error: 'Not your turn' };
+        if (this.currentTurn !== playerId || this.phase !== 'MOVE') return { error: 'Invalid state' };
+        
+        const player = this.players.find(p => p.id === playerId);
+        let pos = player.pos;
 
-        const p = this.players[this.turnIndex];
-        let newPos = p.pos + this.dice;
-
-        if (newPos > this.WIN_POS) {
-            const overshoot = newPos - this.WIN_POS;
-            newPos = this.WIN_POS - overshoot;
-        }
-
-        let effect = null;
-        if (this.SNAKES[newPos]) {
-            newPos = this.SNAKES[newPos];
-            effect = 'SNAKE';
-        } else if (this.LADDERS[newPos]) {
-            newPos = this.LADDERS[newPos];
-            effect = 'LADDER';
-        }
-
-        p.pos = newPos;
-        this.lastAction = { type: 'MOVE', playerId, pos: newPos, effect };
-
-        if (newPos === this.WIN_POS) {
-            this.winner = p.id;
-            p.finished = true;
-            this.lastAction = { type: 'WIN', playerId };
-            return { success: true, winner: this.winner };
-        }
-
-        if (this.dice === 6) {
-           this.phase = 'ROLL';
-           this.dice = null;
+        if (pos === 0) {
+            if (this.dice === 6) pos = 1;
+            else {
+                this.phase = 'ROLL';
+                this.advanceTurn();
+                return { pos: player.pos };
+            }
         } else {
-           this.passTurn();
+            const nextPos = pos + this.dice;
+            if (nextPos > 100) {
+                this.phase = 'ROLL';
+                this.advanceTurn();
+                return { pos: player.pos };
+            } else if (nextPos === 100) {
+                player.pos = 100;
+                this.winner = playerId;
+                return { pos: 100, win: true };
+            }
+            pos = nextPos;
         }
 
-        return { success: true };
+        // Snakes and Ladders
+        if (this.board.snakes[pos]) pos = this.board.snakes[pos];
+        else if (this.board.ladders[pos]) pos = this.board.ladders[pos];
+
+        player.pos = pos;
+        
+        if (this.dice !== 6) {
+            this.advanceTurn();
+        }
+        this.phase = 'ROLL';
+        
+        return { pos: player.pos };
     }
 
-    passTurn() {
-        this.turnIndex = (this.turnIndex + 1) % this.players.length;
-        this.phase = 'ROLL';
-        this.dice = null;
+    advanceTurn() {
+        const currentIndex = this.players.findIndex(p => p.id === this.currentTurn);
+        const nextIndex = (currentIndex + 1) % this.players.length;
+        this.currentTurn = this.players[nextIndex].id;
+    }
+
+    getState() {
+        return {
+            players: this.players,
+            board: this.board,
+            dice: this.dice,
+            phase: this.phase,
+            currentTurn: this.currentTurn,
+            winner: this.winner
+        };
     }
 }
+
+export default SnakeLadderEngine;

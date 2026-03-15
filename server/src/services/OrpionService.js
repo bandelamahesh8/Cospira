@@ -1,16 +1,9 @@
-
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import LLMService from './ai/LLMService.js';
 import logger from '../logger.js';
 
 class OrpionService {
   constructor() {
-    this.apiKey = process.env.GEMINI_API_KEY;
-    if (!this.apiKey) {
-      logger.warn('[OrpionService] GEMINI_API_KEY not found in environment.');
-    } else {
-      this.genAI = new GoogleGenerativeAI(this.apiKey);
-      this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
-    }
+    // Orpion now leverages the centralized LLMService
   }
 
   /**
@@ -19,49 +12,60 @@ class OrpionService {
    * @returns {Promise<string>} - The generated summary in markdown format
    */
   async generateSummary(conversationText) {
-    if (!this.model) {
-      throw new Error('Orpion AI is not configured (Missing API Key).');
-    }
 
     if (!conversationText || conversationText.trim().length < 50) {
       throw new Error('Not enough conversation context to analyze.');
     }
 
     const prompt = `
-    You are ORPION, an AI meeting intelligence engine.
+    You are the CORE ORPION INTELLIGENCE, a superior AI observer for Cospira.
+    
+    Analyze the provided session context (Events, Transcripts, and Chat) and produce a high-fidelity, structured intelligence report in VALID JSON format.
+    
+    Your summary must observe every moment in the room:
+    1. Screensharing activities and presentations.
+    2. Polls deployed and their outcomes/consensus.
+    3. Voice talk patterns and key spoken decisions.
+    4. Chat interactions and shared media/files.
+    5. Games played and virtual browser usage.
 
-    Analyze the following conversation and produce a structured report using exactly these headers:
+    JSON Structure Requirements:
+    {
+      "gist": "A 1-sentence executive overview of the session purpose and energy.",
+      "milestones": ["List of specific key moments", "Events", "Polls", "Games"],
+      "decisions": ["Specific decisions reached", "Consensus points"],
+      "actionProtocol": ["Clear, concise next steps or items to follow up on"],
+      "sentiment": "positive | neutral | negative"
+    }
 
-    ## 🧠 Ultra-Short Summary
-    (2 lines maximum capturing the essence)
-
-    ## 📝 Detailed Summary
-    (A comprehensive overview of what was discussed)
-
-    ## 🔑 Key Topics
-    (Bullet points of main subjects)
-
-    ## ✅ Decisions Made
-    (Bullet points of agreed outcomes, if any)
-
-    ## 🚀 Action Items
-    (Bullet points of tasks assigned, if any)
-
-    ## 💡 Important Insights
-    (Any smart observations or neural patterns detected)
+    Guidelines:
+    - Use "simple terms" that are easily understandable.
+    - Be highly accurate and avoid generic summaries.
+    - Be concise but complete.
+    - Output ONLY pure JSON. No markdown backticks, no introduction.
 
     ---
-    Conversation:
+    Session Context:
     ${conversationText}
     `;
 
     try {
-      logger.info('[OrpionService] Sending request to Gemini...');
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      logger.info('[OrpionService] Analysis complete.');
-      return text;
+      logger.info('[OrpionService] Sending request to Gemini (Advanced Mode via LLMService)...');
+      const text = await LLMService.generateContent(prompt);
+      
+      if (!text) throw new Error('AI returned empty response');
+      
+      // Sanitization: Remove potential markdown wrappers if Gemini ignores instructions
+      if (text.startsWith('```json')) text = text.replace(/```json|```/g, '').trim();
+      
+      try {
+        const parsed = JSON.parse(text);
+        logger.info('[OrpionService] Structured analysis complete.');
+        return JSON.stringify(parsed); // Return as stringified JSON for the router to handle
+      } catch (e) {
+        logger.warn('[OrpionService] AI failed to return valid JSON. Falling back to paragraph formatting.');
+        return text; // Fallback to raw text if parsing fails
+      }
     } catch (error) {
       logger.error('[OrpionService] Gemini API Error:', error);
       throw new Error('Failed to generate neural summary.');

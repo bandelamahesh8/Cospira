@@ -25,6 +25,7 @@ export interface WebSocketState {
   roomId: string | null;
   roomName: string | null;
   organizationName?: string | null;
+  organizationId?: string | null;
   recentRooms: RoomInfo[];
   users: User[];
   messages: Message[];
@@ -32,6 +33,8 @@ export interface WebSocketState {
   files: FileData[];
   error: string | null;
   isHost: boolean;
+  isSuperHost: boolean;
+  isGhost: boolean;
   localStream: MediaStream | null;
   localScreenStream: MediaStream | null;
   remoteStreams: Map<string, MediaStream>;
@@ -73,6 +76,9 @@ export interface WebSocketState {
   roomStatus: RoomStatus;
   isAiActive: boolean;
   roomCreatedAt: Date | string | null;
+  autoApprove?: boolean;
+  stopJoiningTime?: number;
+  settings?: Record<string, unknown>;
 }
 
 export interface WebSocketContextType extends WebSocketState {
@@ -85,7 +91,8 @@ export interface WebSocketContextType extends WebSocketState {
     password?: string,
     inviteToken?: string,
     onSuccess?: () => void,
-    onError?: (error: string) => void
+    onError?: (error: string) => void,
+    isGhost?: boolean
   ) => void;
   createRoom: (
     roomId: string,
@@ -99,7 +106,7 @@ export interface WebSocketContextType extends WebSocketState {
   leaveRoom: (options?: { keepMedia?: boolean }) => void;
   sendMessage: (content: string) => void;
   uploadFile: (file: File) => Promise<boolean>;
-  disbandRoom: () => void;
+  disbandRoom: (isMainRoom?: boolean) => void;
   endSession: () => void;
   promoteToCoHost: (userId: string) => void;
   demoteFromCoHost: (userId: string) => void;
@@ -109,12 +116,7 @@ export interface WebSocketContextType extends WebSocketState {
   denyUser: (userId: string) => void;
   admitAllWaitingUsers: () => void;
   toggleRoomLock: () => void;
-  updateRoomSettings: (
-    roomName?: string,
-    password?: string,
-    hasWaitingRoom?: boolean,
-    accessType?: 'public' | 'password' | 'invite' | 'organization'
-  ) => void;
+  updateRoomSettings: (settings: Record<string, unknown>) => void;
   getRecentRooms: (callback?: (rooms: unknown[]) => void) => void;
   clearError: () => void;
   toggleAudio: () => void;
@@ -137,6 +139,7 @@ export interface WebSocketContextType extends WebSocketState {
   stopScreenShare: () => void;
   changeVideoDevice: (deviceId: string) => Promise<void>;
   changeAudioDevice: (deviceId: string) => Promise<void>;
+  repairMedia: () => Promise<void>;
   startGame: (
     type:
       | 'xoxo'
@@ -147,7 +150,9 @@ export interface WebSocketContextType extends WebSocketState {
       | 'snakeladder'
       | 'connect4'
       | 'checkers'
-      | 'battleship',
+      | 'battleship'
+      | 'carrom'
+      | 'kart-racing',
     players: string[],
     config?: Record<string, unknown>
   ) => void;
@@ -182,6 +187,9 @@ export interface WebSocketContextType extends WebSocketState {
   verifyRoomPassword: (password: string) => Promise<boolean>;
   toggleAiAssist: () => void;
   startRoomTimer: (duration: number, label: string, type?: TimerType, action?: TimerAction) => void;
+  pauseRoomTimer: () => void;
+  resumeRoomTimer: () => void;
+  stopRoomTimer: () => void;
 }
 
 export const WebSocketContext = createContext<WebSocketContextType | null>(null);

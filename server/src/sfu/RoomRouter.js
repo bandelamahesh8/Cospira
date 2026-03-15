@@ -37,6 +37,8 @@ class RoomRouter {
                 enableUdp: !options.forceTcp,
                 enableTcp: true,
                 preferUdp: !options.forceTcp,
+                // Deep clone listenIps to avoid mutating the global config
+                listenIps: JSON.parse(JSON.stringify(config.mediasoup.webRtcTransport.listenIps))
             };
 
             // Dynamic announcedIp override
@@ -170,6 +172,17 @@ class RoomRouter {
             producer.on('score', (score) => {
                 logger.debug(`[RoomRouter] Producer ${producer.id} score:`, score);
             });
+
+            // Log stats after a few seconds to verify data flow
+            setTimeout(async () => {
+                try {
+                    const stats = await producer.getStats();
+                    const s = stats[0] || {};
+                    logger.info(`[RoomRouter] Producer data flow for ${producer.id} (${kind}): bytesReceived: ${s.bytesReceived || 0}, packetCount: ${s.packetCount || 0}, bitrate: ${s.bitrate || 0}`);
+                } catch (e) {
+                    // Silently ignore stat errors if producer closed
+                }
+            }, 3000);
 
             return { id: producer.id };
         } catch (error) {

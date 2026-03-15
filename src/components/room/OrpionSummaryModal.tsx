@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Lock, BrainCircuit, RefreshCw, AlertTriangle, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { getApiUrl } from '@/utils/url';
 
 interface OrpionSummaryModalProps {
   isOpen: boolean;
@@ -29,7 +30,6 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
   const [isServerOffline, setIsServerOffline] = useState(false);
   const [isCertError, setIsCertError] = useState(false);
 
-  const serverUrl = import.meta.env.VITE_WS_URL || 'http://localhost:3001';
 
   const fetchSummary = useCallback(async () => {
     setIsLoading(true);
@@ -42,7 +42,7 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const res = await fetch(`${serverUrl}/api/rooms/${roomId}/summary`, {
+      const res = await fetch(getApiUrl(`/rooms/${roomId}/summary`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -78,7 +78,7 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
       const isNetworkError = error instanceof TypeError;
 
       // SSL cert errors: TypeError on an https:// URL (not a timeout)
-      const looksLikeCertError = isNetworkError && serverUrl.startsWith('https://') && !isAborted;
+      const looksLikeCertError = isNetworkError && getApiUrl('/').startsWith('https://') && !isAborted;
 
       if (looksLikeCertError) {
         setIsCertError(true);
@@ -97,7 +97,7 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
     } finally {
       setIsLoading(false);
     }
-  }, [roomId, serverUrl]);
+  }, [roomId]);
 
   // Auto-fetch on open (only if no existing data)
   useEffect(() => {
@@ -263,7 +263,7 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
                           </>
                         )}
                         <span className='text-white/25 font-mono text-xs mt-2 block'>
-                          {serverUrl}
+                          {getApiUrl('/')}
                         </span>
                       </p>
                     </div>
@@ -271,7 +271,7 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
                     {isCertError ? (
                       <div className='flex flex-col items-center gap-3 w-full max-w-xs'>
                         <a
-                          href={`${serverUrl}/health`}
+                          href={`${getApiUrl('/health')}`}
                           target='_blank'
                           rel='noopener noreferrer'
                           className='w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/30 transition-colors text-sm font-bold'
@@ -279,7 +279,7 @@ const OrpionSummaryModal: React.FC<OrpionSummaryModalProps> = ({ isOpen, onClose
                           🔗 Open Backend in New Tab to Accept Certificate
                         </a>
                         <p className='text-[10px] text-white/30 text-center'>
-                          Click "Advanced" → "Proceed to {serverUrl.replace('https://', '')}{' '}
+                          Click "Advanced" → "Proceed to {getApiUrl('/').replace('https://', '').replace(/\/$/, '')}{' '}
                           (unsafe)" in your browser, then come back and retry.
                         </p>
                         <Button

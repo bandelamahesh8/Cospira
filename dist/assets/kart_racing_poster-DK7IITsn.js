@@ -1,0 +1,1 @@
+const s="/assets/chess_game_poster_1769337462731-io_-DU1d.png",t="/assets/connect4_poster_1769337496441-dJvcGie6.png",c="/assets/tictactoe_poster_1769337515157-DuEOF2ql.png",e="/assets/kart_racing_poster-DvnLIgmb.png";export{t as a,s as c,e as k,c as t};

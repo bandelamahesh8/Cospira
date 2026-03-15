@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { LiveMap } from '@/components/dashboard/LiveMap';
-import { LiveLogs } from '@/components/dashboard/LiveLogs';
+import { RecentRoomsCard } from '@/components/dashboard/RecentRoomsCard';
 
 import { NeuralInformer } from '@/components/intelligence';
 import { GuestNotification } from '@/components/GuestNotification';
@@ -31,6 +30,7 @@ import {
 import { toast } from 'sonner';
 
 import { encodeRoomId } from '@/utils/roomCode';
+import { normalizeRoomMode } from '@/services/RoomIntelligence';
 
 const Dashboard = () => {
   const { createRoom, isAiActive } = useWebSocket();
@@ -63,6 +63,7 @@ const Dashboard = () => {
     auto_close_minutes: 0,
     smart_room_mode: 'free',
     neural_protocols_enabled: false,
+    require_reapproval_on_rejoin: false,
   });
 
   const handleCreate = async () => {
@@ -94,7 +95,7 @@ const Dashboard = () => {
             navigate(`/dashboard/room/${encodedId}`);
           },
           undefined,
-          { ...advancedSettings, mode }
+          { ...advancedSettings, mode: normalizeRoomMode(mode) }
         );
 
         // Safety timeout to reset state if something goes wrong
@@ -248,7 +249,7 @@ const Dashboard = () => {
               className={`bg-[#0F0F15] border border-white/5 rounded-[24px] h-[80px] w-full flex items-center px-6 relative shadow-[0_0_25px_rgba(139,92,246,0.07)] cursor-pointer group transition-all hover:border-purple-500/30 ${isGlobalOpen ? 'border-purple-500/50 bg-[#0F0F15]' : ''}`}
             >
               <div
-                className={`absolute inset-0 rounded-[24px] bg-gradient-to-r from-indigo-900/20 to-purple-900/20 transition-opacity duration-300 ${isGlobalOpen ? 'opacity-100' : 'opacity-50'}`}
+                className={`absolute inset-0 rounded-[24px] bg-white/[0.03] transition-opacity duration-300 ${isGlobalOpen ? 'opacity-100' : 'opacity-50'}`}
               />
               <div className='w-10 h-10 rounded-xl bg-[#1A1A24] border border-white/5 flex items-center justify-center mr-4 relative z-10'>
                 <Shuffle
@@ -706,51 +707,9 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Live Signals & Global Match */}
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
-          {/* Map Section */}
-          <div className='lg:col-span-2'>
-            <div className='flex items-center justify-between mb-4'>
-              <div className='flex items-center gap-2'>
-                <Zap className='w-4 h-4 text-emerald-500' />
-                <h3 className='text-xs font-black text-white uppercase tracking-widest'>
-                  Live Signals
-                </h3>
-              </div>
-              <div className='flex items-center gap-4'>
-                <div className='flex items-center gap-3'>
-                  <div className='flex items-center gap-1.5'>
-                    <div className='w-1.5 h-1.5 rounded-full bg-emerald-500' />
-                    <span className='text-[9px] font-bold text-zinc-500 uppercase'>Online</span>
-                  </div>
-                  <div className='flex items-center gap-1.5'>
-                    <div className='w-1.5 h-1.5 rounded-full bg-orange-500' />
-                    <span className='text-[9px] font-bold text-zinc-500 uppercase'>Busy</span>
-                  </div>
-                  <div className='flex items-center gap-1.5'>
-                    <div className='w-1.5 h-1.5 rounded-full bg-red-500' />
-                    <span className='text-[9px] font-bold text-zinc-500 uppercase'>Idle</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() =>
-                    toast.success('Terminal Synced', {
-                      description: 'Latest global signals received.',
-                    })
-                  }
-                  className='h-7 px-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-black transition-all flex items-center gap-2'
-                >
-                  <RefreshCw className='w-3 h-3' /> Sync Terminal
-                </button>
-              </div>
-            </div>
-            <LiveMap />
-          </div>
-
-          {/* Live Logs Section */}
-          <div className='h-full'>
-            <LiveLogs />
-          </div>
+        {/* Recent Rooms List */}
+        <div className='mt-8'>
+          <RecentRoomsCard filterType="private" title="Private Rooms" subtitle="Your Private Network Log" />
         </div>
       </div>
     </div>

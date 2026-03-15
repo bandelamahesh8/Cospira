@@ -1,9 +1,9 @@
 import React from 'react';
 import Navbar from '@/components/Navbar';
-import { Sidebar, SidebarContent, SidebarTrigger, SidebarProvider } from '@/components/ui/sidebar';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Sidebar, SidebarBody, SidebarProvider } from '@/components/ui/aceternity-sidebar';
 import { cn } from '@/lib/utils';
 import { Sidebar as AppSidebar } from '@/components/layout/Sidebar';
+import { motion } from 'framer-motion';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -24,35 +24,33 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   className,
   noPadding = false,
 }) => {
-  const isMobile = useIsMobile();
+  const [open, setOpen] = React.useState(false);
 
   return (
-    <SidebarProvider>
+    <SidebarProvider open={open} setOpen={setOpen}>
       <div className='flex h-screen w-full flex-col bg-background overflow-hidden relative'>
         {/* Navbar */}
         {showNavbar && <Navbar isFixed={true} />}
 
         <div className={cn('flex flex-1 overflow-hidden', showNavbar && 'pt-16')}>
           {/* Sidebar */}
-          {showSidebar && !isMobile && (
-            <Sidebar
-              collapsible='icon'
-              className='hidden md:flex border-r border-border mt-16 h-[calc(100vh-4rem)]'
-            >
-              <SidebarContent>
+          {showSidebar && (
+            <Sidebar open={open} setOpen={setOpen}>
+              <SidebarBody className="border-r border-border h-full">
                 <AppSidebar />
-              </SidebarContent>
+              </SidebarBody>
             </Sidebar>
           )}
 
-          {/* Mobile Sidebar Trigger */}
-          {showSidebar && isMobile && (
-            <SidebarTrigger className='absolute left-4 top-20 z-50 md:hidden' />
-          )}
-
           {/* Main Content */}
-          <main className={cn('flex-1 overflow-auto', !noPadding && 'p-1 md:p-1', className)}>
-            {children}
+          <main className={cn('flex-1 overflow-auto min-w-0', !noPadding && 'p-1 md:p-1', className)}>
+            <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="h-full"
+            >
+                {children}
+            </motion.div>
           </main>
         </div>
       </div>

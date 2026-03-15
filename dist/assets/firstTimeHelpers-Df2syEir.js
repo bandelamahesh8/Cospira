@@ -1,0 +1,1 @@
+const t="cospira_firsttime_",n={MANIFEST_CONTENT:`${t}manifest_content`,COMBAT_STATIONS:`${t}combat_stations`,CONTROLS_HINT:`${t}controls_hint`,SHORTCUT_HINT:`${t}shortcut_hint`},o=e=>typeof window>"u"?!0:localStorage.getItem(e)==="true",r=e=>{typeof window>"u"||localStorage.setItem(e,"true")};export{n as F,o as h,r as m};

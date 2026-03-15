@@ -25,7 +25,7 @@ export const MobileFilters = ({ activeCategory, onCategoryChange }: MobileFilter
             {isActive && (
               <motion.div
                 layoutId='activeCategoryBg'
-                className='absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full'
+                className='absolute inset-0 bg-white rounded-full'
                 transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
               />
             )}

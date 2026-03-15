@@ -9,6 +9,7 @@ import {
   Terminal,
   Building2,
   Folder,
+  Bot,
 } from 'lucide-react';
 
 interface Feature {
@@ -60,6 +61,14 @@ const features: Feature[] = [
     date: 'Q3 2026',
     status: 'planned',
     icon: Lock,
+  },
+  {
+    id: '6',
+    title: 'Automated AI Interviews',
+    description: 'Next-generation AI agents capable of conducting dynamic, real-time technical and behavioral interviews.',
+    date: 'Q4 2026',
+    status: 'in-progress',
+    icon: Bot,
   },
 ];
 

@@ -59,6 +59,11 @@ export async function syncCreateRoom(roomData, hostName = null) {
   try {
     const { id, name, hostId, accessType } = roomData;
     
+    // Resolve room type dynamically
+    const roomType = roomData.roomType || roomData.room_type || 
+                     roomData.settings?.roomType || roomData.settings?.room_type || 
+                     'meeting';
+    
     // Ensure the host user exists in Supabase first
     await ensureUserExists(hostId, hostName);
     
@@ -67,7 +72,7 @@ export async function syncCreateRoom(roomData, hostName = null) {
       .insert({
         id: id,
         name: name,
-        room_type: 'meeting',
+        room_type: roomType,
         owner_id: hostId,
         is_private: accessType !== 'public',
         secure_code: roomData.secure_code || null,

@@ -1,6 +1,7 @@
 import logger from '../logger.js';
 import { getRoom, deleteRoom, getActiveRooms } from '../redis.js';
 import eventLogger from './EventLogger.js';
+import { deleteRoomUploads } from '../utils/fileCleanup.js';
 
 class AutoCloseService {
     constructor() {
@@ -39,6 +40,7 @@ class AutoCloseService {
                     // Cleanup
                     await deleteRoom(room.id);
                     await eventLogger.logRoomDeleted(room.id, 'system-autoclose', room.name);
+                    await deleteRoomUploads(room.id);
                 }
             }
         } catch (error) {

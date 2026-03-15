@@ -1,0 +1,717 @@
+PRODUCTION PROMPT — Snake & Ladder Real-Time Multiplayer Integration into Cospira
+Complete Engineering Specification v2.0
+
+ROLE, CONTEXT & NON-NEGOTIABLES
+You are a principal full-stack engineer responsible for integrating a production-grade, real-time multiplayer Snake & Ladder module into the Cospira collaboration platform.
+Cospira already provides:
+
+Room-based sessions with lifecycle management
+WebRTC voice communication
+Real-time chat via WebSocket
+Redis-backed pub/sub infrastructure
+OpenTelemetry tracing pipeline
+JWT-authenticated sessions
+
+The Snake & Ladder module is not a prototype. It must be:
+RequirementDefinition of DoneSecureHost-authoritative, HMAC-signed events, no client-side diceDeterministicFull game session reproducible from event log replayModularImplements GameEngineAdapter; zero changes to Cospira corePerformant60 FPS UI, ≤50ms move latency on LAN, ≤2KB avg event payloadObservableStructured logs, OpenTelemetry spans, Prometheus metrics on every eventScalableStateless engine; horizontal scaling via Redis room registryResilientHost migration, reconnect recovery, turn timer, idempotent events
+Source repository to audit:
+https://github.com/shreya9347/Snake-and-Ladder-game.git
+
+TECH STACK
+LayerTechnologyRuntimeNode.js 20 LTSFrontendReact 18 + TypeScript 5 (strict mode)StylingTailwindCSS v3TransportCospira WebSocket (existing infrastructure)State syncRedis pub/sub (existing Cospira Redis cluster)TestingJest + React Testing Library + Playwright (E2E)ObservabilityOpenTelemetry SDK + Prometheus metricsSecurityHKDF key derivation + HMAC-SHA256 event signing
+
+PHASE 1 — REPOSITORY AUDIT
+Clone and perform full static analysis of the source repository.
+Deliverable: /docs/adr/001-snake-ladder-source-analysis.md
+The ADR must document:
+Board rendering
+
+Identify approach: DOM / Canvas / SVG
+Define migration strategy to React with rationale
+
+Dice generation
+
+Flag Math.random() as cryptographically non-secure
+Propose replacement: crypto.getRandomValues() (browser) or crypto.randomInt() (Node)
+
+Player position model
+
+Identify: ordinal (1–100) vs coordinate-based (row/col)
+Define canonical internal representation
+
+Snake/ladder map validation
+
+Extract complete mapping objects
+Validate: no overlaps, no invalid cells, all entries within 1–100
+
+Turn state machine
+
+Enumerate all states: IDLE → WAITING → ROLLING → MOVING → RESOLVING → WIN
+Identify unreachable or missing transitions
+
+Win detection
+
+Verify overshoot handling: position + dice > 100 must be a no-move
+
+
+PHASE 2 — MODULE STRUCTURE
+/cospira/modules/games/snake-ladder/
+├── engine/
+│   ├── SnakeLadderEngine.ts          # Game lifecycle FSM
+│   ├── BoardStateManager.ts          # Immutable state + delta emitter
+│   ├── DiceEngine.ts                 # CSPRNG dice, verifiable seed
+│   ├── MoveProcessor.ts              # Movement resolution pipeline
+│   └── SnakeLadderRules.ts           # Pure rule evaluation functions
+├── transport/
+│   ├── GameEventSerializer.ts        # Typed WS schema + HMAC signing
+│   └── SequenceTracker.ts            # Gap detection + STATE_SYNC trigger
+├── security/
+│   ├── HmacSigner.ts                 # HKDF key derivation + HMAC-SHA256
+│   └── RoomKeyRegistry.ts            # Per-room secret lifecycle
+├── infra/
+│   ├── RedisRoomRegistry.ts          # Horizontal scaling: room → host mapping
+│   └── HostMigrationManager.ts       # Host failover protocol
+├── observability/
+│   ├── GameMetrics.ts                # Prometheus counters/histograms
+│   ├── GameTracer.ts                 # OpenTelemetry spans
+│   └── GameLogger.ts                 # Structured JSON log schema
+├── errors/
+│   └── GameError.ts                  # Typed error hierarchy
+├── ui/
+│   └── SnakeLadderBoard.tsx          # React + Canvas/SVG renderer
+├── adapters/
+│   └── GameEngineAdapter.ts          # Shared interface — all Cospira games
+├── tests/
+│   ├── unit/
+│   │   ├── engine.spec.ts
+│   │   ├── rules.spec.ts
+│   │   ├── moveProcessor.spec.ts
+│   │   ├── diceEngine.spec.ts
+│   │   └── hmacSigner.spec.ts
+│   ├── integration/
+│   │   ├── fullGame.spec.ts
+│   │   ├── hostMigration.spec.ts
+│   │   └── reconnect.spec.ts
+│   ├── performance/
+│   │   └── renderBenchmark.spec.ts
+│   └── e2e/
+│       └── multiplayerGame.spec.ts   # Playwright
+└── index.ts                          # Public API surface
+Design constraints:
+
+All engine/ modules: pure TypeScript, zero React imports, zero network calls
+All public APIs: strictly typed generics, zero any types
+All engine functions: pure (same input → same output, no side effects)
+BoardStateManager: immutable snapshots via structuredClone or immer
+
+
+PHASE 3 — CANONICAL DATA MODEL
+typescripttype PlayerId = string;
+type HexColor = `#${string}`;
+type ISOTimestamp = number; // Unix ms
+
+type GamePhase = 'WAITING' | 'ACTIVE' | 'COMPLETE';
+
+type MoveOutcome = 'NORMAL' | 'SNAKE' | 'LADDER' | 'WIN' | 'OVERSHOOT' | 'BLOCKED';
+
+interface PlayerState {
+  id: PlayerId;
+  displayName: string;
+  position: number;           // 0 = not yet entered; 1–100 = on board
+  isSpectator: boolean;
+  tokenColor: HexColor;
+  rollHistory: number[];
+  consecutiveSixes: number;   // reset on non-six; cancel turn at 3
+  joinTimestamp: ISOTimestamp;
+  isConnected: boolean;
+  lastActivityAt: ISOTimestamp;
+}
+
+interface BoardConfig {
+  snakes: Record<number, number>;    // head → tail  (head > tail, always)
+  ladders: Record<number, number>;   // base → top   (base < top, always)
+  totalCells: number;                // default: 100
+}
+
+interface GameState {
+  roomId: string;
+  hostId: PlayerId;
+  players: PlayerState[];
+  boardConfig: BoardConfig;
+  currentPlayerId: PlayerId;
+  phase: GamePhase;
+  turnCount: number;
+  winnerId: PlayerId | null;
+  sequenceId: number;               // monotonic event counter
+  createdAt: ISOTimestamp;
+  updatedAt: ISOTimestamp;
+}
+
+interface StateDelta {
+  playerId?: PlayerId;
+  fromPosition?: number;
+  toPosition?: number;
+  outcome?: MoveOutcome;
+  diceValue?: number;
+  nextPlayerId?: PlayerId;
+  winnerId?: PlayerId;
+}
+BoardConfig validation — enforce at construction time:
+typescriptfunction validateBoardConfig(config: BoardConfig): ValidationResult {
+  // 1. All snake heads > tails
+  // 2. All ladder bases < tops
+  // 3. No cell is both a snake head and a ladder base
+  // 4. No cell is both a snake tail and a ladder top
+  // 5. All values strictly within [1, 100]
+  // 6. Cell 1 and cell 100 must not appear as any snake/ladder endpoint
+  // 7. No two snakes share a head cell
+  // 8. No two ladders share a base cell
+}
+```
+
+---
+
+## PHASE 4 — COMPLETE GAME RULES
+
+### Board
+- 10×10 grid, cells numbered 1–100
+- **Boustrophedon layout**: row 1 (bottom) left→right, row 2 right→left, alternating upward
+
+### Objective
+First player to land **exactly** on cell 100 wins.
+
+### Players
+- Minimum: 2 active players
+- Maximum: 4 active players
+- Additional users: auto-assigned as read-only spectators
+
+### Dice
+- Range: 1–6, uniform distribution
+- Source: `crypto.randomInt(1, 7)` (Node) or `crypto.getRandomValues()` (browser)
+- Host generates all dice values — clients never generate dice
+
+### Entry rule
+```
+position === 0 AND diceValue === 6  →  position becomes 1
+position === 0 AND diceValue !== 6  →  no move, turn passes
+```
+
+### Extra turn rule
+```
+diceValue === 6  →  player moves, then rolls again
+                    (subject to triple-six penalty below)
+```
+
+### Triple-six penalty
+```
+consecutiveSixes === 3  →  cancel entire turn
+                           revert position to pre-turn position
+                           reset consecutiveSixes to 0
+                           advance to next player
+```
+
+### Movement rule
+```
+newPosition = currentPosition + diceValue
+```
+
+### Overshoot rule
+```
+newPosition > 100  →  no move
+                      position unchanged
+                      turn advances to next player
+```
+
+### Snake rule
+```
+newPosition ∈ boardConfig.snakes  →  position = snakes[newPosition]
+                                     emit SNAKE_BITE
+```
+
+### Ladder rule
+```
+newPosition ∈ boardConfig.ladders  →  position = ladders[newPosition]
+                                      emit LADDER_CLIMB
+```
+
+### Chain rule
+```
+Only ONE snake or ladder interaction per move.
+Landing on a ladder top that is also a snake head:
+→ NO further interaction.
+→ Player stays at that cell.
+```
+
+### Win condition
+```
+newPosition === 100  →  phase = 'COMPLETE'
+                        winnerId = currentPlayerId
+                        emit GAME_WIN
+```
+
+### Turn order
+```
+Players rotate in joinTimestamp ascending order.
+Spectators are skipped.
+Disconnected players are skipped (after 60s grace period).
+Default snake/ladder map (standard board)
+typescriptconst DEFAULT_SNAKES: Record<number, number> = {
+  17: 7,   27: 1,   33: 18,  54: 34,
+  62: 19,  64: 60,  93: 68,  95: 24,
+  99: 78
+};
+
+const DEFAULT_LADDERS: Record<number, number> = {
+  4: 14,   9: 31,   20: 38,  28: 84,
+  40: 59,  51: 67,  63: 81,  71: 91
+};
+```
+
+---
+
+## PHASE 5 — MOVEMENT RESOLUTION PIPELINE
+
+`MoveProcessor.resolve(state, playerId, diceValue)` executes atomically:
+```
+Step 1   Validate turn ownership
+         → if state.currentPlayerId !== playerId: throw GameError('NOT_YOUR_TURN')
+
+Step 2   Validate diceValue
+         → if diceValue < 1 || diceValue > 6: throw GameError('INVALID_DICE')
+
+Step 3   Check triple-six penalty
+         → if consecutiveSixes === 2 && diceValue === 6:
+              revert position, reset counter, advance turn
+              emit TURN_CANCELLED
+
+Step 4   Entry check
+         → if position === 0 && diceValue !== 6:
+              advance turn, emit TURN_SKIPPED
+
+Step 5   Compute rawPosition = currentPosition + diceValue
+
+Step 6   Overshoot check
+         → if rawPosition > 100: advance turn, emit OVERSHOOT
+
+Step 7   Win check
+         → if rawPosition === 100: emit GAME_WIN, phase = COMPLETE, halt
+
+Step 8   Snake resolution (checked first)
+         → if rawPosition in snakes: position = snakes[rawPosition], emit SNAKE_BITE
+
+Step 9   Ladder resolution (only if step 8 did NOT trigger)
+         → if rawPosition in ladders: position = ladders[rawPosition], emit LADDER_CLIMB
+
+Step 10  Normal move
+         → position = rawPosition, emit MOVE_COMPLETE
+
+Step 11  Extra-turn check
+         → if diceValue === 6: increment consecutiveSixes, do NOT advance turn
+
+Step 12  Advance turn to next active connected player
+
+Step 13  Emit STATE_DELTA with full diff
+Every step is a pure function with typed input/output. Full resolution is reproducible from (GameState, diceValue) with zero side effects.
+
+PHASE 6 — ERROR HIERARCHY
+typescripttype GameErrorCode =
+  | 'NOT_YOUR_TURN'
+  | 'INVALID_DICE'
+  | 'INVALID_STATE_TRANSITION'
+  | 'BOARD_CONFIG_INVALID'
+  | 'PLAYER_NOT_FOUND'
+  | 'ROOM_NOT_FOUND'
+  | 'HOST_ONLY_ACTION'
+  | 'GAME_ALREADY_COMPLETE'
+  | 'SEQUENCE_GAP_DETECTED'
+  | 'HMAC_VERIFICATION_FAILED'
+  | 'DESERIALIZATION_FAILED'
+  | 'TURN_TIMER_EXPIRED'
+  | 'MAX_PLAYERS_REACHED'
+  | 'SPECTATOR_CANNOT_ACT';
+
+interface GameError {
+  code: GameErrorCode;
+  message: string;
+  retryable: boolean;        // true = client may retry; false = fatal
+  context?: Record<string, unknown>;
+  traceId?: string;
+}
+Every thrown GameError must:
+
+Be caught at the transport boundary and serialized into a GAME_ERROR WS event
+Emit an OpenTelemetry span with error: true and the error code as an attribute
+Increment the game_errors_total{code} Prometheus counter
+
+
+PHASE 7 — SECURITY MODEL
+HMAC Event Signing
+typescript// Key derivation — per room, rotated on host migration
+async function deriveRoomKey(masterSecret: string, roomId: string): Promise<CryptoKey> {
+  // HKDF-SHA256: masterSecret → room-scoped key
+  // info = "cospira-game-v1:" + roomId
+}
+
+// Signing — host signs every outbound ROLL_RESULT and GAME_WIN
+async function signEvent(event: GameEvent<unknown>, key: CryptoKey): Promise<string> {
+  // HMAC-SHA256 over: version + roomId + sequenceId + action + JSON(payload)
+}
+
+// Verification — clients verify every host-origin event before applying
+async function verifyEvent(event: GameEvent<unknown>, key: CryptoKey): Promise<boolean> {}
+```
+
+**Key lifecycle:**
+- Derived via HKDF from Cospira's master room secret + `roomId`
+- Rotated on every host migration — new host re-derives and broadcasts `KEY_ROTATED` event
+- Clients that fail HMAC verification must emit `HMAC_VERIFICATION_FAILED` and request `STATE_SYNC`
+
+### Host-Authoritative Flow
+```
+Client A          WebSocket Server         Host Client
+   │                     │                      │
+   │──REQUEST_ROLL───────▶│──────────────────────▶│
+   │                     │            generate dice (CSPRNG)
+   │                     │            run MoveProcessor
+   │                     │            sign ROLL_RESULT (HMAC)
+   │◀──ROLL_RESULT────────│◀─────────────────────│
+   │  verify HMAC         │                      │
+   │  render only         │                      │
+```
+
+Clients **never** compute movement. Clients that attempt to emit `ROLL_RESULT` directly must be rejected at the server transport layer with `HOST_ONLY_ACTION`.
+
+---
+
+## PHASE 8 — HOST MIGRATION PROTOCOL
+```
+Trigger: host WebSocket disconnects (detected by server ping timeout, 5s)
+
+Step 1:  Server marks hostId as disconnected in Redis
+Step 2:  Server selects new host = min(joinTimestamp) among connected, non-spectator players
+Step 3:  Server promotes new host → updates RedisRoomRegistry
+Step 4:  New host derives new room key via HKDF (same masterSecret, new derivation nonce)
+Step 5:  New host broadcasts HOST_MIGRATED event (signed with new key)
+Step 6:  New host broadcasts full GameState snapshot (STATE_SYNC)
+Step 7:  All clients verify new HMAC key, re-anchor sequenceId
+Step 8:  Game resumes from current state — no moves lost
+If no eligible host exists (all players disconnected): room enters PAUSED state, preserved in Redis for 10 minutes. First reconnecting player becomes host and resumes.
+
+PHASE 9 — WEBSOCKET EVENT SCHEMA
+typescriptinterface GameEvent<T extends GameActionPayload> {
+  version: '1.0';
+  type: 'GAME_EVENT';
+  game: 'snake_ladder';
+  roomId: string;
+  senderId: PlayerId;
+  sequenceId: number;           // monotonic, per-room
+  timestamp: ISOTimestamp;
+  action: GameAction;
+  payload: T;
+  hmac?: string;                // required on all host-origin events
+  traceId: string;              // OpenTelemetry trace propagation
+}
+
+type GameAction =
+  | 'REQUEST_ROLL'
+  | 'ROLL_RESULT'
+  | 'SNAKE_BITE'
+  | 'LADDER_CLIMB'
+  | 'OVERSHOOT'
+  | 'TURN_SKIPPED'
+  | 'TURN_CANCELLED'            // triple-six penalty
+  | 'PLAYER_JOINED'
+  | 'PLAYER_LEFT'
+  | 'PLAYER_RECONNECTED'
+  | 'GAME_WIN'
+  | 'GAME_RESET'
+  | 'HOST_MIGRATED'
+  | 'KEY_ROTATED'
+  | 'STATE_SYNC'
+  | 'GAME_ERROR'
+  | 'HMAC_VERIFICATION_FAILED';
+```
+
+**Payload types** must be defined for every `GameAction` with no shared `any` payload bucket.
+
+### Sequence ordering & gap handling
+```
+if sequenceId <= lastApplied          → drop (duplicate)
+if sequenceId === lastApplied + 1     → apply immediately
+if sequenceId > lastApplied + 1       → buffer event, request STATE_SYNC
+if buffered events pending + STATE_SYNC arrives → replay buffer in order
+Idempotency guarantee: Applying the same sequenceId twice must produce identical GameState. All events must be idempotent by design — verified in integration tests.
+
+PHASE 10 — SCALABILITY & INFRASTRUCTURE
+Redis Room Registry
+typescriptinterface RoomRegistryEntry {
+  roomId: string;
+  hostId: PlayerId;
+  hostSocketId: string;
+  playerIds: PlayerId[];
+  phase: GamePhase;
+  sequenceId: number;
+  stateSnapshot: string;         // serialized GameState (compressed)
+  lastUpdatedAt: ISOTimestamp;
+  ttl: number;                   // seconds; refreshed on each event
+}
+Scaling model:
+
+Game engine is fully stateless — any Node.js instance can host any room
+All room state lives in Redis; WebSocket servers are interchangeable
+Pub/sub channel per room: game:events:{roomId}
+Load balancer uses consistent hashing on roomId for sticky WebSocket routing
+Redis TTL of 600s on inactive rooms; extended on every event
+STATE_SYNC requests served directly from Redis snapshot — no engine re-computation
+
+Capacity target: 10,000 simultaneous active rooms on a 3-node Redis cluster + 4 Node.js WebSocket pods.
+
+PHASE 11 — OBSERVABILITY
+Structured Logging (JSON, all fields required)
+typescriptinterface GameLogEntry {
+  timestamp: ISOTimestamp;
+  level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+  service: 'snake-ladder-engine';
+  roomId: string;
+  playerId?: PlayerId;
+  action?: GameAction;
+  sequenceId?: number;
+  durationMs?: number;
+  errorCode?: GameErrorCode;
+  traceId: string;
+  spanId: string;
+  message: string;
+  context?: Record<string, unknown>;
+}
+```
+
+**Log every:** event received, event applied, error thrown, host migration triggered, STATE_SYNC issued, turn timer expiry.
+
+### OpenTelemetry Spans
+
+Every `MoveProcessor.resolve()` call must produce a root span with child spans for each pipeline step:
+```
+snake_ladder.move.resolve        (root)
+  ├── snake_ladder.validate_turn
+  ├── snake_ladder.compute_position
+  ├── snake_ladder.check_snake
+  ├── snake_ladder.check_ladder
+  ├── snake_ladder.advance_turn
+  └── snake_ladder.emit_events
+```
+
+Span attributes must include: `roomId`, `playerId`, `diceValue`, `fromPosition`, `toPosition`, `outcome`.
+
+### Prometheus Metrics
+```
+# Counters
+game_events_total{action, room_id}
+game_errors_total{code}
+host_migrations_total
+turn_timers_expired_total
+state_syncs_total
+
+# Histograms
+game_move_latency_ms{outcome}       # buckets: 1,5,10,25,50,100,250
+game_duration_seconds               # buckets: 60,120,300,600,1200
+websocket_payload_bytes             # buckets: 256,512,1024,2048
+
+# Gauges
+active_rooms_total
+active_players_total
+spectators_total
+redis_room_registry_size
+```
+
+---
+
+## PHASE 12 — RENDERER SPECIFICATION
+
+### `SnakeLadderBoard.tsx`
+
+**Board:**
+- 10×10 CSS Grid, boustrophedon cell numbering
+- Static layer: grid lines, snake Bézier curves, ladder rope visuals — rendered once to `<canvas>` or static SVG
+- Dynamic layer: player tokens only — re-rendered on state delta
+
+**Snakes:** Cubic Bézier `<path>` from head center to tail center, 4px stroke, red-to-amber gradient
+
+**Ladders:** Two parallel `<line>` elements (rope sides) + crossbar `<line>` elements every 20px, green, from base to top
+
+**Tokens:** SVG `<circle>` with player `tokenColor` fill, 2-letter initials centered, subtle ring on current player's turn
+
+**Animations (all wrapped in `prefers-reduced-motion` check):**
+
+| Event | Duration | Easing | Fallback |
+|---|---|---|---|
+| Cell-by-cell move | 120ms per cell | `ease-out` | Instant snap |
+| Snake slide | 600ms | `ease-in` along Bézier | Instant snap |
+| Ladder climb | 500ms | `linear` along path | Instant snap |
+| Dice flip | 800ms CSS 3D rotation | `ease-in-out` | Instant value |
+
+**Performance:**
+- Static board layer rendered once on mount; never re-rendered
+- Dynamic token layer uses `requestAnimationFrame` for step-by-step movement
+- `React.memo` on board; `useMemo` for snake/ladder path computations
+- Target: zero layout reflow during animation ticks
+- Benchmark gate: 1,000 token re-renders < 100ms total
+
+---
+
+## PHASE 13 — COSPIRA ROOM INTEGRATION
+
+**Entry:** `Room → Activities → Games → Snake & Ladder`
+
+**Layout on game start:**
+```
+┌──────────────────────────────────────────────────┐
+│  Voice (20%)  │  Game Board (60%)  │  Chat (20%) │
+└──────────────────────────────────────────────────┘
+Voice remains active. Chat moves to side panel. Board occupies center.
+Player lifecycle:
+
+First 2–4 joined non-spectator users become active players
+All others: spectators (read-only GameState, cannot emit REQUEST_ROLL)
+On disconnect: 60s grace window; then auto-skip on each turn; removed after 5 consecutive skips
+On reconnect within grace: full STATE_SYNC pushed, player re-enters active rotation
+
+Deep-link: cospira.app/room/:roomId?game=snake_ladder
+
+Auto-joins active game session if one exists
+Auto-assigns as spectator if player count is at maximum
+
+
+PHASE 14 — GameEngineAdapter INTERFACE
+All current and future Cospira games must implement this interface. Zero modifications to Cospira core are permitted when adding a new game.
+typescriptinterface StateTransitionResult<S extends BaseGameState> {
+  nextState: S;
+  delta: Partial<S>;
+  sideEffects: SideEffect[];
+  error?: GameError;
+}
+
+interface GameEngineAdapter
+  S extends BaseGameState,
+  E extends GameEvent<GameActionPayload>
+> {
+  readonly gameId: string;
+  readonly displayName: string;
+  readonly minPlayers: number;
+  readonly maxPlayers: number;
+  readonly version: string;
+
+  initialize(roomId: string, playerIds: PlayerId[], config?: unknown): S;
+  processEvent(state: S, event: E): StateTransitionResult<S>;
+  serialize(state: S): string;
+  deserialize(raw: string): S;
+  getValidActions(state: S, playerId: PlayerId): GameAction[];
+  isTerminal(state: S): boolean;
+  validateConfig(config: unknown): ValidationResult;
+  getDefaultConfig(): unknown;
+}
+Future games registering under this interface: Ludo, Connect4, Chess, UNO.
+
+PHASE 15 — TEST REQUIREMENTS
+Coverage thresholds (enforced in CI — build fails if not met)
+ModuleLineBranchFunctionengine/100%100%100%transport/95%90%100%security/100%100%100%infra/85%80%90%ui/80%75%85%
+Unit tests
+MoveProcessor — must cover every pipeline branch:
+
+Normal move
+Entry blocked (non-six on position 0)
+Entry granted (six on position 0)
+Snake resolution
+Ladder resolution
+Overshoot (no move)
+Exact win (position === 100)
+Wrong-turn rejection
+Triple-six cancellation
+Chain rule (ladder top = snake head → no further interaction)
+
+SnakeLadderRules — board config validation:
+
+Snake head < tail (should fail)
+Ladder base > top (should fail)
+Cell appears as both snake head and ladder base (should fail)
+Cell 100 as snake head (should fail)
+Cell 1 as ladder base (should fail)
+Valid config (should pass)
+
+DiceEngine — statistical uniformity:
+
+100,000 samples; chi-squared test; p-value must be > 0.05
+Distribution must be within 2% of uniform (16.67% per face)
+Verify no Math.random() usage at import time (AST lint rule)
+
+HmacSigner:
+
+Sign + verify round-trip succeeds
+Tampered payload fails verification
+Different room key fails verification
+Key rotation produces new valid key
+
+Integration tests
+Full game simulation:
+
+2-player game from WAITING → WIN using mocked WebSocket
+Verify all events emitted in correct sequence with monotonic sequenceId
+Replay full event log and verify identical final GameState
+
+Host migration:
+
+Simulate host disconnect at: WAITING, first turn, mid-game, final turn
+Verify new host correctly promoted, state preserved, key rotated
+Verify all clients re-anchor to new sequence baseline
+
+Reconnect recovery:
+
+Player disconnects for 30s, reconnects
+Verify STATE_SYNC pushed on reconnect
+Verify player re-enters active rotation on next turn
+
+Idempotency:
+
+Apply same event twice; verify GameState is identical after both applications
+
+Performance tests
+
+1,000 board re-renders < 100ms total (Jest + performance.now())
+MoveProcessor.resolve() < 1ms per call on 10,000 iterations
+WebSocket event serialization/deserialization < 0.5ms per event
+
+E2E tests (Playwright)
+
+Full 2-player game in headless Chromium
+Verify animations complete without dropped frames (≥ 55 FPS via Performance API)
+Verify spectator sees correct board state in real time
+Verify deep-link join assigns spectator role when game is full
+
+
+PHASE 16 — CI/CD CONTRACT
+yaml# Required pipeline gates (all must pass before merge)
+
+lint:
+  - ESLint strict (no warnings allowed)
+  - TypeScript strict mode (no implicit any, no unchecked index access)
+  - AST rule: no Math.random() in engine/ or security/
+
+test:
+  - Unit tests (all coverage thresholds met)
+  - Integration tests (all scenarios pass)
+  - Performance benchmarks (all under budget)
+
+build:
+  - tsc --noEmit (zero type errors)
+  - Bundle size: engine/ < 50KB gzipped, ui/ < 120KB gzipped
+
+e2e:
+  - Playwright suite on staging environment
+  - All multiplayer scenarios pass
+
+deploy:
+  - Feature flag: SNAKE_LADDER_ENABLED (default: false in production)
+  - Gradual rollout: 1% → 10% → 50% → 100% over 72 hours
+  - Rollback trigger: game_errors_total rate > 0.1% over 5-minute window
+
+DELIVERABLES CHECKLIST
+#DeliverableOwnerGate1adr/001-source-analysis.mdArchPR review2All engine/ modules with 100% coverageBackendCI3transport/GameEventSerializer + SequenceTrackerBackendCI4security/HmacSigner + RoomKeyRegistrySecurityCI5infra/RedisRoomRegistry + HostMigrationManagerBackendCI6observability/ (metrics + tracer + logger)BackendCI7errors/GameError full hierarchyBackendCI8SnakeLadderBoard.tsx with full animation pipelineFrontendCI + E2E9GameEngineAdapter interface + snake-ladder implArchCI10Room layout integration + deep-link supportFrontendE2E11Full unit + integration + perf + E2E test suitesQACI12Prometheus dashboard (Grafana) + alert rulesDevOpsStaging13Storybook stories for all board states + edge casesFrontendPR review14Feature flag + gradual rollout configDevOpsDeploy15Load test report: 10,000 rooms on staging clusterQAStaging

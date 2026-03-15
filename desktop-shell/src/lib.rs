@@ -28,6 +28,15 @@ fn set_tray_status(app_handle: tauri::AppHandle, status: String) {
 }
 
 #[tauri::command]
+fn set_window_protection(window: tauri::Window, protected: bool) {
+    println!("Frontend requested window protection: {}", protected);
+    match window.set_content_protection(protected) {
+        Ok(_) => println!("Successfully set window protection to: {}", protected),
+        Err(e) => eprintln!("FAILED to set window protection: {:?}", e),
+    }
+}
+
+#[tauri::command]
 fn show_notification(app_handle: tauri::AppHandle, title: String, body: String) {
     use tauri_plugin_notification::NotificationExt;
     app_handle.notification()
@@ -44,7 +53,7 @@ pub fn run() {
     .plugin(tauri_plugin_log::Builder::default().build())
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_shell::init())
-    .invoke_handler(tauri::generate_handler![set_tray_status, show_notification])
+    .invoke_handler(tauri::generate_handler![set_tray_status, show_notification, set_window_protection])
     .setup(|app| {
 
 

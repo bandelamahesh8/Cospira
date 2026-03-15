@@ -143,4 +143,47 @@ export default function registerMediaHandlers(io, socket, sfuHandler) {
     }
     io.to(rid).emit('browser-closed');
   });
+
+  socket.on('present-file', async ({ roomId, fileData, presenterName }) => {
+    const rid = sanitizeRoomId(roomId);
+    if (!rid) return;
+    
+    logger.info(`[Presentation] User ${socket.id} started presenting file ${fileData?.name} in room ${rid}`);
+
+    // Persist in Room object for late joiners
+    const room = await getRoom(rid);
+    if (room) {
+      room.presentedFile = fileData;
+      room.isPresentingFile = true;
+      room.presenterName = presenterName;
+      await saveRoom(room);
+    }
+    
+    // Broadcast to EVERYONE in the room
+    io.to(rid).emit('file-presented', { fileData, presenterName });
+    
+    eventLogger.logRoomEvent(rid, socket.user?.id || socket.id, 'present_file', { 
+        fileName: fileData?.name, 
+        fileType: fileData?.type 
+    });
+  });
+
+  socket.on('stop-presentation', async ({ roomId }) => {
+    const rid = sanitizeRoomId(roomId);
+    if (!rid) return;
+
+    logger.info(`[Presentation] User ${socket.id} stopped presentation in room ${rid}`);
+
+    // Persist in Room object
+    const room = await getRoom(rid);
+    if (room) {
+      room.presentedFile = null;
+      room.isPresentingFile = false;
+      room.presenterName = null;
+      await saveRoom(room);
+    }
+
+    io.to(rid).emit('presentation-closed');
+    eventLogger.logRoomEvent(rid, socket.user?.id || socket.id, 'stop_presentation');
+  });
 }

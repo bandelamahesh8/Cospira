@@ -24,10 +24,10 @@ import { GAME_MIN_ROOM_MEMBERS, getMaxOpponentSlots, type GameId } from './gameC
 
 // Import game posters
 import chessP from '@/assets/chess_game_poster_1769337462731.png';
-import ludoP from '@/assets/ludo_game_poster_1769337480481.png';
+import ludoP from '@/assets/ludo_game_poster_1769337480481-D3yFmrZ9.png';
 import connect4P from '@/assets/connect4_poster_1769337496441.png';
 import tictactoeP from '@/assets/tictactoe_poster_1769337515157.png';
-import battleshipP from '@/assets/battleship_poster_1769337532384.png';
+import kartP from '@/assets/kart_racing_poster.png';
 
 export const GameHubModal = ({
   open,
@@ -138,16 +138,16 @@ export const GameHubModal = ({
       tags: ['Classic', 'Board'],
     },
     {
-      id: 'battleship',
-      name: 'Battleship',
-      desc: 'Naval warfare strategy',
-      category: 'Strategy',
+      id: 'kart-racing',
+      name: 'Kart Racing',
+      desc: 'High-speed multiplayer racing action',
+      category: 'Arcade',
       available: true,
-      color: '#06B6D4',
-      featured: false,
-      players: 189,
-      poster: battleshipP,
-      tags: ['Tactical', 'War'],
+      color: '#f43f5e',
+      featured: true,
+      players: 2451,
+      poster: kartP,
+      tags: ['Multiplayer', 'Racing'],
     },
   ];
 

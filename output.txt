@@ -1,0 +1,55 @@
+Γ£à Environment variables loaded from SECURITY/.env
+[32minfo[39m: Γ£à Supabase client initialized successfully {"service":"cospira-server","timestamp":"2026-03-14T04:47:33.739Z"}
+[32minfo[39m: [LLMService] Primary Gemini models (2.0/1.5) initialized. {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.207Z"}
+[32minfo[39m: [LLMService] Secondary fallback Gemini models initialized. {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.207Z"}
+[32minfo[39m: [MailService] SMTP Configured. Emails will be sent via smtp.gmail.com {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.237Z"}
+[32minfo[39m: [Supabase] Checking storage buckets... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.249Z"}
+[32minfo[39m: Starting HTTPS server (development mode) {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.259Z"}
+[32minfo[39m: [Config] Using port: 3001 {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.259Z"}
+Redis disabled (USE_REDIS!=true), using in-memory storage
+[32minfo[39m: [MediasoupWorker] Initializing with 4 workers (cpuCount=16) {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.281Z"}
+[32minfo[39m: [MediasoupWorker] Creating worker 1/4... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.282Z"}
+[32minfo[39m: [AIOS] Initializing COSPIRA AI OS v5.0.0-PROD... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.287Z"}
+[32minfo[39m: [AIOS] Booting AI Kernel... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.288Z"}
+[32minfo[39m: [AIKernel] Initializing Cospira AI OS Kernel v1.0.0-kernel... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.288Z"}
+[32minfo[39m: [AIKernel] Kernel fully operational. {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [AIOS] Initializing Platform Manager... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [AIOS] Igniting Agent Swarm... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [AIOS] Calibrating Feedback Loops... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [AIOS] Mounting Neural Marketplace... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [AIOS] Engaging Autonomous Directives... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [AIOS] System Stable. Uptime: 0s {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [AgentManager] Registered: Neural Observer {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [AgentManager] Registered: Deep Analyzer {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [AgentManager] Registered: Risk Predictor {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [Agent:Neural Observer] Initialized {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.289Z"}
+[32minfo[39m: [BreakoutAIIngest] Initialized {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.290Z"}
+[32minfo[39m: [EventLogger] Initialized with Socket.IO instance {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.290Z"}
+[32minfo[39m: [AutoClose] Service started {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.290Z"}
+[32minfo[39m: [Agent:Deep Analyzer] Initialized {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.300Z"}
+[32minfo[39m: [Agent:Risk Predictor] Initialized {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.301Z"}
+[32minfo[39m: [AgentManager] All agents online {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.301Z"}
+(node:1584) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[32minfo[39m: Γ£à FFmpeg detected in system PATH. {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.343Z"}
+[32minfo[39m: [MediasoupWorker] Worker created [pid:%d] {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.360Z"}
+[32minfo[39m: [MediasoupWorker] Creating worker 2/4... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.360Z"}
+[32minfo[39m: [MediasoupWorker] Worker created [pid:%d] {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.421Z"}
+[32minfo[39m: [MediasoupWorker] Creating worker 3/4... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.421Z"}
+[32minfo[39m: [MediasoupWorker] Worker created [pid:%d] {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.476Z"}
+[32minfo[39m: [MediasoupWorker] Creating worker 4/4... {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.476Z"}
+[32minfo[39m: [MediasoupWorker] Worker created [pid:%d] {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.531Z"}
+[32minfo[39m: [MediasoupWorker] Initialization complete. Total workers: 4 {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.531Z"}
+[32minfo[39m: [AIService] Initialized {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.531Z"}
+[32minfo[39m: [AIService] Gemini API Key detected. AI features enabled. {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.532Z"}
+[32minfo[39m: [SFU] Initialized successfully {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.532Z"}
+[32minfo[39m: SFU Handler initialized {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.532Z"}
+[32minfo[39m: Γ£à Supabase storage bucket "cospira-media" is ready. {"service":"cospira-server","timestamp":"2026-03-14T04:47:34.607Z"}
+[32minfo[39m: Connected to MongoDB {"service":"cospira-server","timestamp":"2026-03-14T04:47:35.056Z"}
+[31merror[39m: Uncaught Exception: listen EADDRINUSE: address already in use :::3001 {"service":"cospira-server","timestamp":"2026-03-14T04:47:35.059Z"}
+[31merror[39m: Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at startServer (file:///C:/Users/mahes/Downloads/PROJECTS/COSPIRA_PROJECT/COSPIRA_MAIN/server/src/index.js:1193:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {"service":"cospira-server","timestamp":"2026-03-14T04:47:35.059Z"}

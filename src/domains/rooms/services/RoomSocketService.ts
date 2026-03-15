@@ -39,8 +39,10 @@ export class RoomSocketService {
     this.signaling.emit('leave-room', { roomId });
   }
 
-  public disbandRoom(roomId: string): void {
-    this.signaling.emit('disband-room', { roomId });
+  public disbandRoom(roomId: string, callback?: (response: SocketResponse) => void): void {
+    this.signaling.emit('disband-room', { roomId }, (response: SocketResponse) => {
+      callback?.(response);
+    });
   }
 
   public kickUser(roomId: string, userId: string): void {
@@ -48,7 +50,7 @@ export class RoomSocketService {
   }
 
   public updateSettings(roomId: string, settings: Record<string, unknown>): void {
-    this.signaling.emit('update-room-settings', { roomId, settings });
+    this.signaling.emit('update-room-settings', { roomId, ...settings });
   }
 
   public admitUser(roomId: string, userId: string): void {
@@ -59,8 +61,8 @@ export class RoomSocketService {
     this.signaling.emit('deny-user', { roomId, userId });
   }
 
-  public toggleLock(roomId: string): void {
-    this.signaling.emit('toggle-room-lock', { roomId });
+  public toggleLock(roomId: string, locked: boolean): void {
+    this.signaling.emit('toggle-room-lock', { roomId, locked });
   }
 
   public promoteToCohost(roomId: string, userId: string): void {

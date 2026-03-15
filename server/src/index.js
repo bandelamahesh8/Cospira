@@ -1,3 +1,4 @@
+import './env.js'; // Triggering restart for HTTPS
 import express from 'express';
 import http from 'http';
 import https from 'https';
@@ -10,7 +11,7 @@ import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-export { app, server, io };
+
 import jwt from 'jsonwebtoken';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -21,13 +22,40 @@ import { initRedis, getRoom, saveRoom, deleteRoom, getActiveRooms, hasRoom, getU
 import SFUHandler from './sfu/SFUHandler.js';
 import crypto from 'crypto';
 import { cleanupUploads } from './cleanup.js';
-import LudoEngine from './game/LudoEngine.js';
+import { deleteRoomUploads } from './utils/fileCleanup.js';
 import SnakeLadderEngine from './game/SnakeLadderEngine.js';
 import registerSocketHandlers from './sockets/index.js';
 import autoCloseService from './services/AutoCloseService.js';
 import { Chess } from 'chess.js';
 import connectMongoDB from './mongo.js';
 import { supabase } from './supabase.js';
+
+// Initialize Supabase Storage Bucket
+// Triggering manifest...
+if (supabase) {
+  logger.info('[Supabase] Checking storage buckets...');
+  supabase.storage.listBuckets().then(({ data: buckets, error }) => {
+    if (error) {
+      logger.error('[Supabase] Failed to list buckets:', error);
+      return;
+    }
+    
+    if (buckets && !buckets.find(b => b.id === 'cospira-media')) {
+      logger.info('[Supabase] "cospira-media" bucket not found. Attempting creation...');
+      supabase.storage.createBucket('cospira-media', {
+        public: true
+      }).then(({ data, error: createError }) => {
+        if (createError) {
+          logger.error('[Supabase] Bucket creation failed:', createError);
+        } else {
+          logger.info('✅ Supabase storage bucket "cospira-media" successfully initialized.');
+        }
+      });
+    } else {
+      logger.info('✅ Supabase storage bucket "cospira-media" is ready.');
+    }
+  }).catch(err => logger.warn('[Supabase] Bucket initialization exception:', err.message));
+}
 import roomRoutes from './routes/rooms.js';
 import authRoutes from './routes/auth.js';
 import aiMemoryRoutes from './routes/aiMemory.js';
@@ -56,36 +84,91 @@ import predictorAgent from './services/ai/agents/PredictorAgent.js';
 import consensusService from './services/ai/ConsensusService.js';
 import friendsRoutes from './routes/friends.js';
 import tournamentRoutes from './routes/tournaments.js';
+import gameRoutes from './routes/game.js';
+import httpProxy from 'http-proxy';
+
+const proxy = httpProxy.createProxyServer({
+  target: 'http://127.0.0.1:8080',
+  ws: true,
+  changeOrigin: true,
+  secure: false,
+  xfwd: true
+});
+
+proxy.on('error', (err, req, res) => {
+  if (res.writeHead) {
+    res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Sector UI Offline: Vite Dev Server not reachable on port 8080' }));
+  }
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from project root (two levels up from server/src)
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+const securityDir = 'C:\\Users\\mahes\\Downloads\\PROJECTS\\COSPIRA_PROJECT\\SECURITY';
 
-// connectMongoDB(); // Moved to startServer to ensure connection before listening
 
 const app = express();
-app.set('trust proxy', 1); // Enable proxy trust for rate limiting behind load balancers/proxies
+app.set('trust proxy', 1);
 
+const isProd = process.env.NODE_ENV === 'production';
+
+// 1. GLOBAL CORS HANDLER (V3 - Ultra Robust)
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Private-Network", "true");
+  // RAW LOG FOR ULTIMATE DEBUGGING
+  console.log(`[HTTP] ${req.method} ${req.url} from ${req.headers.origin || 'no-origin'}`);
+  
+  const origin = req.headers.origin;
+  
+  // Set basic CORS headers for all requests immediately
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,Content-Type,Authorization,X-Admin-Key,ngrok-skip-browser-warning,x-requested-with');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length,X-JSON,ngrok-skip-browser-warning');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
   next();
 });
 
-// Basic request logger
+// IMMEDIATE ICE SERVER ROUTE
+app.get('/api/ice-servers', (req, res) => {
+  console.log('[ICE] Serving ICE servers request');
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' }
+  ];
+  
+  // Add TURN if available
+  if (process.env.TURN_URL) {
+    iceServers.push({
+      urls: process.env.TURN_URL,
+      username: process.env.TURN_USERNAME,
+      credential: process.env.TURN_PASSWORD || process.env.TURN_SECRET
+    });
+  }
+
+  res.json({ iceServers });
+});
+
 app.use((req, res, next) => {
   logger.info(`[API Request] ${req.method} ${req.url}`);
   next();
 });
 
 
-const isProd = process.env.NODE_ENV === 'production';
 
 let server;
-const keyPath = path.resolve(__dirname, '../../localhost+3-key.pem');
-const certPath = path.resolve(__dirname, '../../localhost+3.pem');
+const keyPath = path.join(securityDir, 'localhost+3-key.pem');
+const certPath = path.join(securityDir, 'localhost+3.pem');
 
 // Only force HTTP if explicitly told to — certs are used whenever they exist
 const forceHttp = process.env.FORCE_HTTP === 'true';
@@ -112,15 +195,26 @@ logger.info(`[Config] Using port: ${port}`);
 
 // FFmpeg Check (Prevent silent crashes later)
 import { exec } from 'child_process';
-exec('ffmpeg -version', (error) => {
-    if (error) {
-        logger.error('CRITICAL: FFmpeg is not installed or not in system PATH.');
-        logger.error('Audio transcription will fail. Please install FFmpeg and RESTART your terminal/VS Code.');
-        // We do NOT exit here to allow the server to run sans-AI, but it's a critical warning.
-    } else {
-        logger.info('✅ FFmpeg is installed and available.');
-    }
-});
+import ffmpegPath from '@ffmpeg-installer/ffmpeg';
+
+const checkFFmpeg = () => {
+    exec('ffmpeg -version', (error) => {
+        if (error) {
+            // Check installer path if global fails
+            exec(`"${ffmpegPath.path}" -version`, (err2) => {
+                if (err2) {
+                    logger.error('CRITICAL: FFmpeg is not installed globally or locally.');
+                    logger.error('Audio transcription features will be disabled.');
+                } else {
+                    logger.info('✅ FFmpeg detected via @ffmpeg-installer/ffmpeg.');
+                }
+            });
+        } else {
+            logger.info('✅ FFmpeg detected in system PATH.');
+        }
+    });
+};
+checkFFmpeg();
 
 
 // Prometheus Metrics
@@ -145,58 +239,7 @@ const sfuWorkersGauge = new client.Gauge({
 });
 register.registerMetric(sfuWorkersGauge);
 
-// Enable CORS for all routes
-app.use(cors({
-  origin: (origin, callback) => {
-    const isProd = process.env.NODE_ENV === 'production';
-    const prodDomain = process.env.PROD_DOMAIN;
-
-    // In production, strictly allow only the production domain
-    if (isProd) {
-        if (!prodDomain) {
-            logger.error('PROD_DOMAIN not set in production. Blocking CORS.');
-            return callback(new Error('CORS config error'));
-        }
-        if (origin === prodDomain) {
-            return callback(null, true);
-        }
-        logger.warn(`Blocked by CORS (Express - Prod): ${origin}`);
-        return callback(new Error('Not allowed by CORS'));
-    }
-
-    // Development/Local logic
-    const allowedOrigins = [
-        process.env.CLIENT_URL || 'http://localhost:8080', 
-        'http://localhost:3000',
-        'http://localhost:5173'
-    ];
-    
-    const isLocal = origin && (
-        origin.startsWith('http://localhost') || origin.startsWith('https://localhost') ||
-        origin.startsWith('http://127.0.0.1') || origin.startsWith('https://127.0.0.1') ||
-        origin.startsWith('http://10.') || origin.startsWith('https://10.') ||
-        origin.startsWith('http://192.') || origin.startsWith('https://192.') ||
-        origin.startsWith('http://172.') || origin.startsWith('https://172.') ||
-        origin.includes('.devtunnels.ms') || // Allow VS Code dev tunnels
-        origin.includes('.exp.direct') || // Allow Expo tunnels
-        origin.includes('.exp.host') ||
-        origin.includes('.expo.test')
-    );
-    
-    // Always allow in dev/test mode for valid localhost origins
-    if (isLocal || allowedOrigins.includes(origin) || !origin) {
-      callback(null, true);
-    } else {
-      logger.warn(`Blocked by CORS (Express): ${origin}`); 
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
-
-
-
-// Security Headers (CSP allows inline scripts for Vite/React in dev; tighten in prod)
+// Rate Limiting
 app.use(helmet({
   contentSecurityPolicy: isProd ? {
     directives: {
@@ -215,9 +258,9 @@ app.use(helmet({
   noSniff: true,
   xssFilter: true,
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginEmbedderPolicy: false,
 }));
-
-// Rate Limiting
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000, // Limit each IP to 1000 requests per windowMs
@@ -267,7 +310,8 @@ app.use(session({
 // File upload configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads');
+    const roomId = (req.query.roomId || 'global').replace(/[^a-zA-Z0-9-_]/g, '');
+    const uploadDir = path.join(__dirname, '../uploads', roomId);
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -286,13 +330,16 @@ const ALLOWED_MIME_TYPES = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'video/mp4', 'video/webm', 'video/ogg'
 ];
 
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 100 * 1024 * 1024, // 100MB limit
     files: 1 // Max 1 file per request
   },
   fileFilter: (req, file, cb) => {
@@ -328,6 +375,7 @@ const MAX_SOCKET_CONNECTIONS = 60; // 60 handshakes per minute per IP
 // Create Socket.IO server
 const io = new Server(server, {
   path: '/socket.io',
+  maxHttpBufferSize: 50e6, // 50MB
   cors: {
     origin: (origin, callback) => {
         const isProd = process.env.NODE_ENV === 'production';
@@ -353,7 +401,9 @@ const io = new Server(server, {
             origin.startsWith('http://10.') || origin.startsWith('https://10.') ||
             origin.startsWith('http://192.') || origin.startsWith('https://192.') ||
             origin.startsWith('http://172.') || origin.startsWith('https://172.') ||
-            origin.includes('.devtunnels.ms') // Allow VS Code dev tunnels
+            origin.includes('.devtunnels.ms') || // Allow VS Code dev tunnels
+            origin.includes('.ngrok-free.dev') ||
+            origin.includes('.ngrok.io')
         );
 
       if (isLocal || allowedOrigins.includes(origin) || !origin) {
@@ -367,12 +417,15 @@ const io = new Server(server, {
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
   },
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'], // Prioritize polling for tunnel compatibility
   allowEIO3: true,
   pingTimeout: 60000,
   pingInterval: 25000,
   maxHttpBufferSize: 1e8, // 100MB for file uploads
 });
+
+export { app, server, io };
+
 
 // Redis Adapter for Horizontal Scaling
 import { createAdapter } from '@socket.io/redis-adapter';
@@ -424,9 +477,15 @@ initRedis();
 // Server Cleanup Service: Purge inactive/junk rooms periodically
 setInterval(async () => {
     try {
-        const removed = await removeInactiveRooms();
-        if (removed > 0) {
-            logger.info(`[Cleanup] System purged ${removed} inactive/junk rooms to maintain sector integrity.`);
+        const removedIds = await removeInactiveRooms();
+        if (removedIds.length > 0) {
+            logger.info(`[Cleanup] System purged ${removedIds.length} inactive/junk rooms to maintain sector integrity.`);
+            
+            // Clean up assets for each removed room
+            for (const rid of removedIds) {
+                await deleteRoomUploads(rid);
+            }
+            
             io.emit('admin:stats-update');
         }
     } catch (err) {
@@ -469,6 +528,7 @@ app.use('/api/ai/plugins', aiPluginsRoutes);
 app.use('/api/ai/autonomous', aiAutonomousRoutes);
 app.use('/api/ai/os', aiOSRoutes);
 app.use('/api/friends', friendsRoutes);
+app.use('/api/game', gameRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 
 // AI System Bootstrap
@@ -487,7 +547,7 @@ app.get('/socket.io-health', (req, res) => {
   res.json({ 
     status: 'ok',
     socketIoPath: '/socket.io',
-    transports: ['websocket', 'polling']
+    transports: ['polling', 'websocket']
   });
 });
 
@@ -593,16 +653,6 @@ app.get('/api/room-info/:code', async (req, res) => {
   });
 });
 
-// Get ICE Servers
-app.get('/api/ice-servers', (req, res) => {
-  // In production, you might fetch these from Twilio or another provider
-  const iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-  ];
-  res.json({ iceServers });
-});
-
 // AI Sync Endpoint (Stub)
 app.post('/api/ai/sync', (req, res) => {
     res.json({ summaries: [], analysis: [] });
@@ -620,29 +670,103 @@ app.get('/metrics', async (req, res) => {
   res.end(await register.metrics());
 });
 
-// File upload endpoint
-app.post('/upload', upload.single('file'), (req, res) => {
+// File upload endpoint (Migrated to Supabase Storage for better external viewer compatibility)
+app.post('/upload', upload.single('file'), async (req, res) => {
+  logger.info(`[Upload] POST /upload received for room: ${req.query.roomId || 'global'} file: ${req.file?.originalname}`);
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const fileUrl = `${process.env.SERVER_URL || 'http://localhost:3001'}/uploads/${req.file.filename}`;
+    const roomId = (req.query.roomId || 'global').replace(/[^a-zA-Z0-9-_]/g, '');
+    
+    // 1. Prepare Supabase Path
+    const fileName = `${roomId}/${Date.now()}-${req.file.originalname.replace(/\s+/g, '_')}`;
+    const fileBuffer = fs.readFileSync(req.file.path);
+
+    // 2. Upload to 'cospira-media' bucket
+    const { data, error } = await supabase.storage
+      .from('cospira-media')
+      .upload(fileName, fileBuffer, {
+        contentType: req.file.mimetype,
+        upsert: true
+      });
+
+    if (error) {
+      logger.error('Supabase Storage Error:', error);
+      return res.status(500).json({ error: 'Failed to manifest asset in cloud storage' });
+    }
+
+    // 3. Get Public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('cospira-media')
+      .getPublicUrl(fileName);
+
+    // 4. Immediate Cleanup of local temp file
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch (cleanupErr) {
+      logger.warn('Local temp file cleanup failed:', cleanupErr.message);
+    }
 
     res.json({
       success: true,
       file: {
         id: uuidv4(),
         name: req.file.originalname,
-        url: fileUrl,
+        url: publicUrl, // Direct public URL!
         size: req.file.size,
         type: req.file.mimetype,
+        roomId: roomId === 'global' ? null : roomId,
         timestamp: new Date(),
       }
     });
   } catch (error) {
-    logger.error('Upload error:', error);
-    res.status(500).json({ error: 'File upload failed' });
+    logger.error('Upload protocol failure:', error);
+    res.status(500).json({ error: 'Media stream manifestation failed' });
+  }
+});
+
+// Profile photo upload endpoint
+app.post('/api/upload-profile-photo', upload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No photo provided' });
+    }
+    
+    const userId = req.body.userId || 'anonymous';
+    const fileName = `profiles/${userId}-${Date.now()}-${req.file.originalname.replace(/\s+/g, '_')}`;
+    const fileBuffer = fs.readFileSync(req.file.path);
+
+    // Upload to 'cospira-media' bucket in 'profiles/' folder
+    const { data, error } = await supabase.storage
+      .from('cospira-media')
+      .upload(fileName, fileBuffer, {
+        contentType: req.file.mimetype,
+        upsert: true
+      });
+
+    if (error) {
+      logger.error('Supabase Profile Upload Error:', error);
+      return res.status(500).json({ error: 'Failed to manifest identity asset' });
+    }
+
+    // Get Public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('cospira-media')
+      .getPublicUrl(fileName);
+
+    // Immediate Cleanup of local temp file
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch (cleanupErr) {
+      logger.warn('Local profile temp file cleanup failed:', cleanupErr.message);
+    }
+
+    res.json({ photoUrl: publicUrl });
+  } catch (error) {
+    logger.error('Profile upload protocol failure:', error);
+    res.status(500).json({ error: 'Identity manifestation failed' });
   }
 });
 
@@ -1010,6 +1134,59 @@ app.post('/api/admin/env', adminAuth, (req, res) => {
         logger.error('Failed to write .env:', error);
         res.status(500).json({ error: 'Failed to write environment file' });
     }
+});
+
+// Finalize rest of the routes and error handlers
+app.all('*', (req, res, next) => {
+    // Exclude API, uploads, and socket.io from proxying
+    if (req.url.startsWith('/api') || 
+        req.url.startsWith('/upload') || 
+        req.url.startsWith('/uploads') || 
+        req.url.startsWith('/socket.io')) {
+        return next();
+    }
+    
+    // Proxy everything else to Vite
+    try {
+        proxy.web(req, res, (err) => {
+            if (err) {
+                logger.error('[Proxy Error]', err.message);
+                if (!res.headersSent) {
+                    res.status(502).json({ error: 'Sector UI Offline', details: err.message });
+                }
+            }
+        });
+    } catch (err) {
+        logger.error('[Proxy Fatal]', err.message);
+        next(err);
+    }
+});
+
+// Capture WebSocket upgrades for HMR and Client
+server.on('upgrade', (req, socket, head) => {
+  if (req.url.startsWith('/socket.io')) {
+    logger.debug(`[Upgrade] Internal Socket.IO link: ${req.url}`);
+    return;
+  }
+  logger.debug(`[Upgrade] Proxying to Vite: ${req.url}`);
+  proxy.ws(req, socket, head);
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            logger.warn(`[Upload] File too large: ${req.ip}`);
+            return res.status(413).json({ error: 'Asset Overflow: File exceeds 100MB limit.' });
+        }
+        return res.status(400).json({ error: `Upload Protocol Error: ${err.message}` });
+    }
+    
+    logger.error('Unhandled API Error:', err);
+    res.status(err.status || 500).json({ 
+        error: isProd ? 'Internal Server Protocol Violation' : err.message,
+        stack: isProd ? undefined : err.stack 
+    });
 });
 
 const startServer = async () => {

@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePresence } from '@/hooks/usePresence';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { SignalingService } from '@/services/SignalingService';
 import { SFUManager } from '@/services/SFUManager';
@@ -13,8 +13,13 @@ import { WebSocketContext, WebSocketState, WebSocketContextType } from './WebSoc
 import { useMediaStream } from './WebSocket/useMediaStream';
 import { useSocketEvents } from './WebSocket/useSocketEvents';
 import STTService from '@/services/ai/STTService';
+import { generateUUID } from '@/utils/uuid';
 import { RoomMode, RoomModeConfig, RoomSuggestion } from '@/services/RoomIntelligence';
 import { SecurityService } from '@/services/SecurityService';
+import { roomEventBus } from '@/lib/breakout/EventBus';
+import { useOrganization } from '@/contexts/useOrganization';
+import { useBreakout } from '@/contexts/useBreakout';
+import { getApiUrl } from '@/utils/url';
 
 export { type WebSocketState, type WebSocketContextType };
 // ICE servers will be fetched from backend
@@ -42,6 +47,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     files: [],
     error: null,
     isHost: false,
+    isSuperHost: false,
+    isGhost: false,
     localStream: null,
     localScreenStream: null,
     remoteStreams: new Map(),
@@ -90,7 +97,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     roomStatus: 'live',
     isAiActive: false,
     roomCreatedAt: null,
+    autoApprove: false,
+    stopJoiningTime: 0,
   });
+  
+  const effectiveUserId = user?.id || guestIdentity?.id;
 
   const stateRef = useRef(state);
   useEffect(() => {
@@ -105,57 +116,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Presence Detection (60s timeout) - must be declared before use
   const isAway = usePresence(60000);
 
-  // Presence: Listen for Updates
-  useEffect(() => {
-    const onUserStatusChange = ({ userId, status }: { userId: string; status: string }) => {
-      logger.info(`[WebSocketContext] User ${userId} status changed to ${status}`);
-      setState((prev) => ({
-        ...prev,
-        users: prev.users.map((u) => (u.id === userId ? { ...u, isAway: status === 'away' } : u)),
-      }));
-    };
-
-    // We need to attach this listener after signaling ref is initialized.
-    // However, signalingRef.current might be null initially.
-    // Best place is inside the main connection effect or a separate effect that depends on signalingRef.current
-    // But since signalingRef is a ref, changes don't trigger re-renders.
-    // The main connection effect (line 162) handles initialization.
-    // Let's rely on useSocketEvents or just check if it's connected in an interval?
-    // Better: useSocketEvents manages listeners. But for now, let's put it here but ensure signalingRef exists.
-
-    const sig = signalingRef.current;
-    if (sig) {
-      sig.on('user:status-change', onUserStatusChange);
-      const onMediaState = ({
-        userId,
-        audio,
-        video,
-      }: {
-        userId: string;
-        audio?: boolean;
-        video?: boolean;
-      }) => {
-        setState((prev) => ({
-          ...prev,
-          users: prev.users.map((u) =>
-            u.id === userId
-              ? {
-                  ...u,
-                  isMuted: audio !== undefined ? !audio : u.isMuted,
-                  isVideoOn: video !== undefined ? video : u.isVideoOn,
-                }
-              : u
-          ),
-        }));
-      };
-      sig.on('user:media-state', onMediaState);
-      return () => {
-        sig.off('user:status-change', onUserStatusChange);
-        sig.off('user:media-state', onMediaState);
-      };
-    }
-    return () => {};
-  }, [state.isConnected]); // Re-bind on connection status change (which implies signaling might have reconnected)
   const roomServiceRef = useRef<RoomSocketService | null>(null);
 
   const setupSfuManager = useCallback(() => {
@@ -209,6 +169,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           if (hasUser) {
             nextUsers = nextUsers.map((u) => (String(u.id) === uid ? { ...u, isMuted: false } : u));
           } else {
+            // ONLY create a temporary Guest if absolutely necessary to show the stream immediately.
+            // useSocketEvents onUserJoined will eventually update this with the real name.
+            logger.info('[WebSocketContext] Creating temporary user for incoming track:', uid);
             nextUsers = [
               ...nextUsers,
               { id: uid, name: 'Guest', isMuted: false, isVideoOn: false },
@@ -261,12 +224,17 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     let wsUrl = import.meta.env.VITE_WS_URL;
     const { hostname, origin, protocol } = window.location;
 
-    // Logic: If on localhost, use hardcoded dev port 3001
-    // If on a Tunnel or LAN IP, use the current origin (proxied via Vite)
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Logic: Favor current origin if on localhost OR a local network IP.
+    // This ensures Option A (Local Network) works without external tunnel interference.
+    const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isLanIp = hostname.startsWith('192.168.') || 
+                    hostname.startsWith('10.') || 
+                    (hostname.startsWith('172.') && parseInt(hostname.split('.')[1]) >= 16 && parseInt(hostname.split('.')[1]) <= 31);
+
+    if (isLocalHost) {
       wsUrl = `${protocol}//${hostname}:3001`;
-    } else {
-      // Capture current origin (handles Tunnels, LAN IPs, and custom domains)
+    } else if (isLanIp || !wsUrl) {
+      // Use current origin for LAN IPs or if no env var is set
       wsUrl = origin;
       logger.info('[WebSocketContext] Adaptive Mode: Using origin for WebSocket:', wsUrl);
     }
@@ -405,7 +373,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 setState((prev) => ({
                   ...prev,
                   lastTranscript: {
-                    id: crypto.randomUUID(),
+                    id: generateUUID(),
                     text,
                     userId: user?.id || guestIdentity?.id || 'me',
                     userName: user?.user_metadata?.display_name || 'You',
@@ -451,12 +419,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       password?: string,
       inviteToken?: string,
       onSuccess?: () => void,
-      onError?: (error: string) => void
+      onError?: (error: string) => void,
+      isGhost?: boolean
     ) => {
       // Guest handling: If no user, use persisted guest identity
       let currentGuest = guestIdentity;
       if (!user && !currentGuest) {
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         currentGuest = {
           id: newId,
           name: `Guest ${newId.substring(0, 4).toUpperCase()}`,
@@ -476,12 +445,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       logger.info('[WebSocketContext] Joining room with user data:', {
         roomId,
         userData,
+        isGhost,
         fullUser: user ? { id: user.id, email: user.email, metadata: user.user_metadata } : 'Guest',
       });
 
       if (roomServiceRef.current) {
         roomServiceRef.current
-          .joinRoom({ roomId, password, inviteToken, user: userData })
+          .joinRoom({ roomId, password, inviteToken, user: userData, isGhost })
           .then((response) => {
             if (response.status === 'WAITING_LOBBY' || response.error === 'waiting') {
               setState((prev) => ({ ...prev, isWaiting: true, error: null }));
@@ -494,10 +464,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 onError(response.error || 'Unknown error');
               } else {
                 setState((prev) => ({ ...prev, error: response.error || 'Unknown error' }));
-                toast({
-                  title: 'Join Failed',
+                toast.error('Join Failed', {
                   description: response.error,
-                  variant: 'destructive',
                 });
               }
             } else if (response.room) {
@@ -558,7 +526,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         chatMessages: [
           ...(prev.chatMessages || []),
           {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             userId: 'unknown', // Server should send this
             userName: data.sender,
             content: data.content,
@@ -590,7 +558,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           if (Date.now() - parseInt(persistedRoomTime) < ONE_HOUR) {
             logger.info('[WebSocketContext] Recovering session:', persistedRoomId);
             joinRoomRef.current(persistedRoomId, undefined, undefined, () => {
-              toast({ title: 'Session Restored', description: 'Welcome back!' });
+              toast.success('Session Restored', { description: 'Welcome back!' });
             });
           }
         }
@@ -610,17 +578,15 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       settings?: Record<string, unknown>
     ) => {
       if (!state.isConnected) {
-        toast({
-          title: 'Connection Error',
+        toast.error('Connection Error', {
           description: 'Cannot create room: Disconnected from server',
-          variant: 'destructive',
         });
         return;
       }
 
       let currentGuest = guestIdentity;
       if (!user && !currentGuest) {
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         currentGuest = {
           id: newId,
           name: `Guest ${newId.substring(0, 4).toUpperCase()}`,
@@ -654,7 +620,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (err === 'Room already exists') {
               joinRoom(roomId, password, undefined, onSuccess);
             } else {
-              toast({ title: 'Error', description: err, variant: 'destructive' });
+              toast.error('Error', { description: err });
             }
           });
       }
@@ -676,10 +642,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           },
           (res: { success: boolean; error?: string }) => {
             if (!res.success) {
-              toast({
-                title: 'AI Error',
+              toast.error('AI Error', {
                 description: res.error || 'Failed to process command',
-                variant: 'destructive',
               });
             }
           }
@@ -690,10 +654,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (user || guestIdentity) {
         // Security Check: Rate Limit
         if (!SecurityService.canPerformAction('chat')) {
-          toast({
-            title: 'Slow Down',
+          toast.error('Slow Down', {
             description: 'You are sending messages too fast.',
-            variant: 'destructive',
           });
           return;
         }
@@ -703,7 +665,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (!sanitizedContent) return;
 
         // Optimistic Update: Add message locally before sending
-        const tempId = crypto.randomUUID();
+        const tempId = generateUUID();
         const optimisticMessage: Message = {
           id: tempId,
           userId: user?.id || guestIdentity?.id || 'me',
@@ -741,10 +703,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               }
               // Note: Deduplication happens in useSocketEvents' onNewMessage
             } else {
-              toast({
-                title: 'Error',
+              toast.error('Error', {
                 description: 'Failed to send message',
-                variant: 'destructive',
               });
               // Remove the failed message
               setState((prev) => ({
@@ -761,49 +721,117 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const uploadFile = useCallback(
     async (file: File): Promise<boolean> => {
-      if (!state.roomId || !user) return false;
+      logger.info('[WebSocketContext] uploadFile called for:', file.name);
+      const rid = stateRef.current.roomId;
+      const currentUserId = effectiveUserId;
+      if (!rid || !currentUserId) {
+        logger.warn('[uploadFile] Missing roomId or userId. Aborting.');
+        toast.error('Sync Error', {
+          description: 'Your connection session is out of sync. Please refresh to restore persistent identity.'
+        });
+        return false;
+      }
 
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            const fileData = {
-              id: crypto.randomUUID(),
-              userId: user.id,
-              userName: user.user_metadata?.display_name || user.email?.split('@')[0] || 'Guest',
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              content: e.target.result, // Base64 content
-              timestamp: new Date(),
-            };
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const tid = `upload-generic-${Date.now()}`;
+        
+        logger.info('[WebSocketContext] Generic XHR created, tid:', tid);
+        // Use toast.loading as the base, then trigger XHR
+        toast.loading(`Syncing ${file.name}: 0%`, { id: tid });
 
-            signalingRef.current?.emit(
-              'upload-file',
-              { roomId: state.roomId!, file: fileData },
-              (response?: { success: boolean; error?: string }) => {
-                if (response?.success) {
-                  // Track file sharing activity
-                  if (activityTrackerRef.current && state.roomId) {
-                    activityTrackerRef.current.trackFileShared(state.roomId, file.name);
-                  }
-                  resolve(true);
+        const uploadTask = new Promise((resolvePromise, rejectPromise) => {
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const percent = Math.round((event.loaded / event.total) * 100);
+              toast.loading(`Syncing ${file.name}: ${percent}%`, { id: tid });
+            }
+          });
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                if (data.success && data.file) {
+                  const fileData: FileData = {
+                    ...data.file,
+                    userId: currentUserId,
+                    userName: user?.user_metadata?.display_name || user?.email?.split('@')[0] || guestIdentity?.name || 'Guest',
+                  };
+                  signalingRef.current?.emit(
+                    'upload-file',
+                    { roomId: rid, file: fileData },
+                    (uploadResponse?: { success: boolean; error?: string }) => {
+                      if (uploadResponse?.success) {
+                        if (activityTrackerRef.current) {
+                          activityTrackerRef.current.trackFileShared(rid, file.name);
+                        }
+                        
+                        // Update local state IMMEDIATELY for zero-lag feedback
+                        setState((prev) => ({
+                          ...prev,
+                          presentedFile: fileData,
+                          isPresentingFile: true,
+                          presenterName: fileData.userName,
+                        }));
+
+                        // Automatically present the file immediately after successful upload
+                        signalingRef.current?.emit('present-file', { 
+                          roomId: rid, 
+                          fileData: fileData, 
+                          presenterName: fileData.userName 
+                        });
+
+                        resolvePromise(true);
+                        resolve(true);
+                      } else {
+                        const err = new Error(uploadResponse?.error || 'Sync Failed');
+                        rejectPromise(err);
+                        reject(err);
+                      }
+                    }
+                  );
                 } else {
-                  toast({
-                    title: 'Upload Failed',
-                    description: response?.error || 'Unknown error',
-                    variant: 'destructive',
-                  });
-                  resolve(false);
+                  const err = new Error('Incomplete data received');
+                  rejectPromise(err);
+                  reject(err);
                 }
+              } catch (e) {
+                rejectPromise(e);
+                reject(e);
               }
-            );
-          }
-        };
-        reader.readAsDataURL(file);
+            } else {
+              const err = new Error(`Upload Failed: ${xhr.statusText}`);
+              rejectPromise(err);
+              reject(err);
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+             const err = new Error('Network Error during upload');
+             rejectPromise(err);
+             reject(err);
+          });
+
+          const formData = new FormData();
+          formData.append('file', file);
+          const uploadUrl = getApiUrl(`/upload?roomId=${rid}`);
+          
+          xhr.open('POST', uploadUrl);
+          // Bypassing ngrok warning for the upload request
+          xhr.setRequestHeader('ngrok-skip-browser-warning', 'true');
+          xhr.send(formData);
+        });
+
+        // Mirror the internal promise state via toast.promise for final UI feedback
+        toast.promise(uploadTask, {
+          id: tid,
+          loading: `Syncing ${file.name}: 0%`,
+          success: `Asset "${file.name}" synchronized.`,
+          error: (err: Error) => `Sync Error: ${err.message}`,
+        });
       });
     },
-    [state.roomId, user]
+    [user, guestIdentity, effectiveUserId]
   );
 
   const sendFile = uploadFile;
@@ -837,11 +865,106 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     [state.roomId, disableMedia]
   );
 
-  const disbandRoom = useCallback(() => {
-    if (state.roomId && state.isHost) {
-      roomServiceRef.current?.disbandRoom(state.roomId);
+  const { currentOrganization, deleteOrganization } = useOrganization();
+  const { deleteBreakout } = useBreakout();
+
+  const disbandRoom = useCallback(async (isMainRoomOverride?: boolean) => {
+    if (!state.roomId) return;
+
+    const isMainRoom = isMainRoomOverride ?? (state.roomId === currentOrganization?.id);
+    
+    // Logic:
+    // 1. Breakout rooms can be disbanded by hosts.
+    // 2. Main room can ONLY be disbanded by super hosts.
+    
+    let canDisband = false;
+    if (isMainRoom) {
+      canDisband = state.isSuperHost;
+    } else {
+      canDisband = state.isHost || state.isSuperHost;
     }
-  }, [state.roomId, state.isHost]);
+
+    if (!canDisband) {
+      toast.error('Permission Denied', {
+        description: isMainRoom 
+          ? 'Only Super Hosts can disband the main organization room.' 
+          : 'You do not have permission to disband this room.',
+      });
+      return;
+    }
+
+    logger.info(`[WebSocketContext] Disbanding room: ${state.roomId} (Main: ${isMainRoom}, SuperHost: ${state.isSuperHost})`);
+    
+    try {
+      if (isMainRoom && currentOrganization?.id) {
+        logger.info(`[WebSocketContext] Disbanding organization: ${currentOrganization.id}`);
+        
+        // Phase 1: Soft-delete in Supabase via context to ensure state sync
+        await deleteOrganization(currentOrganization.id);
+        
+        // Phase 2: Notify server to cleanup Redis/Socket state
+        signalingRef.current?.emit('disband-room', { 
+          roomId: state.roomId,
+          isMainRoom: true,
+          orgId: currentOrganization.id
+        });
+
+        toast.success('Organization Disbanded', {
+          description: 'The organization and all its sectors have been decommissioned.',
+        });
+
+        // Phase 3: Immediate redirection for the conductor
+        navigate('/');
+      } else {
+        // DELETE THE BREAKOUT
+        // Only attempt to delete from Supabase if it looks like a UUID (real breakout)
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state.roomId);
+        if (isUUID) {
+          try {
+            await deleteBreakout(state.roomId);
+          } catch (e) {
+            logger.warn('[WebSocketContext] Could not delete breakout record, might be a non-Supabase room:', e);
+          }
+        }
+        
+        // Notify server to eject everyone else with a callback for safe navigation
+        roomServiceRef.current?.disbandRoom(state.roomId, (res: { success: boolean }) => {
+          if (res.success) {
+            navigate('/dashboard');
+          }
+        });
+        
+        // Safety timeout for navigation in case socket callback hangs
+        setTimeout(() => {
+          if (window.location.pathname.includes(state.roomId || '')) {
+             navigate('/dashboard');
+          }
+        }, 3000);
+        
+        toast.success('Sector Terminated', { description: 'The room has been closed.' });
+      }
+
+      // Clean up local state locally anyway
+      setState((prev) => ({
+        ...prev,
+        roomId: null,
+        isHost: false,
+        isSuperHost: false,
+        currentFile: null,
+      }));
+
+      roomEventBus.emit('ROOM_STATE_CHANGE', {
+        breakoutId: state.roomId,
+        status: 'CLOSED'
+      });
+    } catch (err) {
+      logger.error('Failed to disband room:', err);
+      toast.error('Disband Failed', {
+        description: 'An error occurred while trying to disband the room.',
+      });
+      throw err;
+    }
+  }, [state.roomId, state.isHost, state.isSuperHost, currentOrganization, deleteBreakout, navigate, deleteOrganization]);
 
   const endSession = useCallback(() => {
     if (state.roomId && state.isHost) {
@@ -859,18 +982,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 
   const updateRoomSettings = useCallback(
-    (
-      roomName?: string,
-      password?: string,
-      hasWaitingRoom?: boolean,
-      accessType?: 'public' | 'password' | 'invite' | 'organization'
-    ) => {
-      if (state.roomId && state.isHost) {
-        const settings = { roomName, password, hasWaitingRoom, accessType };
+    (settings: Record<string, unknown>) => {
+      if (state.roomId && (state.isHost || state.isSuperHost)) {
         roomServiceRef.current?.updateSettings(state.roomId, settings);
       }
     },
-    [state.roomId, state.isHost]
+    [state.roomId, state.isHost, state.isSuperHost]
   );
 
   const admitUser = useCallback(
@@ -901,9 +1018,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const toggleRoomLock = useCallback(() => {
     if (state.roomId && state.isHost) {
-      roomServiceRef.current?.toggleLock(state.roomId);
+      roomServiceRef.current?.toggleLock(state.roomId, !state.isRoomLocked);
     }
-  }, [state.roomId, state.isHost]);
+  }, [state.roomId, state.isHost, state.isRoomLocked]);
 
   const startYoutubeVideo = useCallback(
     (videoId: string) => {
@@ -1016,7 +1133,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         | 'snakeladder'
         | 'connect4'
         | 'checkers'
-        | 'battleship',
+        | 'battleship'
+        | 'carrom'
+        | 'kart-racing',
       players: string[],
       config?: Record<string, unknown>
     ) => {
@@ -1176,8 +1295,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           broadcast
         );
         signalingRef.current?.emit('generate-summary', { roomId: state.roomId, broadcast });
-        toast({
-          title: 'Thinking...',
+        toast('Thinking...', {
           description: broadcast
             ? 'Generating meeting summary for everyone.'
             : 'Generating your private catch-up summary.',
@@ -1281,6 +1399,247 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   }, []);
 
+  const toggleAiAssist = useCallback(() => {
+    setState((prev) => {
+      const nextActive = !prev.isAiActive;
+      if (nextActive) {
+        toast('AI ASSIST MODE: ACTIVATED', {
+          description: 'Cospira Intelligence is now providing live navigational support.',
+        });
+      } else {
+        toast('AI ASSIST MODE: STANDBY', {
+          description: 'Intelligence layer has reverted to background monitoring.',
+        });
+      }
+      return { ...prev, isAiActive: nextActive };
+    });
+  }, []);
+
+  const startRoomTimer = useCallback(
+    (duration: number, label: string, type?: TimerType, action?: TimerAction) => {
+      if (!state.isHost && !state.isSuperHost) return;
+
+      setState((prev) => ({
+        ...prev,
+        activeTimer: {
+          duration,
+          startedAt: Date.now(),
+          label,
+          type,
+          action,
+        },
+      }));
+      signalingRef.current?.emit('start-room-timer', {
+        duration,
+        label,
+        type,
+        action,
+        roomId: state.roomId,
+      });
+    },
+    [state.roomId, state.isHost, state.isSuperHost]
+  );
+
+  const presentFile = useCallback(
+    (file: FileData) => {
+      if (state.roomId) {
+        toast('Initiating Projection', {
+          description: `Projecting "${file.name}" to the main stage...`,
+        });
+
+        // Update local state immediately
+        setState((prev) => ({
+          ...prev,
+          presentedFile: file,
+          isPresentingFile: true,
+          presenterName: file.userName,
+        }));
+
+        signalingRef.current?.emit('present-file', {
+          roomId: state.roomId,
+          fileData: file,
+          presenterName: file.userName,
+        });
+      }
+    },
+    [state.roomId]
+  );
+
+  const presentFileFromUpload = useCallback(
+    async (file: File): Promise<boolean> => {
+      const rid = stateRef.current.roomId;
+      const currentUserId = effectiveUserId;
+      
+      logger.info('[WebSocketContext] presentFileFromUpload initiated:', {
+          fileName: file.name,
+          roomId: rid,
+          userId: currentUserId,
+          socketConnected: signalingRef.current?.connected
+      });
+
+      if (!rid || !currentUserId) {
+        logger.error('[WebSocketContext] presentFileFromUpload aborted: missing roomId or userId. State:', {
+            rid: stateRef.current.roomId,
+            uid: effectiveUserId,
+            hasGuest: !!guestIdentity
+        });
+        toast.error('Session error: Join room first', {
+            description: 'Your identity or room sector could not be verified.'
+        });
+        return false;
+      }
+
+      logger.info(`[WebSocketContext] Starting projection upload for: ${file.name}`);
+
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const tid = `upload-present-${Date.now()}`;
+        
+        logger.info('[WebSocketContext] XHR created, tid:', tid);
+        toast.loading(`Uploading ${file.name}: 0%`, { id: tid });
+
+        const uploadTask = new Promise((resolvePromise, rejectPromise) => {
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const percent = Math.round((event.loaded / event.total) * 100);
+              toast.loading(`Uploading ${file.name}: ${percent}%`, { id: tid });
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                if (data.success && data.file) {
+                  const fileData: FileData = {
+                    ...data.file,
+                    userId: currentUserId,
+                    userName: user?.user_metadata?.display_name || user?.email?.split('@')[0] || guestIdentity?.name || 'Guest',
+                  };
+
+                  logger.info('[WebSocketContext] Upload successful, manifesting asset Locally: ', fileData.name);
+
+                  // Update local state IMMEDIATELY
+                  setState((prev) => ({
+                    ...prev,
+                    presentedFile: fileData,
+                    isPresentingFile: true,
+                    presenterName: fileData.userName,
+                  }));
+
+                  // Broadcast signaling
+                  signalingRef.current?.emit('present-file', {
+                    roomId: rid,
+                    fileData,
+                    presenterName: fileData.userName,
+                  });
+
+                  resolvePromise(true);
+                  resolve(true);
+                } else {
+                  logger.error('[WebSocketContext] Upload response missing data:', data);
+                  const err = new Error('Incomplete data received');
+                  rejectPromise(err);
+                  reject(err);
+                }
+              } catch (e) {
+                logger.error('[WebSocketContext] Error parsing upload response:', e);
+                rejectPromise(e);
+                reject(e);
+              }
+            } else {
+              logger.error('[WebSocketContext] Upload failed with status:', xhr.status);
+              const err = new Error(`Upload Failed: ${xhr.statusText}`);
+              rejectPromise(err);
+              reject(err);
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+            const err = new Error('Network connection interrupted');
+            rejectPromise(err);
+            reject(err);
+          });
+
+          const formData = new FormData();
+          formData.append('file', file);
+          const uploadUrl = getApiUrl(`/upload?roomId=${rid}`);
+          xhr.open('POST', uploadUrl);
+          // Explicitly bypass ngrok interstitial for the upload request itself
+          xhr.setRequestHeader('ngrok-skip-browser-warning', 'true');
+          xhr.send(formData);
+        });
+
+        toast.promise(uploadTask, {
+          id: tid,
+          loading: `Uploading ${file.name}: 0%`,
+          success: `Asset "${file.name}" manifest online.`,
+          error: (err: Error) => `Projection Failed: ${err.message}`,
+        });
+      });
+    },
+    [user, guestIdentity, effectiveUserId]
+  );
+
+  const toggleScreenShare = useCallback(() => {
+    if (state.isScreenSharing) {
+      stopScreenShare();
+    } else {
+      startScreenShare();
+    }
+  }, [state.isScreenSharing, startScreenShare, stopScreenShare]);
+
+  const repairMedia = useCallback(async () => {
+    if (sfuManagerRef.current) {
+      toast.info('Re-syncing media mesh...');
+      await sfuManagerRef.current.repair();
+      toast.success('Core media systems re-synchronized.');
+    }
+  }, []);
+
+  const gameTimeout = useCallback(() => {
+    if (state.roomId) {
+      signalingRef.current?.emit('game-timeout', { roomId: state.roomId });
+    }
+  }, [state.roomId]);
+
+  const verifyRoomPassword = useCallback(
+    async (password: string): Promise<boolean> => {
+      if (!state.roomId) return false;
+      return new Promise((resolve) => {
+        signalingRef.current?.emit(
+          'verify-room-password',
+          { roomId: state.roomId, password },
+          (response: { success: boolean; error?: string }) => {
+            resolve(response.success);
+          }
+        );
+      });
+    },
+    [state.roomId]
+  );
+
+  const pauseRoomTimer = useCallback(() => {
+    if (state.roomId) {
+      logger.info('[WebSocketContext] Pausing room timer:', state.roomId);
+      signalingRef.current?.emit('pause-room-timer', { roomId: state.roomId });
+    }
+  }, [state.roomId]);
+
+  const resumeRoomTimer = useCallback(() => {
+    if (state.roomId) {
+      logger.info('[WebSocketContext] Resuming room timer:', state.roomId);
+      signalingRef.current?.emit('resume-room-timer', { roomId: state.roomId });
+    }
+  }, [state.roomId]);
+
+  const stopRoomTimer = useCallback(() => {
+    if (state.roomId) {
+      logger.info('[WebSocketContext] Stopping room timer:', state.roomId);
+      signalingRef.current?.emit('stop-room-timer', { roomId: state.roomId });
+    }
+  }, [state.roomId]);
+
   const mappedUser: User | null = user
     ? {
         id: user.id,
@@ -1290,10 +1649,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     : null;
 
-  const value: WebSocketContextType = {
+  // Capture current signaling instance for stable memoization
+  const signaling = signalingRef.current;
+
+  const value: WebSocketContextType = useMemo(() => ({
     ...state,
-    socket: signalingRef.current?.rawSocket || null,
-    signaling: signalingRef.current,
+    socket: signaling?.rawSocket || null,
+    signaling,
     isVirtualBrowserActive: state.isVirtualBrowserActive,
     effectiveUserId: user?.id || guestIdentity?.id || null, // Derived from auth or guest
     user: mappedUser,
@@ -1305,6 +1667,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     sendFile,
     toggleAudio,
     toggleVideo,
+    repairMedia,
     startScreenShare,
     stopScreenShare,
     disbandRoom,
@@ -1336,130 +1699,97 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     toggleNoiseSuppression, // Added
     toggleAutoFraming, // Added
     checkRoom,
-    presentFile: (file: FileData) => {
-      if (state.roomId) {
-        signalingRef.current?.emit('present-file', {
-          roomId: state.roomId,
-          file,
-          presenterName: file.userName,
-        });
-      }
-    },
-    presentFileFromUpload: useCallback(
-      async (file: File): Promise<boolean> => {
-        if (!state.roomId || !user) return false;
-
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            if (e.target?.result) {
-              const fileData: FileData = {
-                id: crypto.randomUUID(),
-                userId: user.id,
-                userName: user.user_metadata?.display_name || user.email?.split('@')[0] || 'Guest',
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                content: e.target.result as string, // Base64 content
-                timestamp: new Date(),
-              };
-
-              // Update local state to show the file
-              setState((prev) => ({
-                ...prev,
-                presentedFile: fileData,
-                isPresentingFile: true,
-                presenterName: fileData.userName,
-              }));
-
-              // Broadcast to other participants
-              if (state.roomId) {
-                signalingRef.current?.emit('present-file', {
-                  roomId: state.roomId,
-                  file: fileData,
-                  presenterName: fileData.userName,
-                });
-                resolve(true);
-              } else {
-                resolve(false);
-              }
-            }
-          };
-          reader.readAsDataURL(file);
-        });
-      },
-      [state.roomId, user]
-    ),
-    toggleScreenShare: () => {
-      if (state.isScreenSharing) {
-        stopScreenShare();
-      } else {
-        startScreenShare();
-      }
-    },
+    presentFile,
+    presentFileFromUpload,
+    toggleScreenShare,
     startGame,
     makeGameMove,
-    gameTimeout: useCallback(() => {
-      if (state.roomId) {
-        signalingRef.current?.emit('game-timeout', { roomId: state.roomId });
-      }
-    }, [state.roomId]),
+    gameTimeout,
     endGame,
     generateSummary,
     analyzeRoom,
     applyRoomMode,
     getRoomSuggestions,
-    verifyRoomPassword: useCallback(
-      async (password: string): Promise<boolean> => {
-        if (!state.roomId) return false;
-        return new Promise((resolve) => {
-          signalingRef.current?.emit(
-            'verify-room-password',
-            { roomId: state.roomId, password },
-            (response: { success: boolean; error?: string }) => {
-              resolve(response.success);
-            }
-          );
-        });
-      },
-      [state.roomId]
-    ),
-    toggleAiAssist: useCallback(() => {
-      setState((prev) => {
-        const nextActive = !prev.isAiActive;
-        if (nextActive) {
-          toast({
-            title: 'AI ASSIST MODE: ACTIVATED',
-            description: 'Cospira Intelligence is now providing live navigational support.',
-          });
-        } else {
-          toast({
-            title: 'AI ASSIST MODE: STANDBY',
-            description: 'Intelligence layer has reverted to background monitoring.',
-          });
-        }
-        return { ...prev, isAiActive: nextActive };
-      });
-    }, []),
-    startRoomTimer: useCallback(
-      (duration: number, label: string, type?: TimerType, action?: TimerAction) => {
-        if (state.roomId) {
-          signalingRef.current?.emit('set-room-timer', {
-            roomId: state.roomId,
-            duration,
-            label,
-            type,
-            action,
-          });
-        }
-      },
-      [state.roomId]
-    ),
-  };
+    verifyRoomPassword,
+    toggleAiAssist,
+    startRoomTimer,
+    pauseRoomTimer,
+    resumeRoomTimer,
+    stopRoomTimer,
+  }), [
+    state,
+    signaling,
+    mappedUser,
+    guestIdentity,
+    joinRoom,
+    createRoom,
+    leaveRoom,
+    sendMessage,
+    uploadFile,
+    sendFile,
+    toggleAudio,
+    toggleVideo,
+    repairMedia,
+    startScreenShare,
+    stopScreenShare,
+    disbandRoom,
+    endSession,
+    kickUser,
+    muteUser,
+    updateRoomSettings,
+    admitUser,
+    denyUser,
+    admitAllWaitingUsers,
+    toggleRoomLock,
+    startYoutubeVideo,
+    stopYoutubeVideo,
+    playYoutubeVideo,
+    pauseYoutubeVideo,
+    seekYoutubeVideo,
+    promoteToCoHost,
+    demoteFromCoHost,
+    changeVideoDevice,
+    changeAudioDevice,
+    getRecentRooms,
+    startVirtualBrowser,
+    updateVirtualBrowserUrl,
+    closeVirtualBrowser,
+    closePresentedFile,
+    clearError,
+    enableMedia,
+    disableMedia,
+    toggleNoiseSuppression,
+    toggleAutoFraming,
+    checkRoom,
+    presentFile,
+    presentFileFromUpload,
+    toggleScreenShare,
+    startGame,
+    makeGameMove,
+    gameTimeout,
+    endGame,
+    generateSummary,
+    analyzeRoom,
+    applyRoomMode,
+    getRoomSuggestions,
+    verifyRoomPassword,
+    toggleAiAssist,
+    startRoomTimer,
+    pauseRoomTimer,
+    resumeRoomTimer,
+    stopRoomTimer,
+  ]);
 
   // --- Room Timer Auto-Actions ---
+  const warningIssuedRef = useRef(false);
+
   useEffect(() => {
-    if (!state.activeTimer || !state.isHost) return;
+    // Only the host or superhost should trigger the final auto-action to avoid duplicate signals
+    const canManageTimer = state.isHost || state.isSuperHost;
+    if (!state.activeTimer || !canManageTimer || state.activeTimer.isPaused) {
+      warningIssuedRef.current = false;
+      return;
+    }
 
     const timer = state.activeTimer;
     const totalMs = timer.duration * 60 * 1000;
@@ -1468,28 +1798,47 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const expiryTs = startedAt + totalMs;
 
     const checkExpiry = () => {
-      const remaining = expiryTs - Date.now();
+      const now = Date.now();
+      const remaining = expiryTs - now;
+
+      // Advanced Upgrade: 30-second warning
+      if (remaining <= 30000 && remaining > 0 && !warningIssuedRef.current) {
+        warningIssuedRef.current = true;
+        toast('Mission Countdown', {
+          description: `Crucial state change in 30 seconds for "${timer.label}".`,
+        });
+        signalingRef.current?.emit('system:announcement', {
+          roomId: state.roomId,
+          type: 'warning',
+          message: `The timer for "${timer.label}" is entering final countdown (30s remaining).`,
+        });
+      }
+
       if (remaining <= 0) {
         if (timer.action === 'close') {
           logger.info('[TimerAction] Auto-disbanding room due to timer expiry');
           disbandRoom();
         } else if (timer.action === 'resume') {
-          toast({ title: 'Break Ended', description: 'Protocol resuming automatically.' });
+          toast.success('Break Ended', { description: 'Protocol resuming automatically.' });
           signalingRef.current?.emit('system:announcement', {
             roomId: state.roomId,
             type: 'success',
             message: `The timer for "${timer.label}" has ended. Resuming mission protocol.`,
           });
         }
+        
         // Reset local activeTimer to prevent repeat
         setState((prev) => ({ ...prev, activeTimer: null }));
+        warningIssuedRef.current = false;
         clearInterval(id);
       }
     };
 
     const id = setInterval(checkExpiry, 1000);
-    return () => clearInterval(id);
-  }, [state.activeTimer?.startedAt, state.isHost, disbandRoom, state.activeTimer, state.roomId]);
+    return () => {
+      clearInterval(id);
+    };
+  }, [state.activeTimer, state.activeTimer?.startedAt, state.isHost, state.isSuperHost, disbandRoom, state.roomId]);
 
   return <WebSocketContext.Provider value={value}>{children}</WebSocketContext.Provider>;
 };

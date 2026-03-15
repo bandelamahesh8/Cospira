@@ -28,10 +28,58 @@
   }
 }
 
-/* 
-  ULTRA LUXURY DESIGN SYSTEM v2
-  Curated for a high-fidelity, fluid, and responsive user experience.
-*/
+/* Custom Slider Styles */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-track {
+  background: #374151;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #1f2937;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: #2563eb;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
+}
+
+.slider::-moz-range-track {
+  background: #374151;
+  height: 8px;
+  border-radius: 4px;
+  border: none;
+}
+
+.slider::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #1f2937;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.slider::-moz-range-thumb:hover {
+  background: #2563eb;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
+}
 
 @layer base {
   :root {
@@ -75,9 +123,9 @@
     /* Exclusive Gradient Tokens */
     --gradient-luxury: linear-gradient(
       135deg,
-      hsl(190 100% 50%),
-      hsl(260 80% 60%),
-      hsl(320 100% 50%)
+      #ffffff 0%,
+      #a5b4fc 50%,
+      #6366f1 100%
     );
     --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
     --gradient-dark: linear-gradient(180deg, #0b0f14, #101722);
@@ -253,10 +301,10 @@
   }
 
   .btn-luxury {
-    @apply relative overflow-hidden px-6 py-2.5 rounded-full font-black uppercase tracking-widest text-[10px] transform transition-all duration-500 flex items-center justify-center;
+    @apply relative overflow-hidden px-6 py-2.5 rounded-full font-black uppercase tracking-widest text-[10px] transform transition-all duration-500 flex items-center justify-center text-black;
     transition-timing-function: var(--ease-ultra);
-    background: var(--gradient-luxury);
-    box-shadow: 0 10px 30px rgba(0, 200, 255, 0.3);
+    background: white;
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
   }
 
   .btn-luxury:active {
@@ -561,6 +609,18 @@
   }
   .animate-spin-slow {
     animation: spin-slow 8s linear infinite;
+  }
+
+  @keyframes scanline {
+    from {
+      transform: translateY(-100%);
+    }
+    to {
+      transform: translateY(400%);
+    }
+  }
+  .animate-scanline {
+    animation: scanline 4s linear infinite;
   }
 }
 

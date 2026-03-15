@@ -4,129 +4,18 @@ import {
   OrganizationRole,
   PermissionKey,
   ActivityLog,
+  OrgMode,
   OrganizationInvite,
   Permission,
   Project,
   Team,
-  OrgMode,
   TeamMember,
 } from '@/types/organization';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/integrations/supabase/types';
+import { generateUUID } from '@/utils/uuid';
 
-/**
- * Type-safe interface for tables currently missing from the generated Database type.
- */
-interface ExtraTables {
-  organizations: {
-    Row: Organization;
-    Insert: Partial<Organization> & { name: string; slug: string; owner_id: string };
-    Update: Partial<Organization>;
-    Relationships: [];
-  };
-  organization_members: {
-    Row: {
-      id: string;
-      organization_id: string;
-      user_id: string;
-      role_id: string;
-      status: string;
-      joined_at: string;
-    };
-    Insert: { organization_id: string; user_id: string; role_id: string; status?: string };
-    Update: Partial<{ organization_id: string; user_id: string; role_id: string; status: string }>;
-    Relationships: [];
-  };
-  organization_roles: {
-    Row: OrganizationRole;
-    Insert: Partial<OrganizationRole> & { organization_id: string; name: string };
-    Update: Partial<OrganizationRole>;
-    Relationships: [];
-  };
-  role_permissions: {
-    Row: { role_id: string; permission_id: string };
-    Insert: { role_id: string; permission_id: string };
-    Update: Partial<{ role_id: string; permission_id: string }>;
-    Relationships: [];
-  };
-  permissions: {
-    Row: Permission;
-    Insert: Permission;
-    Update: Partial<Permission>;
-    Relationships: [];
-  };
-  activity_logs: {
-    Row: ActivityLog;
-    Insert: Partial<ActivityLog> & { organization_id: string; action: string; actor_id: string };
-    Update: Partial<ActivityLog>;
-    Relationships: [];
-  };
-  organization_invites: {
-    Row: OrganizationInvite;
-    Insert: Partial<OrganizationInvite> & {
-      organization_id: string;
-      email: string;
-      role_id: string;
-      token_hash: string;
-      expires_at: string;
-    };
-    Update: Partial<OrganizationInvite>;
-    Relationships: [];
-  };
-  projects: {
-    Row: Project;
-    Insert: { organization_id: string; name: string; description?: string; created_by: string };
-    Update: Partial<Project>;
-    Relationships: [];
-  };
-  teams: {
-    Row: Team;
-    Insert: { organization_id: string; name: string; description?: string };
-    Update: Partial<Team>;
-    Relationships: [];
-  };
-  team_members: {
-    Row: { team_id: string; user_id: string; added_by: string | null; created_at: string };
-    Insert: { team_id: string; user_id: string; added_by?: string | null };
-    Update: Partial<{ team_id: string; user_id: string; added_by: string | null }>;
-    Relationships: [];
-  };
-  project_teams: {
-    Row: { project_id: string; team_id: string; assigned_by: string | null; created_at: string };
-    Insert: { project_id: string; team_id: string; assigned_by?: string | null };
-    Update: Partial<{ project_id: string; team_id: string; assigned_by: string | null }>;
-    Relationships: [];
-  };
-}
 
-interface ExtraFunctions {
-  accept_invite_secure: {
-    Args: { p_token_hash: string; p_user_id: string };
-    Returns: { success: boolean; error?: string };
-  };
-  create_role_secure: {
-    Args: { p_org_id: string; p_name: string; p_priority: number; p_actor_id: string };
-    Returns: { success: boolean; error?: string };
-  };
-  delete_role_safe: {
-    Args: { p_role_id: string; p_actor_id: string };
-    Returns: { success: boolean; error?: string };
-  };
-}
-
-/**
- * Merged database type for OrganizationService.
- */
-type ExtendedDatabase = Omit<Database, 'public'> & {
-  public: Omit<Database['public'], 'Tables' | 'Functions'> & {
-    Tables: Database['public']['Tables'] & ExtraTables;
-    Functions: Database['public']['Functions'] & ExtraFunctions;
-  };
-};
-
-// Re-cast the global supabase client to our extended type.
-// We use a small cast to bridge the gaps in the generated schema.
-const db = supabase as unknown as SupabaseClient<ExtendedDatabase>;
+// Re-cast the global supabase client.
+const db = supabase as any;
 
 export class OrganizationService {
   /**
@@ -152,7 +41,7 @@ export class OrganizationService {
             id, name, is_system_role
         ),
         organizations!inner (
-            id, name, slug, domain, status, owner_id, created_at, mode
+            id, name, slug, domain, status, owner_id, created_at
         )
       `
       )
@@ -175,7 +64,9 @@ export class OrganizationService {
         status: Organization['status'];
         owner_id: string;
         created_at: string;
-        mode: OrgMode;
+        mode?: OrgMode;
+        authorized_only?: boolean | null;
+        lobby_name?: string | null;
       } | null;
     }
 
@@ -195,6 +86,9 @@ export class OrganizationService {
           current_user_role_id: member.role_id,
           role: role?.name, // Backward compat
           current_user_permissions: permissions,
+          mode: org.mode || 'PROF', // Default mode
+          authorized_only: org.authorized_only || false,
+          lobby_name: org.lobby_name || null,
         } as unknown as Organization;
       })
     );
@@ -232,7 +126,8 @@ export class OrganizationService {
   static async createOrganization(
     name: string,
     slug: string,
-    mode: OrgMode = 'PROF'
+    mode: OrgMode = 'PROF',
+    advanced: { lobby_name?: string; authorized_only?: boolean } = {}
   ): Promise<Organization> {
     const {
       data: { user },
@@ -241,7 +136,15 @@ export class OrganizationService {
 
     const { data: org, error: orgError } = await db
       .from('organizations')
-      .insert({ name, slug, owner_id: user.id, mode, status: 'active' })
+      .insert({ 
+        name, 
+        slug, 
+        owner_id: user.id, 
+        mode, 
+        status: 'active',
+        lobby_name: advanced.lobby_name,
+        authorized_only: advanced.authorized_only
+      })
       .select()
       .single();
 
@@ -292,8 +195,7 @@ export class OrganizationService {
         status: 'deleted',
         updated_at: new Date().toISOString(),
       })
-      .eq('id', orgId)
-      .eq('owner_id', user.id);
+      .eq('id', orgId);
 
     if (error) {
       console.error('Error deleting organization:', error);
@@ -396,7 +298,7 @@ export class OrganizationService {
   }
 
   static async inviteMember(orgId: string, email: string, roleId: string): Promise<string> {
-    const rawToken = crypto.randomUUID();
+    const rawToken = generateUUID();
     const tokenHash = await this.hashToken(rawToken);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -449,7 +351,7 @@ export class OrganizationService {
       .select(
         `
             *,
-            organization:organization_id ( name, slug )
+            organization:organization_id ( name, slug, authorized_only )
         `
       )
       .eq('token_hash', tokenHash)
@@ -747,10 +649,10 @@ export class OrganizationService {
         display_name: tm.user?.raw_user_meta_data?.display_name,
         avatar_url: tm.user?.raw_user_meta_data?.avatar_url,
       },
-    })) as unknown as TeamMember[];
+    } as TeamMember));
   }
 
-  static async addTeamMember(teamId: string, userId: string): Promise<void> {
+  static async addMemberToTeam(teamId: string, userId: string): Promise<void> {
     const {
       data: { user },
     } = await db.auth.getUser();
@@ -760,13 +662,10 @@ export class OrganizationService {
       added_by: user?.id || null,
     });
 
-    if (error) {
-      if ((error as { code: string }).code === '23505') return;
-      throw error;
-    }
+    if (error) throw error;
   }
 
-  static async removeTeamMember(teamId: string, userId: string): Promise<void> {
+  static async removeMemberFromTeam(teamId: string, userId: string): Promise<void> {
     const { error } = await db
       .from('team_members')
       .delete()

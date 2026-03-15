@@ -1,5 +1,6 @@
 import { createSocket } from 'dgram';
 import { spawn } from 'child_process';
+import ffmpegPath from '@ffmpeg-installer/ffmpeg';
 import { createClient } from '@deepgram/sdk';
 import config from '../../config.js';
 import logger from '../../logger.js';
@@ -104,7 +105,7 @@ a=rtpmap:111 OPUS/48000/2
             // but RTP usually requires SDP. 
             // Alternative: use `-f sdp -i pipe:0` and write SDP to stdin.
             
-            this.process = spawn('ffmpeg', [
+            this.process = spawn(ffmpegPath.path, [
                 '-protocol_whitelist', 'file,pipe,udp,rtp',
                 '-f', 'sdp',
                 '-i', 'pipe:0',

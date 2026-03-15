@@ -6,10 +6,10 @@ import { Platform } from 'react-native';
 const getSocketUrl = () => {
   if (Platform.OS === 'web') {
     const isSecure = window.location.protocol === 'https:';
-    const host = window.location.hostname === 'localhost' ? 'localhost' : '192.168.1.9';
+    const host = window.location.hostname === 'localhost' ? 'localhost' : '192.168.1.10';
     return isSecure ? `https://${host}:3001` : `http://${host}:3001`;
   }
-  return 'http://192.168.1.9:3001';
+  return 'https://192.168.1.10:3001';
 };
 
 class SocketService {

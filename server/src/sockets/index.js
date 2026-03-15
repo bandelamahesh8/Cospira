@@ -15,20 +15,21 @@ import registerAssistantHandlers from './assistant.socket.js';
 import registerRandomHandlers from './random.socket.js';
 import registerMatchmakingHandlers from './matchmaking.socket.js';
 import registerChessHandlers from './chess.socket.js';
-import registerLudoHandlers from './ludo.socket.js';
 import registerBreakoutHandlers, { handleBreakoutHostDisconnect } from './breakout.socket.js';
 import registerBreakoutAIHandlers from './breakout-ai.socket.js';
 import BreakoutAIIngest from '../services/breakout/BreakoutAIIngest.js';
 import { registerPolicySockets } from './policy.socket.js';
 import { getSystemStats } from '../redis.js';
 import logger from '../logger.js';
+import eventLogger from '../services/EventLogger.js';
 
 export default function registerSocketHandlers(io, sfuHandler) {
   // Maps userId -> socketId
   const userSockets = new Map();
 
-  // Initialize AI ingest queue with io (so processors can emit insights)
+  // Initialize AI ingest queue and EventLogger with io
   BreakoutAIIngest.init(io);
+  eventLogger.init(io);
 
   const broadcastStats = async () => {
     try {
@@ -62,9 +63,15 @@ export default function registerSocketHandlers(io, sfuHandler) {
 
       // Register the new session
       userSockets.set(userId, socket.id);
-    } else if (socket.user && socket.user.sub) {
       // In dev, just track the latest socket but don't kick
       userSockets.set(socket.user.sub, socket.id);
+    }
+
+    // Join private user room for targeted broadcasts (e.g., neural signals)
+    if (socket.user && (socket.user.id || socket.user.sub)) {
+      const pId = socket.user.id || socket.user.sub;
+      socket.join(`user:${pId}`);
+      logger.debug(`[Socket] User ${pId} joined private broadcast room`);
     }
 
     // 1. Initialize SFU (standard events)
@@ -87,7 +94,6 @@ export default function registerSocketHandlers(io, sfuHandler) {
     registerRandomHandlers(io, socket);
     registerMatchmakingHandlers(io, socket);
     registerChessHandlers(io, socket);
-    registerLudoHandlers(io, socket);
     registerBreakoutHandlers(io, socket);
     registerBreakoutAIHandlers(io, socket);
     // Neural Controls — Policy, State Machine, Authority, Command Network

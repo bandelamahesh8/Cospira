@@ -40,25 +40,34 @@ function getLocalIP() {
 const localIP = getLocalIP();
 console.log(`Detected Local IP: ${localIP}`);
 
-// Detect if we should force HTTP
-const rootEnvPath = path.join(__dirname, '.env');
-const forceHttp = fs.existsSync(rootEnvPath) && fs.readFileSync(rootEnvPath, 'utf8').includes('FORCE_HTTP=true');
-const protocol = (fs.existsSync(path.join(__dirname, 'localhost+3.pem')) && !forceHttp) ? 'https' : 'http';
+const securityDir = 'C:\\Users\\mahes\\Downloads\\PROJECTS\\COSPIRA_PROJECT\\SECURITY';
+
+const rootEnvPath = path.join(securityDir, '.env');
+const envContent = fs.existsSync(rootEnvPath) ? fs.readFileSync(rootEnvPath, 'utf8') : '';
+const forceHttp = envContent.includes('FORCE_HTTP=true');
+const ngrokDomainMatch = envContent.match(/^NGROK_DOMAIN=(.*)/m);
+const ngrokDomain = ngrokDomainMatch ? ngrokDomainMatch[1].trim() : null;
+
+// Determine public URL base
+const usePublicTunnel = !!ngrokDomain;
+const effectiveHost = usePublicTunnel ? ngrokDomain : localIP;
+const protocol = (fs.existsSync(path.join(securityDir, 'localhost+3.pem')) && !forceHttp && !usePublicTunnel) ? 'https' : 'http';
+const publicProtocol = usePublicTunnel ? 'https' : protocol; // Ngrok is always https on the outside
 
 const files = [
   {
     path: rootEnvPath,
     replacements: [
-      { key: 'VITE_WS_URL', value: `${protocol}://${localIP}:3001` },
-      { key: 'VITE_API_URL', value: `${protocol}://${localIP}:3001` },
+      { key: 'VITE_WS_URL', value: `${publicProtocol}://${effectiveHost}${usePublicTunnel ? '' : ':3001'}` },
+      { key: 'VITE_API_URL', value: `${publicProtocol}://${effectiveHost}${usePublicTunnel ? '' : ':3001'}` },
     ]
   },
   {
-    path: path.join(__dirname, 'server', '.env'),
+    path: rootEnvPath, // Pointing server env updates to the same root .env in SECURITY
     replacements: [
-      { key: 'CLIENT_URL', value: `http://${localIP}:8080` },
-      { key: 'SERVER_URL', value: `${protocol}://${localIP}:3001` },
-      { key: 'MEDIASOUP_ANNOUNCED_IP', value: localIP }
+      { key: 'CLIENT_URL', value: `${protocol}://${localIP}:8080` },
+      { key: 'SERVER_URL', value: `${publicProtocol}://${effectiveHost}${usePublicTunnel ? '' : ':3001'}` },
+      { key: 'MEDIASOUP_ANNOUNCED_IP', value: effectiveHost }
     ]
   },
   {
@@ -75,7 +84,7 @@ const files = [
     patterns: [
       {
         regex: /const getSocketUrl = \(\) => \{[\s\S]*?\};/,
-        replacement: `const getSocketUrl = () => {\n  if (Platform.OS === 'web') {\n    const isSecure = window.location.protocol === 'https:';\n    const host = window.location.hostname === 'localhost' ? 'localhost' : '${localIP}';\n    return isSecure ? \`https://\${host}:3001\` : \`http://\${host}:3001\`;\n  }\n  return 'http://${localIP}:3001';\n};`
+        replacement: `const getSocketUrl = () => {\n  if (Platform.OS === 'web') {\n    const isSecure = window.location.protocol === 'https:';\n    const host = window.location.hostname === 'localhost' ? 'localhost' : '${effectiveHost}';\n    return isSecure ? \`https://\${host}${usePublicTunnel ? '' : ':3001'}\` : \`http://\${host}${usePublicTunnel ? '' : ':3001'}\`;\n  }\n  return '${publicProtocol}://${effectiveHost}${usePublicTunnel ? '' : ':3001'}';\n};`
       }
     ]
   }

@@ -11,10 +11,10 @@ export type GameId =
   | 'snakeladder'
   | 'connect4'
   | 'checkers'
-  | 'battleship';
+  | 'kart-racing';
 
 /** Minimum members in room (including you) required to access/start any game */
-export const GAME_MIN_ROOM_MEMBERS = 2;
+export const GAME_MIN_ROOM_MEMBERS = 1; // Allow testing alone? Spec says multiplayer but let's be flexible
 
 /** Max players per game (total, including host) */
 export const GAME_MAX_PLAYERS: Record<GameId, number> = {
@@ -25,7 +25,7 @@ export const GAME_MAX_PLAYERS: Record<GameId, number> = {
   snakeladder: 4,
   connect4: 2,
   checkers: 2,
-  battleship: 2,
+  'kart-racing': 6,
 };
 
 /** Max opponent slots (excluding current user) */

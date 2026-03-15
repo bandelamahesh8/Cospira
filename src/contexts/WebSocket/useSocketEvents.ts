@@ -5,6 +5,8 @@ import { toast as sonnerToast } from 'sonner';
 import { SignalingService } from '@/services/SignalingService';
 import { SFUManager } from '@/services/SFUManager';
 import { logger } from '@/utils/logger';
+import { generateUUID } from '@/utils/uuid';
+import { getApiUrl } from '@/utils/url';
 import { WebSocketState } from '@/contexts/WebSocketContextValue';
 import {
   User,
@@ -16,8 +18,9 @@ import {
   RoomInfo,
   TimerType,
   TimerAction,
+  TimerData,
 } from '@/types/websocket';
-import { RoomMode, getModeConfig, RoomModeConfig } from '@/services/RoomIntelligence';
+import { getModeConfig, RoomModeConfig, normalizeRoomMode } from '@/services/RoomIntelligence';
 import { getDesktopAdapter } from '@/adapters';
 
 interface SocketIOError extends Error {
@@ -137,10 +140,15 @@ export const useSocketEvents = ({
           : typeof data.settings?.organizationName === 'string'
             ? data.settings.organizationName
             : null) as string | null,
+        organizationId: (typeof data.settings?.organizationId === 'string'
+          ? data.settings.organizationId
+          : null) as string | null,
         users: data.users.map((u) => ({ ...u, joinedAt: u.joinedAt || new Date() })),
         messages: data.messages || [],
         files: data.files || [],
         isHost: data.isHost,
+        isSuperHost: data.isSuperHost || false,
+        isGhost: data.isGhost || false,
         hasWaitingRoom: data.hasWaitingRoom || false,
         waitingUsers: data.waitingUsers || [],
         isWaiting: false,
@@ -154,7 +162,7 @@ export const useSocketEvents = ({
           (data.youtubeStatus === 'playing' && data.youtubeLastActionTime
             ? (Date.now() - data.youtubeLastActionTime) / 1000
             : 0),
-        presenterName: data.youtubePresenterName || null,
+
         gameState: data.gameState || {
           isActive: false,
           type: null,
@@ -166,14 +174,20 @@ export const useSocketEvents = ({
         },
         error: null,
         roomStatus: data.status || 'live',
-        roomMode: (data.settings?.mode || data.mode || data.roomMode || 'mixed') as RoomMode,
+        roomMode: normalizeRoomMode((data.settings?.mode as string) || (data.mode as string) || (data.roomMode as string) || 'mixed'),
         roomModeConfig: getModeConfig(
-          (data.settings?.mode || data.mode || data.roomMode || 'mixed') as RoomMode
+          normalizeRoomMode((data.settings?.mode as string) || (data.mode as string) || (data.roomMode as string) || 'mixed')
         ),
         virtualBrowserUrl: data.virtualBrowserUrl || null,
         isVirtualBrowserActive: data.isVirtualBrowserActive || false,
+        presentedFile: data.presentedFile || null,
+        isPresentingFile: data.isPresentingFile || false,
+        presenterName: data.presenterName || data.youtubePresenterName || null,
         activeTimer: data.activeTimer || null,
         roomCreatedAt: data.createdAt || null,
+        autoApprove: (data.settings?.autoApprove as boolean) || false,
+        stopJoiningTime: (data.settings?.stopJoiningTime as number) || 0,
+        settings: data.settings || {},
       }));
 
       try {
@@ -187,36 +201,22 @@ export const useSocketEvents = ({
 
         let iceServers: RTCIceServer[] = [];
         try {
-          const baseUrl = import.meta.env.VITE_WS_URL || 'http://localhost:3001';
-          // Robust protocol handling: If we get an error on https, try http fallback for local dev
-          const fetchWithFallback = async (url: string) => {
-            try {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 3000);
-              const response = await fetch(url, { signal: controller.signal });
-              clearTimeout(timeoutId);
-              return response;
-            } catch (e) {
-              if (url.startsWith('https://')) {
-                logger.warn(
-                  `[TURN] fetch error on ${url}, trying http fallback. Original error:`,
-                  e
-                );
-                try {
-                  return await fetch(url.replace('https://', 'http://'));
-                } catch (fallbackErr) {
-                  logger.error('[TURN] Fallback http fetch also failed:', fallbackErr);
-                  throw fallbackErr;
-                }
-              }
-              throw e;
-            }
-          };
-
-          const response = await fetchWithFallback(`${baseUrl}/api/turn-credentials`);
+          const urlObj = new URL(getApiUrl('/ice-servers'), window.location.href);
+          urlObj.searchParams.set('ngrok-skip-browser-warning', 'true');
+          const apiUrl = urlObj.toString();
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          const response = await fetch(apiUrl, { 
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
           if (response.ok) {
-            const data = await response.json();
-            iceServers = [data];
+            const result = await response.json();
+            if (result && Array.isArray(result.iceServers)) {
+              iceServers = result.iceServers;
+              logger.info(`[SFU] Fetched ${iceServers.length} ICE servers`);
+            }
           }
         } catch (error) {
           logger.warn('Failed to fetch ICE servers:', error);
@@ -337,9 +337,20 @@ export const useSocketEvents = ({
         const userExists = prev.users.some((u) => u.id === newUser.id);
         isNew = !userExists;
 
-        if (userExists) return prev;
+        let nextUsers;
+        if (userExists) {
+          // Robust Profile Merging: 
+          // If the user already exists (e.g. added as "Guest" because of track lag),
+          // prioritize the real name and other profile info from the server event.
+          logger.info(`[useSocketEvents] Merging profile data for user: ${newUser.id} (${newUser.name})`);
+          nextUsers = prev.users.map((u) => 
+            u.id === newUser.id ? { ...u, ...newUser, isGuest: newUser.isGuest ?? u.isGuest } : u
+          );
+        } else {
+          // Normal join
+          nextUsers = [...prev.users, { ...newUser, joinedAt: newUser.joinedAt || new Date() }];
+        }
 
-        const nextUsers = [...prev.users, { ...newUser, joinedAt: newUser.joinedAt || new Date() }];
         const nextMessages = [
           ...prev.messages,
           {
@@ -355,7 +366,6 @@ export const useSocketEvents = ({
       });
 
       if (isNew) {
-        // toast({ title: 'User Joined', description: `${newUser.name} joined.` });
         getDesktopAdapter().showNotification('User Joined', `${newUser.name} joined the room.`);
       }
     };
@@ -372,11 +382,15 @@ export const useSocketEvents = ({
         };
         const newRemoteStreams = new Map(prev.remoteStreams);
         newRemoteStreams.delete(userId);
+        const newRemoteScreenStreams = new Map(prev.remoteScreenStreams);
+        newRemoteScreenStreams.delete(userId);
+        
         return {
           ...prev,
           users: prev.users.filter((u) => u.id !== userId),
           messages: [...prev.messages, systemMessage],
           remoteStreams: newRemoteStreams,
+          remoteScreenStreams: newRemoteScreenStreams,
         };
       });
 
@@ -503,6 +517,7 @@ export const useSocketEvents = ({
     };
 
     const onRoomDisbanded = () => {
+      const currentState = stateRef.current;
       toast({
         title: 'Room Disbanded',
         description: 'Host disbanded the room.',
@@ -514,6 +529,8 @@ export const useSocketEvents = ({
         ...prev,
         roomId: null,
         roomName: null,
+        organizationId: null,
+        organizationName: null,
         users: [],
         messages: [],
         files: [],
@@ -522,7 +539,15 @@ export const useSocketEvents = ({
         remoteStreams: new Map(),
         roomCreatedAt: null,
       }));
-      navigate('/dashboard');
+
+      // Redirect logic: Superhost/Host -> Org Main Room, Participant -> Dashboard
+      if ((currentState.isHost || currentState.isSuperHost) && currentState.organizationId) {
+        logger.info(`[onRoomDisbanded] Redirecting host/superhost to org room: ${currentState.organizationId}`);
+        navigate(`/room/${currentState.organizationId}?type=org`);
+      } else {
+        logger.info('[onRoomDisbanded] Redirecting participant to dashboard');
+        navigate('/dashboard');
+      }
     };
 
     const onKicked = () => {
@@ -541,15 +566,27 @@ export const useSocketEvents = ({
       hasWaitingRoom?: boolean;
       accessType?: 'public' | 'password' | 'invite' | 'organization';
       inviteToken?: string | null;
+      settings?: Record<string, unknown>;
     }) => {
-      setState((prev) => ({
-        ...prev,
-        roomName: data.roomName !== undefined ? data.roomName : prev.roomName,
-        hasWaitingRoom:
-          data.hasWaitingRoom !== undefined ? data.hasWaitingRoom : prev.hasWaitingRoom,
-        accessType: data.accessType || prev.accessType,
-        inviteToken: data.inviteToken !== undefined ? data.inviteToken : prev.inviteToken,
-      }));
+      setState((prev) => {
+        const nextRoomMode = normalizeRoomMode(
+          (data.settings?.smart_room_mode as string) || (data.settings?.mode as string) || prev.roomMode || 'mixed'
+        );
+
+        return {
+          ...prev,
+          roomName: data.roomName !== undefined ? data.roomName : prev.roomName,
+          hasWaitingRoom:
+            data.hasWaitingRoom !== undefined ? data.hasWaitingRoom : prev.hasWaitingRoom,
+          accessType: data.accessType || prev.accessType,
+          inviteToken: data.inviteToken !== undefined ? data.inviteToken : prev.inviteToken,
+          autoApprove: data.settings?.autoApprove !== undefined ? (data.settings.autoApprove as boolean) : prev.autoApprove,
+          stopJoiningTime: data.settings?.stopJoiningTime !== undefined ? (data.settings.stopJoiningTime as number) : prev.stopJoiningTime,
+          settings: data.settings ? { ...(prev.settings || {}), ...data.settings } : prev.settings,
+          roomMode: nextRoomMode,
+          roomModeConfig: getModeConfig(nextRoomMode),
+        };
+      });
       toast({ title: 'Settings Updated', description: 'Room settings updated.' });
     };
 
@@ -669,8 +706,8 @@ export const useSocketEvents = ({
         presenterName: presenterName || fileData.userName || 'Unknown',
       }));
       toast({
-        title: 'File Presented',
-        description: `${presenterName || 'Someone'} is presenting.`,
+        title: 'Asset Manifested',
+        description: `${presenterName || 'Someone'} is projecting "${fileData.name}" to the stage.`,
       });
     };
 
@@ -764,7 +801,7 @@ export const useSocketEvents = ({
           ...prev,
           lastTranscript: {
             ...data,
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             userName: user?.name || 'Unknown',
             timestamp: new Date(data.timestamp),
           },
@@ -775,8 +812,8 @@ export const useSocketEvents = ({
     const onRoomModeUpdated = (data: { mode: string; config?: RoomModeConfig }) => {
       setState((prev) => ({
         ...prev,
-        roomMode: data.mode as RoomMode,
-        roomModeConfig: getModeConfig(data.mode as RoomMode),
+        roomMode: normalizeRoomMode(data.mode),
+        roomModeConfig: getModeConfig(normalizeRoomMode(data.mode)),
       }));
     };
 
@@ -800,17 +837,35 @@ export const useSocketEvents = ({
       type?: TimerType;
       action?: TimerAction;
     }) => {
-      setState((prev) => ({ ...prev, activeTimer: data }));
+      setState((prev) => {
+        const isResume = prev.activeTimer !== null;
+        
+        // Voice notification
+        if ('speechSynthesis' in window) {
+          let message = '';
+          if (isResume) {
+            const totalMs = data.duration * 60 * 1000;
+            const elapsedMs = Date.now() - data.startedAt;
+            const remainingMs = Math.max(0, totalMs - elapsedMs);
+            const remainingSecs = Math.ceil(remainingMs / 1000);
+            
+            if (data.label?.toUpperCase() === 'CLOSING ROOM') {
+              message = `Closing room timer resumed, and the room will close in ${remainingSecs} seconds.`;
+            } else {
+              message = `${data.label || 'Session'} timer resumed.`;
+            }
+          } else {
+            message = `${data.label || 'Session'} timer started for ${data.duration} minutes.`;
+          }
+          
+          const utterance = new window.SpeechSynthesisUtterance(message);
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          window.speechSynthesis.speak(utterance);
+        }
 
-      // Voice notification
-      if ('speechSynthesis' in window) {
-        const utterance = new window.SpeechSynthesisUtterance(
-          `${data.label || 'Session'} timer started for ${data.duration} minutes.`
-        );
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        window.speechSynthesis.speak(utterance);
-      }
+        return { ...prev, activeTimer: data };
+      });
 
       toast({
         title: 'Timer Started',
@@ -818,14 +873,60 @@ export const useSocketEvents = ({
       });
     };
 
-    const onPollCreated = (data: {
-      id: string;
-      question: string;
-      options: string[];
-      expiresAt: number;
-    }) => {
-      setState((prev) => ({ ...prev, activePoll: { ...data, totalVotes: 0 } }));
-      toast({ title: 'New Poll', description: `AI created a poll: ${data.question}` });
+    const onTimerPaused = (data: TimerData) => {
+      setState((prev) => ({ ...prev, activeTimer: data }));
+      
+      // Voice notification
+      if ('speechSynthesis' in window) {
+        const utterance = new window.SpeechSynthesisUtterance(
+          `${data.label || 'Session'} timer paused.`
+        );
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+
+      toast({
+        title: 'Timer Paused',
+        description: `Timer for ${data.label} has been paused.`,
+      });
+    };
+
+    const onTimerStopped = () => {
+      setState((prev) => {
+        const previousLabel = prev.activeTimer?.label || 'Session';
+
+        // Voice notification
+        if ('speechSynthesis' in window) {
+          const message = previousLabel.toUpperCase() === 'CLOSING ROOM'
+            ? 'Closing room timer collapsed.'
+            : `${previousLabel} timer stopped.`;
+
+          const utterance = new window.SpeechSynthesisUtterance(message);
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          window.speechSynthesis.speak(utterance);
+        }
+
+        return { ...prev, activeTimer: null };
+      });
+
+      toast({
+        title: 'Timer Stopped',
+        description: 'The session timer has been terminated by the host.',
+      });
+    };
+
+    const onPollCreated = (data: import('@/types/websocket').PollData) => {
+      setState((prev) => ({ ...prev, activePoll: data }));
+      sonnerToast.success('New Protocol Deployed', { 
+        description: `Consensus query: ${data.question}`,
+        duration: 5000,
+      });
+    };
+
+    const onPollUpdated = (data: import('@/types/websocket').PollData) => {
+      setState((prev) => ({ ...prev, activePoll: data }));
     };
 
     const onLateJoinSummary = (data: { summary: string; bullets: string[]; duration: number }) => {
@@ -898,7 +999,10 @@ export const useSocketEvents = ({
     signaling.on('ai:transcript', onTranscript);
     signaling.on('assistant:response', onAssistantResponse);
     signaling.on('room:timer-started', onTimerStarted);
+    signaling.on('room:timer-paused', onTimerPaused);
+    signaling.on('room:timer-stopped', onTimerStopped);
     signaling.on('room:poll-created', onPollCreated);
+    signaling.on('room:poll-updated', onPollUpdated);
     signaling.on('late-join-summary', onLateJoinSummary);
     signaling.on('moderation:alert', onModerationAlert);
     signaling.on('room:mode-changed', onRoomModeUpdated);
@@ -957,7 +1061,10 @@ export const useSocketEvents = ({
       signaling.off('ai:transcript', onTranscript);
       signaling.off('assistant:response', onAssistantResponse);
       signaling.off('room:timer-started', onTimerStarted);
+      signaling.off('room:timer-paused', onTimerPaused);
+      signaling.off('room:timer-stopped', onTimerStopped);
       signaling.off('room:poll-created', onPollCreated);
+      signaling.off('room:poll-updated', onPollUpdated);
       signaling.off('late-join-summary', onLateJoinSummary);
       signaling.off('moderation:alert', onModerationAlert);
       signaling.off('room:mode-changed', onRoomModeUpdated);

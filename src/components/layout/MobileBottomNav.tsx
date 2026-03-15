@@ -5,7 +5,7 @@ import { LayoutDashboard, Gamepad2, Brain, User } from 'lucide-react';
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Gamepad2, label: 'Games', path: '/games' },
-  { icon: Brain, label: 'AI', path: '/ai-insights' },
+  { icon: Brain, label: 'AI Analytics', path: '/ai-analytics' },
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 

@@ -86,7 +86,7 @@ export const RoomModeSuggestion: React.FC<RoomModeSuggestionProps> = ({ roomId, 
         >
           <div className='relative group'>
             {/* Glow Effect */}
-            <div className='absolute -inset-0.5 bg-gradient-to-r from-indigo-500/30 to-purple-500/30 rounded-[2.2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-500' />
+            <div className='absolute -inset-0.5 bg-white/10 rounded-[2.2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-500' />
 
             <div className='relative bg-[#0A0A0A]/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden'>
               {/* Background Pattern */}
@@ -97,7 +97,7 @@ export const RoomModeSuggestion: React.FC<RoomModeSuggestionProps> = ({ roomId, 
               {/* Header */}
               <div className='relative flex items-center justify-between mb-5'>
                 <div className='flex items-center gap-3'>
-                  <div className='w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-600/10 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.15)]'>
+                  <div className='w-9 h-9 rounded-2xl bg-white/5 border border-white/20 flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.05)]'>
                     <Bot className='w-4 h-4 text-indigo-400' />
                   </div>
                   <div>
@@ -152,7 +152,7 @@ export const RoomModeSuggestion: React.FC<RoomModeSuggestionProps> = ({ roomId, 
                 <button
                   onClick={handleApply}
                   disabled={isApplying}
-                  className='flex-1 h-11 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none relative overflow-hidden'
+                  className='flex-1 h-11 rounded-xl bg-white text-black font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none relative overflow-hidden'
                 >
                   <div className='absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity' />
                   {isApplying ? (

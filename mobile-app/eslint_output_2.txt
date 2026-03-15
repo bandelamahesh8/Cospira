@@ -1,6 +1,0 @@
-
-C:\Users\mahes\Downloads\PROJECTS\COSPIRA_PROJECT\COSPIRA_MAIN\mobile-app\src\screens\profile\SecurityScreen.js
-  219:5  error  Parsing error: Unexpected token <
-
-Γ£û 1 problem (1 error, 0 warnings)
-
