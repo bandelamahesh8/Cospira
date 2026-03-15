@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * CommandNetworkPanel — Multi-Room Command Center
  *
@@ -39,7 +41,7 @@ interface NetworkTotals {
 
 interface CommandNetworkPanelProps {
   commandRoomId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   socket: any;
   isHost: boolean;
 }

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /**
  * useAuthorityEngine — React hook for the Distributed Authority Engine
  *

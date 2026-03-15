@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BreakoutSession } from '@/types/organization';

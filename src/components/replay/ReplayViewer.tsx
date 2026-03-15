@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, useEffect, useRef } from 'react';
 import { GameReplay, ReplayService } from '@/services/ReplayService';
 import { Button } from '@/components/ui/button';

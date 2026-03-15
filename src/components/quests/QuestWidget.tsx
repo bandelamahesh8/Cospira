@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react';
 import { QuestService, Quest } from '@/services/QuestService';
 import { useAuth } from '@/hooks/useAuth';

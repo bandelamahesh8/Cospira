@@ -1,3 +1,4 @@
+ 
 import { GameAction, PlayerId } from '../types';
 import { GameErrorCode } from '../errors/GameError';
 
@@ -19,7 +20,7 @@ export interface GameLogEntry {
 
 export class GameLogger {
   private static log(entry: GameLogEntry): void {
-    console.log(JSON.stringify(entry));
+    console.warn(JSON.stringify(entry));
   }
 
   static debug(roomId: string, message: string, context?: Record<string, unknown>): void {

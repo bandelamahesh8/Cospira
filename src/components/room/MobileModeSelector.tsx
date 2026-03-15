@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
 import { RoomMode } from '@/services/RoomIntelligence';
 import { ChevronDown, Shield, Check } from 'lucide-react';

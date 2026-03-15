@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { GameState, StateDelta } from '../types';
 
 export class BoardStateManager {

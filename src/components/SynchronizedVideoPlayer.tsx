@@ -31,7 +31,7 @@ const SynchronizedVideoPlayer = ({
         if (diff > 0.5) {
           videoRef.current.currentTime = time;
         }
-        // eslint-disable-next-line no-console
+         
         videoRef.current.play().catch(() => {});
       }
     };

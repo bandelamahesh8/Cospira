@@ -177,7 +177,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+ 
 export const useOrganization = () => {
   const context = React.useContext(OrganizationContext);
   if (context === undefined) {

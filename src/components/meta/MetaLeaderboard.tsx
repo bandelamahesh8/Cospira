@@ -3,7 +3,7 @@ import { MetaService, MetaPlayer } from '@/services/MetaService';
 import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Trophy, Swords, TrendingUp } from 'lucide-react';
+import { Crown } from 'lucide-react';
 
 export const MetaLeaderboard = () => {
   const { user } = useAuth();

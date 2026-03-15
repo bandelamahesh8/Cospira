@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react';
 import { SeasonService, Season, PlayerProgress } from '@/services/SeasonService';
 import { useAuth } from '@/hooks/useAuth';

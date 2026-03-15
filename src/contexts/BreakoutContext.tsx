@@ -1,3 +1,4 @@
+ 
 import React, { createContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useOrganization } from '@/contexts/useOrganization';
 import { useAuth } from '@/hooks/useAuth';
@@ -280,9 +281,10 @@ export const BreakoutProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     /**
      * user:joined & user:left: Emits to EventBus for state updates.
      */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const onUserJoined = (payload: {
       breakoutId: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       user?: any;
       userId: string;
       membersCount: number;

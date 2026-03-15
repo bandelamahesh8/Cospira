@@ -58,7 +58,7 @@ export const useRecording = () => {
         }
       };
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error('Error starting recording:', err);
       toast.error('Failed to start recording.');
     }

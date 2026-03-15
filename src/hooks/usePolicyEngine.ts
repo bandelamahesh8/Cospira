@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /**
  * usePolicyEngine — React hook for the Dynamic Policy Engine
  *

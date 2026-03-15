@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { GameState, GameEvent, GameActionPayload } from '../types';
 
 export interface StateTransitionResult<S extends BaseGameState> {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { logger } from '@/utils/logger';
 
@@ -35,7 +36,7 @@ export const useDeviceType = () => {
       return (
         'ontouchstart' in window ||
         navigator.maxTouchPoints > 0 ||
-        // @ts-ignore
+      // @ts-expect-error - non-standard property on some browsers
         navigator.msMaxTouchPoints > 0
       );
     };

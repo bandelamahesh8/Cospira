@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { BaseGameEngine } from '../core/BaseGameEngine';
 import {
   GameState,

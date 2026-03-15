@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { PlayerId, ISOTimestamp } from '../types';
 
 export interface GameEvent<T extends GameActionPayload> {

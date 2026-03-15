@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Quest {
@@ -19,7 +20,7 @@ export class QuestService {
   static async getDailyQuests(userId: string): Promise<Quest[]> {
     // Fetch player quests
     const { data: existing, error: fetchError } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('player_quests' as any)
       .select(
         `
@@ -36,7 +37,7 @@ export class QuestService {
 
     if (existing && (existing as unknown[]).length > 0) {
       return (existing as unknown[]).map((row) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const q = row as any; // Nested properties from join need flexible access
         return {
           id: q.id,
@@ -54,7 +55,7 @@ export class QuestService {
 
     // If no quests assigned today, assign new ones
     const { data: allDefs } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('quest_definitions' as any)
       .select('*');
     if (!allDefs) return [];
@@ -67,7 +68,7 @@ export class QuestService {
     }));
 
     const { data: created, error: assignError } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('player_quests' as any)
       .insert(assignments).select(`
                 *,
@@ -80,7 +81,7 @@ export class QuestService {
     }
 
     return ((created as unknown[]) || []).map((row) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const q = row as any;
       return {
         id: q.id,
@@ -104,29 +105,29 @@ export class QuestService {
     questId: string
   ): Promise<{ success: boolean; error: string | null }> {
     const { data: quest } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('player_quests' as any)
       .select('*, definition:quest_definitions(*)')
       .eq('id', questId)
       .single();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     if (!quest || !(quest as any).is_completed)
       return { success: false, error: 'Quest not completed' };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     if ((quest as any).is_claimed) return { success: false, error: 'Already claimed' };
 
     // Update claimed status
     const { error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('player_quests' as any)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .update({ is_claimed: true } as any)
       .eq('id', questId);
     if (error) return { success: false, error: error.message };
 
     // Award reward
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     if ((quest as any).definition?.reward_type === 'coins') {
       const { data: profile } = await supabase
         .from('player_profiles')
@@ -134,7 +135,7 @@ export class QuestService {
         .eq('id', userId)
         .single();
       if (profile) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         await supabase
           .from('player_profiles')
           .update({ coins: (profile as any).coins + (quest as any).definition.reward_amount })

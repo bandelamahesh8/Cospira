@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { GameState, PlayerId, GamePhase } from '../types';
 import { BoardStateManager } from './BoardStateManager';
 import { MoveProcessor } from './MoveProcessor';

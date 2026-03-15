@@ -1,3 +1,4 @@
+ 
 export type GameErrorCode =
   | 'NOT_YOUR_TURN'
   | 'INVALID_DICE'
@@ -16,7 +17,7 @@ export type GameErrorCode =
   | 'GAME_NOT_ACTIVE'
   | 'INSUFFICIENT_PLAYERS';
 
-export interface GameError {
+export interface IGameError {
   code: GameErrorCode;
   message: string;
   retryable: boolean;
@@ -24,7 +25,7 @@ export interface GameError {
   traceId?: string;
 }
 
-export class GameError extends Error implements GameError {
+export class GameError extends Error implements IGameError {
   public code: GameErrorCode;
   public retryable: boolean;
   public context?: Record<string, unknown>;

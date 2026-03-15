@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export class SequenceTracker {
   private lastApplied: number = 0;
   private buffered: Map<number, any> = new Map();

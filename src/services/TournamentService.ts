@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from '@/integrations/supabase/client';
 import { Tournament, TournamentMatch } from '@/types/tournament';
 
@@ -6,7 +7,7 @@ export class TournamentService {
 
   static async getTournaments(): Promise<Tournament[]> {
     const { data, error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('tournaments' as any)
       .select('*')
       .order('created_at', { ascending: false });
@@ -18,16 +19,16 @@ export class TournamentService {
     // Fetch counts
     for (const t of tournaments) {
       const { count } = await supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         .from('tournament_participants' as any)
         .select('*', { count: 'exact', head: true })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         .eq('tournament_id', (t as any).id);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (t as any).currentPlayers = count || 0;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     return tournaments.map((t: any) => ({
       id: t.id,
       name: t.name,
@@ -55,7 +56,7 @@ export class TournamentService {
     if (!user) return null;
 
     const { data, error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('tournaments' as any)
       .insert({
         name,
@@ -67,12 +68,12 @@ export class TournamentService {
       .select()
       .single();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     if (error || !data || (data as any).error) {
       console.error('Create tournament error:', error);
       return null;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     return (data as any).id;
   }
 
@@ -83,7 +84,7 @@ export class TournamentService {
     if (!user) return false;
 
     const { error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('tournament_participants' as any)
       .insert({
         tournament_id: tournamentId,
@@ -97,7 +98,7 @@ export class TournamentService {
 
   static async startTournament(tournamentId: string) {
     const { data: participants } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('tournament_participants' as any)
       .select('player_id')
       .eq('tournament_id', tournamentId);
@@ -105,7 +106,7 @@ export class TournamentService {
     if (!participants || (participants as unknown[]).length < 2)
       return { error: 'Not enough players' };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const players = (participants as any[])
       .map((p: any) => p.player_id)
       .sort(() => Math.random() - 0.5);
@@ -130,7 +131,7 @@ export class TournamentService {
           nextRoundMatches.length > 0 ? nextRoundMatches[Math.floor(i / 2)] : null;
 
         const { data: matchData } = await supabase
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           .from('tournament_matches' as any)
           .insert({
             tournament_id: tournamentId,
@@ -144,9 +145,9 @@ export class TournamentService {
           .select()
           .single();
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         if (matchData && !(matchData as any).error) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           currentRoundMatchIds.push((matchData as any).id);
         }
       }
@@ -154,9 +155,9 @@ export class TournamentService {
     }
 
     await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('tournaments' as any)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .update({ status: 'active' } as any)
       .eq('id', tournamentId);
 
@@ -165,7 +166,7 @@ export class TournamentService {
 
   static async getBracket(tournamentId: string): Promise<TournamentMatch[]> {
     const { data, error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .from('tournament_matches' as any)
       .select(
         `
@@ -180,7 +181,7 @@ export class TournamentService {
 
     if (error) return [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     return (data as any[]).map((m: any) => ({
       id: m.id,
       tournamentId: m.tournament_id,

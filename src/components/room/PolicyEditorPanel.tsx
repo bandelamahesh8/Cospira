@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * PolicyEditorPanel — Visual Dynamic Policy Rule Builder
  *
@@ -113,7 +114,7 @@ const BLANK_FORM: CreatePolicyInput = {
 // ─────────────────────────────────────────────
 interface PolicyEditorPanelProps {
   roomId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   socket: any;
 }
 

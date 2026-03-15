@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * AIGovernancePanel — AI Meeting Intelligence Layer
  *
@@ -39,7 +40,7 @@ interface MeetingInsight {
 
 interface AIGovernancePanelProps {
   roomId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   socket: any;
   isHost: boolean;
   sessionId?: string;

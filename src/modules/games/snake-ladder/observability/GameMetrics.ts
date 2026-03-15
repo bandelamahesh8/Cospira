@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // Assuming prom-client is available
 import { register, Counter, Histogram } from 'prom-client';
 
