@@ -1,14 +1,33 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-
 import fs from "fs";
 
 const securityDir = 'C:\\Users\\mahes\\Downloads\\PROJECTS\\COSPIRA_PROJECT\\SECURITY';
+const securityDirExists = fs.existsSync(securityDir);
+
+// Determine if FORCE_HTTP is set in the local .env
+const envFilePath = path.join(securityDir, '.env');
+const forceHttp = securityDirExists &&
+  fs.existsSync(envFilePath) &&
+  fs.readFileSync(envFilePath, 'utf8').includes('FORCE_HTTP=true');
+
+// Only load SSL certs if the security directory exists and FORCE_HTTP is not set
+const sslKeyPath = path.join(securityDir, 'localhost+3-key.pem');
+const sslCertPath = path.join(securityDir, 'localhost+3.pem');
+const useHttps = securityDirExists && !forceHttp &&
+  fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath);
+
+const httpsConfig = useHttps
+  ? { key: fs.readFileSync(sslKeyPath), cert: fs.readFileSync(sslCertPath) }
+  : undefined;
+
+const backendTarget = useHttps ? 'https://localhost:3001' : 'http://localhost:3001';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode: _mode }) => ({
-    envDir: securityDir,
+  // Only use the security dir as envDir when it actually exists locally
+  ...(securityDirExists ? { envDir: securityDir } : {}),
   plugins: [react()],
   assetsInclude: ['**/*.glb'],
   resolve: {
@@ -63,52 +82,34 @@ export default defineConfig(({ mode: _mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    https: (fs.existsSync(path.join(securityDir, ".env")) && 
-            fs.readFileSync(path.join(securityDir, ".env"), "utf8").includes("FORCE_HTTP=true")) 
-            ? undefined 
-            : {
-                key: fs.readFileSync(path.join(securityDir, "localhost+3-key.pem")),
-                cert: fs.readFileSync(path.join(securityDir, "localhost+3.pem")),
-              },
+    https: httpsConfig,
     proxy: {
       '/api': {
-        target: (fs.existsSync(path.join(securityDir, ".env")) && 
-                fs.readFileSync(path.join(securityDir, ".env"), "utf8").includes("FORCE_HTTP=true"))
-                ? 'http://localhost:3001'
-                : 'https://localhost:3001',
+        target: backendTarget,
         secure: false,
         changeOrigin: true,
         rejectUnauthorized: false,
       },
-    '/upload': {
-      target: (fs.existsSync(path.join(securityDir, ".env")) && 
-              fs.readFileSync(path.join(securityDir, ".env"), "utf8").includes("FORCE_HTTP=true"))
-              ? 'http://localhost:3001'
-              : 'https://localhost:3001',
-      secure: false,
-      changeOrigin: true,
-      rejectUnauthorized: false,
+      '/upload': {
+        target: backendTarget,
+        secure: false,
+        changeOrigin: true,
+        rejectUnauthorized: false,
+      },
+      '/uploads': {
+        target: backendTarget,
+        secure: false,
+        changeOrigin: true,
+        rejectUnauthorized: false,
+      },
+      '/socket.io': {
+        target: backendTarget,
+        secure: false,
+        changeOrigin: true,
+        ws: true,
+        rejectUnauthorized: false,
+      },
     },
-    '/uploads': {
-      target: (fs.existsSync(path.join(securityDir, ".env")) && 
-              fs.readFileSync(path.join(securityDir, ".env"), "utf8").includes("FORCE_HTTP=true"))
-              ? 'http://localhost:3001'
-              : 'https://localhost:3001',
-      secure: false,
-      changeOrigin: true,
-      rejectUnauthorized: false,
-    },
-    '/socket.io': {
-      target: (fs.existsSync(path.join(securityDir, ".env")) && 
-              fs.readFileSync(path.join(securityDir, ".env"), "utf8").includes("FORCE_HTTP=true"))
-              ? 'http://localhost:3001'
-              : 'https://localhost:3001',
-      secure: false,
-      changeOrigin: true,
-      ws: true,
-      rejectUnauthorized: false,
-    },
-  },
   },
   // Enable HMR optimizations
   optimizeDeps: {
