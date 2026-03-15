@@ -1,0 +1,6 @@
+{
+  "ugsProjectId": "your-ugs-project-id",
+  "ugsEnvironment": "production",
+  "cospiraApiBase": "https://api.cospira.io",
+  "gameOrigin": "https://cospira.io"
+}
