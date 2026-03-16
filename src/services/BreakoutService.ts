@@ -1,12 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from '@/integrations/supabase/client';
 import {
   BreakoutSession,
   BreakoutParticipant,
+  BreakoutRole,
   OrgMode,
   RoomType,
   SecurityLevel,
 } from '@/types/organization';
 import { roomEventBus } from '@/lib/breakout/EventBus';
+import { logger } from '@/utils/logger';
+
+// Clean, loosely-typed client for tables/RPCs missing from generated types
+const sb: any = supabase;
 
 export interface OrgMember {
   user_id: string;
@@ -19,11 +25,6 @@ export interface OrgMember {
   // AI Smart Match V1: Mock skills for users
   skills?: string[];
 }
-
-// ─────────────────────────────────────────────────────────────
-// BreakoutService — All breakout Supabase CRUD operations
-// Realtime actions are emitted separately via BreakoutContext/SignalingService
-// ─────────────────────────────────────────────────────────────
 
 export interface RoomEventLog {
   id: string;
@@ -43,7 +44,7 @@ export class BreakoutService {
    * Get all breakout sessions for an organization.
    */
   static async getBreakouts(orgId: string): Promise<BreakoutSession[]> {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('breakout_sessions')
       .select(
         `
@@ -64,19 +65,19 @@ export class BreakoutService {
 
     if (error) throw error;
 
-    return (data || []).map((b) => {
+    return (data || []).map((b: any) => {
       const session = b as unknown as RawBreakoutData & BreakoutSession;
       return {
         ...session,
         participants_count: session.participants?.[0]?.count || 0,
         child_rooms: (session.child_rooms || [])
-          .filter((c) => c.status !== 'CLOSED')
-          .map((c) => ({
+          .filter((c: any) => c.status !== 'CLOSED')
+          .map((c: any) => ({
             ...c,
             participants_count: c.participants?.[0]?.count || 0,
           })),
       };
-    });
+    }) as any;
   }
 
   /**
@@ -86,7 +87,7 @@ export class BreakoutService {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
       return null;
     }
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('breakout_sessions')
       .select(
         `
@@ -109,7 +110,7 @@ export class BreakoutService {
     return {
       ...sessionData,
       participants_count: sessionData.participants?.[0]?.count || 0,
-    };
+    } as any;
   }
 
   /**
@@ -135,7 +136,7 @@ export class BreakoutService {
       };
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('breakout_participants')
       .select(
         `
@@ -151,7 +152,7 @@ export class BreakoutService {
       id: p.id,
       breakout_id: p.breakout_id,
       user_id: p.user_id,
-      role: p.role,
+      role: p.role as any,
       joined_at: p.joined_at,
       user: {
         id: p.user?.id,
@@ -163,7 +164,7 @@ export class BreakoutService {
   }
 
   /**
-   * Create a new breakout session (Org Owner only — enforced server-side too).
+   * Create a new breakout session (Org Owner only).
    */
   static async createBreakout(
     orgId: string,
@@ -179,13 +180,13 @@ export class BreakoutService {
     if (!targetUserId) {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await sb.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       targetUserId = user.id;
     }
 
     // Ensure the profile exists to satisfy FKEY constraints
-    const { data: profileCheck } = await supabase
+    const { data: profileCheck } = await sb
       .from('player_profiles')
       .select('id')
       .eq('id', targetUserId)
@@ -193,21 +194,21 @@ export class BreakoutService {
 
     if (!profileCheck) {
       console.warn('[BreakoutService] Creating missing player profile for host:', targetUserId);
-      const { data: profileFallback } = await supabase
+      const { data: profileFallback } = await sb
         .from('profiles')
         .select('*')
         .eq('id', targetUserId)
         .maybeSingle();
       const fallbackData = profileFallback as Record<string, unknown> | null;
-      await supabase.from('player_profiles').insert({
+      await sb.from('player_profiles').insert({
         id: targetUserId,
-        display_name: (fallbackData?.display_name as string) || 'User ' + targetUserId.slice(0, 4),
-        username: (fallbackData?.username as string) || 'user_' + targetUserId.slice(0, 4),
+        display_name: (fallbackData?.display_name as string) || 'User ' + targetUserId?.slice(0, 4),
+        username: (fallbackData?.username as string) || 'user_' + targetUserId?.slice(0, 4),
       });
     }
 
     console.warn('[BreakoutService] Creating breakout:', { orgId, name, targetUserId });
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('breakout_sessions')
       .insert({
         organization_id: orgId,
@@ -243,7 +244,7 @@ export class BreakoutService {
    */
   static async assignHost(breakoutId: string, userId: string): Promise<void> {
     // Ensure host has a player_profile before assignment
-    const { data: profileCheck } = await supabase
+    const { data: profileCheck } = await sb
       .from('player_profiles')
       .select('id')
       .eq('id', userId)
@@ -251,20 +252,20 @@ export class BreakoutService {
 
     if (!profileCheck) {
       console.warn('[BreakoutService] Creating missing player profile for assigned host:', userId);
-      const { data: profileFallback } = await supabase
+      const { data: profileFallback } = await sb
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
       const fallbackData = profileFallback as Record<string, unknown> | null;
-      await supabase.from('player_profiles').insert({
+      await sb.from('player_profiles').insert({
         id: userId,
         display_name: (fallbackData?.display_name as string) || 'User ' + userId.slice(0, 4),
         username: (fallbackData?.username as string) || 'user_' + userId.slice(0, 4),
       });
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await sb
       .from('breakout_sessions')
       .update({ host_id: userId })
       .eq('id', breakoutId);
@@ -286,11 +287,10 @@ export class BreakoutService {
 
   /**
    * Assign a regular participant to a breakout.
-   * Rejects: duplicate assignment or if breakout is full.
    */
   static async assignParticipant(breakoutId: string, userId: string): Promise<void> {
     // Check current participant count vs max_participants
-    const { data: session, error: sessionError } = await supabase
+    const { data: session, error: sessionError } = await sb
       .from('breakout_sessions')
       .select('max_participants, breakout_participants(count)')
       .eq('id', breakoutId)
@@ -323,7 +323,7 @@ export class BreakoutService {
     userId: string,
     role: 'HOST' | 'PARTICIPANT'
   ): Promise<void> {
-    const { error } = await supabase
+    const { error } = await sb
       .from('breakout_participants')
       .upsert(
         { breakout_id: breakoutId, user_id: userId, role },
@@ -337,7 +337,7 @@ export class BreakoutService {
    * Remove a specific user from a breakout (move them back to lobby).
    */
   static async removeParticipantToLobby(breakoutId: string, userId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await sb
       .from('breakout_participants')
       .delete()
       .eq('breakout_id', breakoutId)
@@ -353,10 +353,9 @@ export class BreakoutService {
 
   /**
    * Start a breakout — transitions status to LIVE.
-   * Requires a host to be assigned.
    */
   static async startBreakout(breakoutId: string): Promise<void> {
-    const { data: session, error: fetchError } = await supabase
+    const { data: session, error: fetchError } = await sb
       .from('breakout_sessions')
       .select('host_id, status')
       .eq('id', breakoutId)
@@ -366,7 +365,7 @@ export class BreakoutService {
     if (!session?.host_id) throw new Error('Cannot start breakout: no host assigned.');
     if (session?.status !== 'CREATED') throw new Error('Breakout is not in CREATED state.');
 
-    const { error } = await supabase
+    const { error } = await sb
       .from('breakout_sessions')
       .update({ status: 'LIVE' })
       .eq('id', breakoutId);
@@ -386,7 +385,7 @@ export class BreakoutService {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
       return;
     }
-    const { error } = await supabase
+    const { error } = await sb
       .from('breakout_sessions')
       .update({ status: 'CLOSED' })
       .eq('id', breakoutId);
@@ -406,21 +405,21 @@ export class BreakoutService {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
       return;
     }
-    const { error } = await supabase.from('breakout_sessions').delete().eq('id', breakoutId);
+    const { error } = await sb.from('breakout_sessions').delete().eq('id', breakoutId);
 
     if (error) throw error;
 
     roomEventBus.emit('ROOM_STATE_CHANGE', {
       breakoutId,
-      status: 'CLOSED', // Treat as closed for UI purposes
+      status: 'CLOSED',
     });
   }
 
   /**
-   * Update org mode (only if no LIVE breakouts).
+   * Update org mode.
    */
   static async updateOrgMode(orgId: string, mode: OrgMode): Promise<void> {
-    const { error } = await supabase.from('organizations').update({ mode }).eq('id', orgId);
+    const { error } = await sb.from('organizations').update({ mode }).eq('id', orgId);
 
     if (error) throw error;
   }
@@ -429,16 +428,15 @@ export class BreakoutService {
    * Delete all breakout sessions for an organization permanently.
    */
   static async deleteAllBreakouts(orgId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await sb
       .from('breakout_sessions')
       .delete()
       .eq('organization_id', orgId);
 
     if (error) throw error;
 
-    // Notify that room state has changed (all rooms closed)
     roomEventBus.emit('ROOM_STATE_CHANGE', {
-      breakoutId: '', // Use empty string or handle specifically to avoid UUID errors
+      breakoutId: '',
       status: 'CLOSED',
     });
   }
@@ -447,20 +445,19 @@ export class BreakoutService {
    * Delete an entire organization permanently.
    */
   static async deleteOrganization(orgId: string): Promise<void> {
-    const { error } = await supabase.from('organizations').delete().eq('id', orgId);
+    const { error } = await sb.from('organizations').delete().eq('id', orgId);
 
     if (error) throw error;
   }
 
   /**
-   * Pause a breakout — triggered when host disconnects in ULTRA_SECURE mode.
-   * Status: LIVE → PAUSED
+   * Pause a breakout.
    */
   static async pauseBreakout(breakoutId: string): Promise<void> {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
       return;
     }
-    const { data: session, error: fetchError } = await supabase
+    const { data: session, error: fetchError } = await sb
       .from('breakout_sessions')
       .select('status')
       .eq('id', breakoutId)
@@ -469,7 +466,7 @@ export class BreakoutService {
     if (fetchError) throw fetchError;
     if (session?.status !== 'LIVE') throw new Error('Only LIVE breakouts can be paused.');
 
-    const { error } = await supabase
+    const { error } = await sb
       .from('breakout_sessions')
       .update({ status: 'PAUSED' })
       .eq('id', breakoutId);
@@ -483,11 +480,10 @@ export class BreakoutService {
   }
 
   /**
-   * Resume a PAUSED breakout — host has reconnected.
-   * Status: PAUSED → LIVE
+   * Resume a PAUSED breakout.
    */
   static async resumeBreakout(breakoutId: string): Promise<void> {
-    const { data: session, error: fetchError } = await supabase
+    const { data: session, error: fetchError } = await sb
       .from('breakout_sessions')
       .select('status, host_id')
       .eq('id', breakoutId)
@@ -497,7 +493,7 @@ export class BreakoutService {
     if (session?.status !== 'PAUSED') throw new Error('Only PAUSED breakouts can be resumed.');
     if (!session?.host_id) throw new Error('No host assigned — cannot resume.');
 
-    const { error } = await supabase
+    const { error } = await sb
       .from('breakout_sessions')
       .update({ status: 'LIVE' })
       .eq('id', breakoutId);
@@ -511,17 +507,16 @@ export class BreakoutService {
   }
 
   /**
-   * Get all members of an organization with their lobby/room assignment status.
-   * Returns all members. `assignedBreakoutId` is set if they are in a child room.
+   * Fetch all members of an organization with their lobby/room assignment status.
    */
   static async getOrgMembers(orgId: string): Promise<OrgMember[]> {
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await sb.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
     // --- PHASE 1: Try Secure RPC ---
-    const { data: membersData, error: membersError } = await supabase.rpc(
+    const { data: membersData, error: membersError } = await sb.rpc(
       'get_organization_members_secure',
       {
         p_org_id: orgId,
@@ -529,7 +524,7 @@ export class BreakoutService {
     );
 
     if (!membersError && membersData && (membersData as unknown[]).length > 0) {
-      const { data: assignments } = await supabase
+      const { data: assignments } = await sb
         .from('breakout_participants')
         .select('user_id, breakout_id, breakout_sessions!inner(organization_id)')
         .eq('breakout_sessions.organization_id', orgId);
@@ -555,15 +550,9 @@ export class BreakoutService {
       });
     }
 
-    if (membersError) {
-      console.warn('[BreakoutService] get_organization_members RPC Failed:', membersError.message);
-    }
-
-    // --- Phase 2 was a direct table join, but since relationships are dynamically constructed
-    // and missing strict constraints cause PostgREST to throw 400 Bad Request, we skip directly
-    // to Phase 3 Minimal Fetch which handles join logic perfectly in client code.
-    console.log('[BreakoutService] Trying minimal fetch (profiles + roles)...'); // eslint-disable-line no-console
-    const { data: minimalData } = await supabase
+    // --- Phase 3 Minimal Fetch (Manual Join) ---
+    logger.info('[BreakoutService] Trying minimal fetch (profiles + roles)...');
+    const { data: minimalData } = await sb
       .from('organization_members')
       .select('user_id, role_id')
       .eq('organization_id', orgId);
@@ -574,13 +563,12 @@ export class BreakoutService {
         .map((m: Record<string, unknown>) => m.role_id as string)
         .filter(Boolean);
 
-      // Fetch profiles, roles, and CURRENT ASSIGNMENTS in parallel
       const [profilesRes, playerProfilesRes, rolesRes, orgRes, assignmentsRes] = await Promise.all([
-        supabase.from('profiles').select('*').in('id', userIds),
-        supabase.from('player_profiles').select('*').in('id', userIds),
-        supabase.from('organization_roles').select('id, name').in('id', roleIds),
-        supabase.from('organizations').select('owner_id').eq('id', orgId).single(),
-        supabase
+        sb.from('profiles').select('*').in('id', userIds),
+        sb.from('player_profiles').select('*').in('id', userIds),
+        sb.from('organization_roles').select('id, name').in('id', roleIds),
+        sb.from('organizations').select('owner_id').eq('id', orgId).single(),
+        sb
           .from('breakout_participants')
           .select('user_id, breakout_id, breakout_sessions!inner(organization_id)')
           .eq('breakout_sessions.organization_id', orgId),
@@ -612,23 +600,14 @@ export class BreakoutService {
         const roleId = m.role_id as string;
         let roleName = roleMap.get(roleId) || 'Member';
 
-        // If they are the owner, ensure they show as Superhost/Owner
-        if (
-          userId === ownerId &&
-          !roleName.toLowerCase().includes('host') &&
-          !roleName.toLowerCase().includes('owner')
-        ) {
+        if (userId === ownerId && !roleName.toLowerCase().includes('host') && !roleName.toLowerCase().includes('owner')) {
           roleName = 'Superhost';
         }
 
         return {
           user_id: userId,
-          display_name:
-            (p.display_name as string) ||
-            (p.username as string) ||
-            (p.displayName as string) ||
-            'User ' + userId.slice(0, 4),
-          avatar_url: (p.avatar_url as string) || (p.avatarUrl as string) || null,
+          display_name: (p.display_name as string) || (p.username as string) || 'User ' + userId.slice(0, 4),
+          avatar_url: (p.avatar_url as string) || null,
           email: (p.email as string) || '',
           role: roleName,
           assignedBreakoutId: assignmentMap.get(userId) || null,
@@ -636,20 +615,17 @@ export class BreakoutService {
       });
     }
 
-    console.warn('[BreakoutService] All attempts to fetch members returned 0 rows for org:', orgId);
     return [];
   }
 
   /**
-   * Batch assign multiple participants to a breakout session atomically.
-   * Calls the `batch_assign_participants` RPC for capacity-safe bulk insert.
-   * Returns { inserted, skipped }.
+   * Batch assign multiple participants.
    */
   static async batchAssignParticipants(
     breakoutId: string,
     userIds: string[]
   ): Promise<{ inserted: number; skipped: number }> {
-    const { data, error } = await supabase.rpc('batch_assign_participants', {
+    const { data, error } = await sb.rpc('batch_assign_participants', {
       p_breakout_id: breakoutId,
       p_user_ids: userIds,
     });
@@ -680,13 +656,13 @@ export class BreakoutService {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(breakoutId)) {
       return [];
     }
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('room_event_logs')
       .select('*')
       .eq('breakout_id', breakoutId)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-    return data as RoomEventLog[];
+    return (data || []) as RoomEventLog[];
   }
 }

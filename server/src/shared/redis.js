@@ -1,5 +1,7 @@
 import { createClient } from 'redis';
+import fs from 'fs';
 import dotenv from 'dotenv';
+import { errorCounter } from '../metrics/metrics.js';
 
 dotenv.config();
 
@@ -23,29 +25,57 @@ const initRedis = async (attempt = 1) => {
     }
 
     try {
-        client = createClient({ url: redisUrl });
-        client.on('error', (err) => console.error('Redis Client Error', err));
-        client.on('connect', () => console.log('Connected to Redis'));
-        await client.connect();
-        isRedisConnected = true;
-    } catch (error) {
-        const delay = Math.min(Math.pow(2, attempt) * 1000, 30000);
-        console.warn(`[Redis] Connection failed (Attempt ${attempt}/5): ${error.message}`);
+        const securityDir = 'C:\\Users\\mahes\\Downloads\\PROJECTS\\COSPIRA_PROJECT\\SECURITY';
+        const caPath = `${securityDir}\\ca.pem`;
+        const certPath = `${securityDir}\\client-cert.pem`;
+        const keyPath = `${securityDir}\\client-key.pem`;
         
-        if (attempt < 5) {
-            console.warn(`[Redis] Retrying in ${delay / 1000}s...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return initRedis(attempt + 1);
+        const tlsOptions = {};
+        if (fs.existsSync(caPath) && fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+            console.log('🔒 Redis mTLS Enabled — using client certificates');
+            tlsOptions.socket = {
+                tls: true,
+                ca: [fs.readFileSync(caPath)],
+                cert: fs.readFileSync(certPath),
+                key: fs.readFileSync(keyPath),
+                rejectUnauthorized: true
+            };
         }
 
-        console.warn('Failed to connect to Redis, falling back to in-memory storage');
-        isRedisConnected = false;
+        client = createClient({ 
+            url: redisUrl,
+            ...tlsOptions,
+            socket: {
+                ...tlsOptions.socket,
+                reconnectStrategy: (retries) => {
+                    const delay = Math.min(retries * 100, 3000);
+                    errorCounter.inc({ type: 'redis_reconnect', service: 'redis' });
+                    return delay;
+                }
+            }
+        });
+        
+        client.on('error', (err) => {
+            errorCounter.inc({ type: 'redis_error', service: 'redis' });
+            console.error('Redis Client Error', err);
+        });
+        client.on('connect', () => {
+            isRedisConnected = true;
+            console.log('Connected to Redis');
+        });
+        await client.connect();
+    } catch (error) {
+        errorCounter.inc({ type: 'redis_init_fail', service: 'redis' });
+        console.error(`[Redis] Initialization failed: ${error.message}`);
         
         // In production, Redis is required
         if (process.env.NODE_ENV === 'production') {
-            console.error('❌ PRODUCTION ERROR: Redis connection failed after 5 attempts. Redis is required in production.');
+            console.error('❌ PRODUCTION ERROR: Redis initialization failed. Redis is required in production.');
             process.exit(1);
         }
+
+        console.warn('Falling back to in-memory storage');
+        isRedisConnected = false;
     }
 };
 
@@ -231,4 +261,4 @@ export const getCache = async (key) => {
     return null;
 };
 
-export { initRedis };
+export { initRedis, client as redis };

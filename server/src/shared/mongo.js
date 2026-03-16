@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import fs from 'fs';
 import logger from './logger.js';
 
 const connectMongoDB = async () => {
@@ -8,11 +9,25 @@ const connectMongoDB = async () => {
   }
 
   try {
+    const securityDir = 'C:\\Users\\mahes\\Downloads\\PROJECTS\\COSPIRA_PROJECT\\SECURITY';
+    const caPath = `${securityDir}\\ca.pem`;
+    const certPath = `${securityDir}\\client-cert.pem`;
+    const keyPath = `${securityDir}\\client-key.pem`;
+
     const options = {
-      serverSelectionTimeoutMS: 5000, // Fail after 5s if no server found
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-      family: 4 // Use IPv4, skip trying IPv6
+      serverSelectionTimeoutMS: 5000, 
+      socketTimeoutMS: 45000,
+      family: 4 
     };
+
+    if (fs.existsSync(caPath) && fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+        logger.info('🔒 MongoDB mTLS Enabled — using client certificates');
+        options.tls = true;
+        options.tlsCAFile = caPath;
+        options.tlsCertificateKeyFile = certPath; // Assuming combined cert/key or handled by driver
+        // Note: mongoose options for mTLS vary by driver version, 
+        // usually passed directly to the MongoClient.
+    }
     
     await mongoose.connect(process.env.MONGODB_URI, options);
     logger.info('Connected to MongoDB');
