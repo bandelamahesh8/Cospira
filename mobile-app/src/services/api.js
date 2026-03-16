@@ -132,7 +132,7 @@ export class ApiService {
 
 // Environment Configuration
 const getBaseUrl = () => {
-  return 'http://10.199.34.99:3001';
+  return 'http://192.168.1.11:3001';
 };
 
 const DEV_URL = getBaseUrl();
